@@ -14,7 +14,7 @@ import { xrayBridge, listMcpServers } from '../../xray/src/index.js';
 import { generateDID, generateApiKey, verifyWithPublic } from '../../identity/src/index.js';
 import {
   createChallengeSession, getSession, validateTrace,
-  markSessionCompleted, markSessionFailed,
+  markSessionCompleted, markSessionFailed, computeReasoningCoverage,
   ChallengeSession, ChallengeTrace,
 } from './challenge.js';
 import * as crypto from 'crypto';
@@ -222,14 +222,28 @@ export async function registerPlugin(params: {
 
   let enforcementScore = 100;
   try {
+    let reasoningQualityScore = validation.score;
+    if (session.task) {
+      const coverage = computeReasoningCoverage(session.task.prompt, params.challengeTrace.turns);
+      reasoningQualityScore = Math.round(validation.score * (0.5 + coverage * 0.5));
+      frameworkLogger.log('marketplace', 'reasoning-coverage', 'info', {
+        coverage: Math.round(coverage * 100),
+        adjustedScore: reasoningQualityScore,
+      });
+    }
     const enforcement = await xrayBridge.enforce('register-plugin', [`did:${did}`], JSON.stringify({
       pubkey: params.pubkey,
       payload: params.payload,
       metadata: params.metadata,
       signature: params.signature,
       challengeNonce: params.challengeNonce,
-      challengeScore: validation.score,
+      challengeScore: reasoningQualityScore,
       uiManifest: params.uiManifest,
+      reasoningTrace: params.challengeTrace.turns.map(t => ({
+        tool: t.toolCall,
+        reasoning: t.reasoning,
+      })),
+      taskPrompt: session.task?.prompt,
     }));
     enforcementScore = enforcement?.score ?? 100;
   } catch (e) {

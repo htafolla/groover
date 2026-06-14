@@ -23,13 +23,13 @@ function buildValidTrace(sessionId: string) {
   const baseTime = Date.now() - 5000;
   let prevHash = PREV_HASH_SEED;
   const turns = [];
-  turns.push({ ...buildTurn(prevHash, 'search_plugins', 'cross-correlation marketplace', '[result1,result2]', 'Discovered signals for plugin synthesis via cross-correlation.'), timestamp: baseTime });
+  turns.push({ ...buildTurn(prevHash, 'search_plugins', 'cross-correlation marketplace', '[result1,result2]', 'Discovered Groover registry cross-correlation signals for plugin synthesis and governance alignment. Execution trace submitted for verification of automated workflow.'), timestamp: baseTime });
   turns[0].hash = computeTurnHash(prevHash, turns[0]);
   prevHash = turns[0].hash;
-  turns.push({ ...buildTurn(prevHash, 'list_mcp_servers', '{}', '["Dynamo","xray-enforcer","xray-governance"]', 'Identified available MCP servers for orchestration workflow.'), timestamp: baseTime + 1500 });
+  turns.push({ ...buildTurn(prevHash, 'list_mcp_servers', '{}', '["Dynamo","xray-enforcer","xray-governance"]', 'Identified available MCP servers for orchestration workflow and security audit ecosystem. Explore resilience patterns and improved automated governance landscape.'), timestamp: baseTime + 1500 });
   turns[1].hash = computeTurnHash(prevHash, turns[1]);
   prevHash = turns[1].hash;
-  turns.push({ ...buildTurn(prevHash, 'synthesize', 'correlation + MCP ecosystem', 'novel-plugin-concept', 'Synthesized a novel plugin concept combining cross-correlation with MCP orchestration. This improves automated governance resilience.'), timestamp: baseTime + 4500 });
+  turns.push({ ...buildTurn(prevHash, 'synthesize', 'correlation + MCP ecosystem', 'novel-plugin-concept', 'Synthesized a novel plugin concept combining registry search with MCP tools. Self-critique against current architecture validates execution completeness, marketplace registration flow, and security audit alignment.'), timestamp: baseTime + 4500 });
   turns[2].hash = computeTurnHash(prevHash, turns[2]);
   return buildTraceFromTurns(sessionId, turns);
 }

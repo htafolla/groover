@@ -335,8 +335,48 @@ export function validateTrace(session: ChallengeSession, trace: ChallengeTrace):
     }
   }
 
+  // 12. Semantic reasoning vs task prompt keyword coverage
+  const coverage = computeReasoningCoverage(session.task.prompt, trace.turns);
+  if (coverage < 0.25) {
+    violations.push(`low-reasoning-coverage: ${Math.round(coverage * 100)}%`);
+  } else if (coverage < 0.4) {
+    score += 0; // marginal — no bonus, no violation
+  } else {
+    score += 0; // full coverage already reflected in other checks
+  }
+
   const valid = violations.length === 0 && score >= 70;
   return { valid, score, violations };
+}
+
+const STOP_WORDS = new Set([
+  'about', 'above', 'after', 'again', 'against', 'being', 'below', 'between',
+  'could', 'did', 'does', 'done', 'down', 'each', 'few', 'from', 'further',
+  'here', 'just', 'like', 'more', 'most', 'much', 'must', 'only', 'other',
+  'over', 'same', 'should', 'some', 'such', 'than', 'that', 'their', 'them',
+  'then', 'there', 'these', 'they', 'this', 'those', 'through', 'too', 'under',
+  'very', 'was', 'were', 'what', 'when', 'where', 'which', 'while', 'with',
+  'your', 'have', 'into', 'also', 'will', 'after', 'before',
+]);
+
+export function computeReasoningCoverage(taskPrompt: string, turns: ChallengeTurn[]): number {
+  const significantTerms = taskPrompt
+    .toLowerCase()
+    .replace(/[^a-z0-9_\s-]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 4 && !STOP_WORDS.has(w));
+
+  if (significantTerms.length === 0) return 1.0;
+
+  const allReasoning = turns.map(t => t.reasoning?.toLowerCase() || '').join(' ');
+  const reasoningWords = allReasoning.split(/\s+/);
+
+  const matched = significantTerms.filter(term => {
+    const prefix = term.slice(0, 5);
+    return reasoningWords.some(w => w.startsWith(prefix) || w.includes(term));
+  }).length;
+
+  return matched / significantTerms.length;
 }
 
 export function markSessionCompleted(sessionId: string): void {

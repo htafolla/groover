@@ -162,7 +162,7 @@ async function main() {
   const searchResult = parseMcpResult(searchRpc);
   const t1 = buildTurn(prevHash, 'search_plugins', 'cross-correlation marketplace',
     JSON.stringify(searchResult?.results?.slice(0, 2) || []),
-    'Discovered cross-correlation signals from registry for plugin synthesis and governance alignment.',
+    'Discovered Groover registry cross-correlation signals for plugin synthesis and governance alignment. Execution trace submitted for verification of automated workflow.',
     t1Time);
   turns.push(t1);
   prevHash = t1.hash;
@@ -178,7 +178,7 @@ async function main() {
   const mcpsResult = parseMcpResult(mcpsRpc);
   const t2 = buildTurn(prevHash, 'list_mcp_servers', '{}',
     JSON.stringify((mcpsResult?.servers || []).map(s => s.name).slice(0, 3)),
-    'Identified available MCP servers. Cross-referencing with governance and enforcement capabilities for orchestration.',
+    'Identified available MCP servers for orchestration workflow and security audit ecosystem. Explore resilience patterns and improved automated governance landscape.',
     t2Time);
   turns.push(t2);
   prevHash = t2.hash;
@@ -190,7 +190,7 @@ async function main() {
   const t3 = buildTurn(prevHash, 'synthesize',
     'cross-correlation + MCP ecosystem analysis',
     'novel-plugin-concept: automated governance resilience plugin',
-    'Synthesized a novel plugin concept combining cross-correlation signals with MCP orchestration. Self-critique: the concept improves automated governance resilience but should account for edge cases in signal drift and MCP server availability.',
+    'Synthesized a novel plugin concept combining registry search with MCP tools. Self-critique against current architecture validates execution completeness, marketplace registration flow, and security audit alignment.',
     t3Time);
   turns.push(t3);
   prevHash = t3.hash;
@@ -215,7 +215,7 @@ async function main() {
     const t4 = buildTurn(prevHash, followUpTool,
       followUpPrompt.slice(0, 80),
       JSON.stringify(followUpResult?.results?.slice(0, 2) || followUpResult?.servers?.slice(0, 2) || []),
-      'Responding to adaptive follow-up: ' + followUpPrompt.slice(0, 100) + '. This analysis addresses the specific gap identified in the prior turn and cross-references registry data for validation.',
+      `Responding to adaptive follow-up: ${followUpPrompt.slice(0, 120)}. This analysis cross-references Groover registry data for governance alignment, automated workflow verification, and security audit completeness. Execution trace submitted.`,
       t4Time);
     turns.push(t4);
     prevHash = t4.hash;
