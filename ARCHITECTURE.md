@@ -37,7 +37,7 @@ Agent (with MCP client)
         │   └── reduced minTurns, relaxed semantic threshold
         ├── Challenge trace validation
         │   ├── Structural: hash chain, merkle, min turns/duration/tools
-        │   ├── Semantic: keyword coverage ≥ 25% (12.5% for privileged)
+        │   ├── Semantic: xrayBridge.enforce evaluation (or keyword fallback) ≥ 25% (12.5% for privileged)
         │   └── Adaptive: follow-up completion gate
         ├── Dynamo governance gate (xray-governance, graceful degradation)
         └── Codex enforcement (xray-enforcer, graceful degradation)
@@ -60,11 +60,12 @@ The challenge uses 11 stacked layers to prevent automated gaming:
 | 6 | Duration enforcement | Wall-clock min 3-4s between first and last turn | validateTrace |
 | 7 | Required tools | search_plugins and/or list_mcp_servers must appear | validateTrace |
 | 8 | Reasoning depth | ≥ 20 chars per turn | validateTrace |
-| 9 | Semantic coverage | Keyword overlap with task prompt ≥ 25% (12.5% privileged) | computeReasoningCoverage |
+| 9 | Semantic coverage | xrayBridge.enforce reasoning evaluation (keyword fallback) ≥ 25% (12.5% privileged) | validateTrace + index.ts |
 | 10 | Exponential backoff | 3 failures → cooldown doubles | rateLimitedUntil + failCount |
 | 11 | Dynamo privileged path | resonance ≥ 0.8 → minTurns 3→2, coverage 25%→12.5% | computeDynamoResonance + xrayBridge.govern |
+| 12 | Real reasoning tool | CJS reference attempts opencode run with retry + graceful fallback | deploy/register-agent.cjs |
 
-## Validation Scoring (0–100)
+## Validation Scoring (max 105)
 
 | Check | Points | Privileged Adjust |
 |-------|--------|-------------------|
@@ -97,6 +98,6 @@ This creates discoverability and composition for autonomous agents.
 - **No graceful shutdown**: On Railway SIGTERM, the server hard-exits. In-flight requests are dropped. Impact is low for MVP (MCP calls complete in ms).
 - **No file locking on registry.json**: Sequential writes in single-process Node are safe; concurrent writes from multiple processes would corrupt the file.
 - **Error message exposure**: The MCP server sanitizes error responses with a whitelist of safe message patterns. Unexpected errors return `Internal server error` to clients while logging the full detail server-side.
-- **Semantic check is keyword-based**: The `computeReasoningCoverage` function uses prefix-based keyword matching against the task prompt. It is a proxy for true semantic understanding, not an LLM/embedding-based check. Acceptable for MVP — prevents casual filler while remaining cheap to compute.
+- **Semantic check is keyword-based by default**: The `computeReasoningCoverage` function uses prefix-based keyword matching. When xrayBridge is available, it is replaced by `xrayBridge.enforce('reasoning-evaluation', ...)` with the full reasoning trace + task prompt. Falls back to keyword when xray MCP is unavailable (graceful degradation).
 
 Under His authority.

@@ -16,10 +16,10 @@ The adaptive multi-turn MCP orchestration challenge is the core mechanism for Pr
 | Tool call spoofing | Required tools must appear in trace |
 | Reasoning filler | Minimum 30 chars per turn, 20 chars minimum hash input |
 | Hash chain replay | Merkle root + session-bound attestation |
-| Deterministic farming | 5 rotating task prompts, adaptive follow-up (server generated) |
+| Deterministic farming | 2 rotating GAIA-inspired task prompts, adaptive follow-up (server generated) |
 | Brute force | Exponential backoff after 3 failures |
 | Static script loops | Adaptive follow-up prompt per session (4th turn required) |
-| Shallow reasoning | Semantic keyword coverage check (≥25% of task prompt terms) |
+| Shallow reasoning | xrayBridge.enforce reasoning evaluation (keyword fallback ≥ 25% of task prompt terms) |
 
 ## Dynamo Privileged Path
 
@@ -50,26 +50,26 @@ validateTrace() → score + violations
 status: 'completed' or 'failed'
 ```
 
-## Validation Scoring (0–100)
+## Validation Scoring (max 105)
 
 | Check | Points | Description |
 |-------|--------|-------------|
-| Minimum turns | 20 | ≥ 4 turns (3 base + 1 adaptive) |
+| Minimum turns | 25 | ≥ 4 turns (3 base + 1 adaptive) |
 | Minimum duration | 10 | ≥ 3–4s between first and last turn |
 | Required tools | 15 | Proportional to tools covered |
 | Hash chain integrity | 20 | Every turn hash verified |
 | Merkle root | 10 | Must match computed root |
 | Attestation | 10 | Must be derivable from merkle + sessionId |
 | Adaptive follow-up | 15 | Extra turn addressing server-issued prompt |
-| **Total** | **100** | Passing ≥ 70 |
+| **Total** | **105** | Passing ≥ 70 |
 
 ### Semantic Reasoning Coverage
 
-The `computeReasoningCoverage` function checks keyword overlap between the task prompt and all turn reasoning text:
+The `xrayBridge.enforce('reasoning-evaluation', ...)` call evaluates the reasoning trace against the task prompt before challenge validation. When xray MCP is unavailable (graceful degradation), `computeReasoningCoverage` serves as the keyword-based fallback:
 
 - Terms > 4 chars, excluding stop words
 - Prefix-based matching (first 5 chars) handles plurals/tense
-- Coverage `&lt; 25%` → violation
+- Coverage `< 25%` → violation (12.5% for privileged agents)
 - Coverage 25–39% → marginal (no bonus, no violation)
 - Coverage ≥ 40% → full (reflected in other checks)
 
@@ -83,7 +83,7 @@ The `computeReasoningCoverage` function checks keyword overlap between the task 
 6. **Duration enforcement**: Wall-clock time between first and last turn
 7. **Required tools**: `search_plugins` and `list_mcp_servers` must appear
 8. **Reasoning depth**: Each turn requires ≥ 20 chars of reasoning
-9. **Semantic coverage**: Reasoning must address task prompt keywords
+9. **xray reasoning evaluation**: `xrayBridge.enforce('reasoning-evaluation', ...)` with reasoning trace + task prompt. Falls back to keyword semantic coverage check when xray MCP unavailable.
 10. **Exponential backoff**: 3 failures → cooldown doubles each time
 11. **Dynamo privileged path**: Prior governance resonance ≥ 0.8 grants relaxed thresholds, checked via xrayBridge.govern. Graceful degradation when MCP unavailable.
 

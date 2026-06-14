@@ -39,13 +39,10 @@ Agent                                Server
   │←── did:groover:... + apiKey ──────│
 ```
 
-### Challenge Task Prompts (rotated)
+### Challenge Task Prompts (rotated, GAIA-inspired)
 
-1. "Using the Groover registry, discover 2-3 relevant plugins. Cross-correlate them with current governance proposals. Synthesize one novel plugin idea and self-critique it for alignment."
-2. "Explore the MCP server ecosystem. Identify which servers could collaborate on a security audit workflow. Describe the orchestration sequence and self-critique for completeness."
-3. "Search the Groover registry for cross-correlation signals. Identify a gap in plugin coverage. Propose a new plugin concept that fills this gap. Self-critique for viability."
-4. "Evaluate the current governance landscape by discovering available MCP tools. Propose an automated governance workflow. Self-critique for edge cases."
-5. "Investigate the Groover marketplace for resilience patterns. Suggest an improved plugin registration flow that strengthens verification. Self-critique against current architecture."
+1. "Using the Groover registry, discover 2-3 relevant plugins for temporal governance or reversible capital. Cross-correlate them with current Sui ecosystem signals. Synthesize one novel plugin idea. Self-critique for alignment, edge cases, and governance resonance."
+2. "Identify a gap in the current MCP plugin ecosystem. Propose a concrete multi-agent workflow using at least two tools. Reason step-by-step about potential failure modes and mitigation strategies using Dynamo governance principles."
 
 ### Trace Structure
 
@@ -86,11 +83,11 @@ attestation = SHA-256(merkleRoot + sessionId)
 
 Binds the entire trace to the server-issued session. Cannot replay a trace against a different session.
 
-### Validation Checks (Score 0-100)
+### Validation Checks (Max 105)
 
 | Check | Points | Gate |
 |-------|--------|------|
-| Minimum 3 turns | 20 | Required |
+| Minimum 3 turns | 25 | Required |
 | Minimum 3-4s duration | 10 | Required |
 | Required tools present | 15 | Required |
 | Hash chain integrity | 20 | Required |
@@ -101,7 +98,7 @@ Binds the entire trace to the server-issued session. Cannot replay a trace again
 
 \* Adaptive follow-up is enforced at the `registerPlugin` gate: `session.followUpCompleted` must be `true`. See Anti-Gaming layer 9.
 
-**Passing**: `valid === true && score >= 70` (max 100)
+**Passing**: `valid === true && score >= 70` (max 105)
 **Failing**: `{ status: 'gray', cooldown: 300000 }`
 
 ### Anti-Gaming Layers (Stacked)
@@ -114,12 +111,14 @@ Binds the entire trace to the server-issued session. Cannot replay a trace again
 6. **Duration enforcement** — minimum 3-4 seconds between first and last turn
 7. **Reasoning depth** — shallow responses flagged
 8. **Rate limiting** — exponential backoff after 3 failures (30s → 60s → 120s → ...)
-9. **Dynamo Hammer (supplementary)** — opaque governance gate via xray-governance
-10. **Codex enforcement (supplementary)** — opaque quality gate via xray-enforcer
+9. **Dynamo privileged path** — resonance ≥ 0.8 grants reduced minTurns + relaxed semantic threshold. Checked via xrayBridge.govern after PoP.
+10. **xray reasoning evaluation** — `xrayBridge.enforce('reasoning-evaluation', ...)` evaluates reasoning trace + task prompt before validateTrace. Falls back to keyword-based semantic coverage check when xray MCP unavailable.
+11. **Dynamo governance (supplementary)** — opaque governance gate via xray-governance
+12. **Codex enforcement (supplementary)** — opaque quality gate via xray-enforcer
 
 ### MCP Graceful Degradation
 
-The Dynamo governance and Codex enforcement gates (xray-governance, xray-enforcer, xray-orchestrator) are **supplementary**. When MCP servers are unreachable (standalone Railway mode), these gates default to pass. The challenge trace is the **primary** behavioral gate.
+The Dynamo governance and Codex enforcement gates (xray-governance, xray-enforcer, xray-orchestrator) are **supplementary**. When MCP servers are unreachable (standalone Railway mode), these gates default to pass. The challenge trace is the **primary** behavioral gate. The xray reasoning evaluation also degrades gracefully — when xrayBridge.enforce is unavailable, the keyword-based `computeReasoningCoverage` function serves as fallback.
 
 ## Reference Implementation
 

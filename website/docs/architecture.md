@@ -38,6 +38,7 @@ Agent (with MCP client)
         ├── Crypto PoP verification (ed25519)
         ├── Dynamo resonance check → privileged path (reduced minTurns, relaxed semantic threshold)
         │   └── resonance ≥ 0.8 → privileged: true
+        ├── xray reasoning evaluation (keyword fallback)
         ├── Challenge trace validation (hash chain, merkle, min turns/duration/tools)
         ├── Dynamo governance gate (xray-governance, graceful degradation)
         └── Codex enforcement (xray-enforcer, graceful degradation)
@@ -55,7 +56,7 @@ The challenge is NOT a trivial puzzle. It requires genuine agent behavior:
 3. **Hash-chained trace**: Each turn's hash depends on the previous (SHA-256 chain).
 4. **Merkle root + attestation**: All turns aggregated into a merkle tree; attestation binds merkle root to sessionId.
 5. **Behavioral signals**: min turns, min duration, required tools, reasoning depth (20+ chars per turn).
-6. **Semantic reasoning**: `&lt; 25%` keyword coverage of task prompt → violation.
+6. **Semantic reasoning**: `xrayBridge.enforce('reasoning-evaluation', ...)` evaluates reasoning trace against task prompt. Falls back to keyword coverage check (`< 25%` → violation) when xray MCP unavailable.
 7. **Tamper-proof**: Any modification to a turn breaks the hash chain.
 8. **Rate limiting**: 3 failures → exponential backoff.
 9. **Privileged path**: Agents with prior Dynamo governance resonance ≥ 0.8 get reduced minTurns (2 instead of 3) and relaxed semantic threshold (12.5% instead of 25%). Checked via xrayBridge.govern after PoP, before validation. Graceful degradation when MCP unavailable.
@@ -79,3 +80,4 @@ Uses patterns from zigzag/Diffuser:
 - **No graceful shutdown**: On SIGTERM, in-flight requests may be dropped.
 - **No file locking on registry.json**: Safe in single-process; concurrent writes would corrupt.
 - **Error message exposure**: Sanitized with whitelist; unknown errors return "Internal server error".
+- **Semantic check**: Uses xrayBridge.enforce reasoning evaluation when available; falls back to keyword-based coverage check. The keyword fallback uses prefix-based matching against task prompt terms as a proxy for true semantic understanding.
