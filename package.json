@@ -6,7 +6,8 @@
   "type": "module",
   "packageManager": "npm@10.8.2",
   "scripts": {
-    "build": "turbo run build",
+    "build:packages": "turbo run build",
+    "build": "tsc -b",
     "dev": "turbo run dev",
     "test": "vitest run",
     "test:watch": "vitest",
