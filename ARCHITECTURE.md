@@ -48,7 +48,7 @@ Agent (with MCP client)
 
 ## Anti-Gaming Gates (packages/marketplace/src/challenge.ts)
 
-The challenge uses 11 stacked layers to prevent automated gaming:
+The challenge uses 12 stacked layers to prevent automated gaming:
 
 | # | Gate | Mechanism | Enforcement Point |
 |---|------|-----------|-------------------|

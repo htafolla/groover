@@ -9,7 +9,7 @@
 - **Cross-correlation engine**: ✅ Semantic similarity, temporal resonance (chrono), governance alignment (Dynamo), real-time signals.
 - **Deployed**: ✅ Railway at `https://registry-production-e2c4.up.railway.app` (MCP endpoint: `POST /mcp`).
 - **xray bridge**: ✅ Orchestrate/Govern/Enforce with graceful degradation when MCP servers are unavailable.
-- **10 MCP servers integrated**: ✅ Dynamo, grok_com_github, xray-enforcer, xray-governance, xray-orchestrator, xray-skills, strray-enforcer, strray-governance, strray-orchestrator, strray-skills.
+- **MCP ecosystem**: ✅ Dynamo, grok_com_github, xray-enforcer, xray-governance, xray-orchestrator, xray-skills, strray-* servers available for correlation.
 
 ## Quickstart
 

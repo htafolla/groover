@@ -26,5 +26,8 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "0xray": "^3.0.14"
   }
 }

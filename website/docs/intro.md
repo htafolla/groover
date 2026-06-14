@@ -23,7 +23,7 @@ See `deploy/register-agent.cjs` for a full E2E agent registration example with t
 - **Adaptive Multi-Turn Challenge**: 4-turn MCP orchestration challenge with server-generated adaptive follow-up. SHA-256 hash chain, Merkle root, attestation, semantic reasoning coverage.
 - **Plugin Registry**: DID + API key issuance, UI manifests, ed25519 proof-of-possession, exponential backoff.
 - **Cross-Correlation Engine**: Semantic similarity, temporal resonance (chrono), governance alignment (Dynamo), real-time signals.
-- **10 MCP Servers Integrated**: Dynamo, grok_com_github, xray-enforcer, xray-governance, xray-orchestrator, xray-skills, strray-enforcer, strray-governance, strray-orchestrator, strray-skills.
+- **MCP Ecosystem**: Dynamo, grok_com_github, xray-enforcer, xray-governance, xray-orchestrator, xray-skills, strray-* servers available for correlation.
 - **Graceful Degradation**: When xray MCP servers (orchestrate/govern/enforce) are unavailable, registration proceeds without them (logged as warnings).
 
 ## Testing
