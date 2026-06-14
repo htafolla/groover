@@ -100,13 +100,92 @@ export class XrayBridge implements MCPBridge {
     frameworkLogger.log('xray', 'enforce-codex', 'info', { operation, fileCount: files.length, mode: LIVE_MCP ? 'live' : 'stub' });
     if (LIVE_MCP) {
       try {
-        const result = await mcpCall('xray-enforcer', 'tools/call', { name: 'codex-enforcement', arguments: { operation, files, newCode } });
-        return result;
+        const result = await mcpCall('xray-enforcer', 'tools/call', { name: 'codex-enforcement', arguments: { operation, files, newCode } }) as any;
+        return result?.result || result;
       } catch (e) {
         frameworkLogger.log('xray', 'enforce-live-failed', 'warning', { error: String(e) });
       }
     }
-    return { score: 100, violations: [], compliance: 'FULL', operation, mode: 'stub' };
+
+    // Local enforcement — real validation, not a stub
+    const violations: Array<{ rule: string; severity: 'high' | 'medium' }> = [];
+
+    if (operation === 'register-plugin') {
+      let params: any = {};
+      try {
+        if (newCode) params = JSON.parse(newCode);
+      } catch { violations.push({ rule: 'newCode is not valid JSON', severity: 'medium' }); }
+
+      // Pubkey validation
+      if (!params.pubkey || typeof params.pubkey !== 'string') {
+        violations.push({ rule: 'pubkey must be a non-empty string', severity: 'high' });
+      } else if (params.pubkey.length > 512) {
+        violations.push({ rule: 'pubkey exceeds maximum length (512 chars)', severity: 'medium' });
+      } else if (!params.pubkey.startsWith('-----') && !/^[0-9a-fA-F]+$/.test(params.pubkey)) {
+        violations.push({ rule: 'pubkey must be hex or PEM format', severity: 'medium' });
+      }
+
+      // Payload validation
+      if (!params.payload || typeof params.payload !== 'string') {
+        violations.push({ rule: 'payload must be a non-empty string', severity: 'high' });
+      } else if (params.payload.length > 2048) {
+        violations.push({ rule: 'payload exceeds maximum length (2048 chars)', severity: 'medium' });
+      } else if (/[<>&"']/.test(params.payload)) {
+        violations.push({ rule: 'payload contains prohibited HTML/special characters', severity: 'high' });
+      }
+
+      // Metadata validation
+      if (!params.metadata || typeof params.metadata !== 'object') {
+        violations.push({ rule: 'metadata must be a non-empty object', severity: 'high' });
+      } else {
+        const name = params.metadata.name;
+        if (!name || typeof name !== 'string') {
+          violations.push({ rule: 'metadata.name must be a non-empty string', severity: 'medium' });
+        } else if (name.length > 128) {
+          violations.push({ rule: 'metadata.name exceeds maximum length (128 chars)', severity: 'medium' });
+        } else if (/[<>&"']/.test(name)) {
+          violations.push({ rule: 'metadata.name contains prohibited characters', severity: 'high' });
+        }
+      }
+
+      // PoP flow: verify signature format
+      if (params.signature) {
+        if (typeof params.signature !== 'string' || !/^[0-9a-fA-F]{128}$/.test(params.signature)) {
+          violations.push({ rule: 'signature must be a 64-byte hex string (128 hex chars)', severity: 'medium' });
+        }
+      }
+      if (params.challengeNonce) {
+        if (typeof params.challengeNonce !== 'string' || !/^[0-9a-fA-F]{64}$/.test(params.challengeNonce)) {
+          violations.push({ rule: 'challengeNonce must be a 32-byte hex string (64 hex chars)', severity: 'medium' });
+        }
+      }
+
+      // uiManifest validation — structural integrity
+      if (params.uiManifest) {
+        if (typeof params.uiManifest !== 'object') {
+          violations.push({ rule: 'uiManifest must be an object', severity: 'medium' });
+        } else {
+          if (!['form', 'chat', 'wizard', 'viewer'].includes(params.uiManifest.displayMode)) {
+            violations.push({ rule: 'uiManifest.displayMode must be one of: form, chat, wizard, viewer', severity: 'medium' });
+          }
+          if (!Array.isArray(params.uiManifest.fields)) {
+            violations.push({ rule: 'uiManifest.fields must be an array', severity: 'medium' });
+          }
+        }
+      }
+    }
+
+    const highCount = violations.filter(v => v.severity === 'high').length;
+    const medCount = violations.filter(v => v.severity === 'medium').length;
+    const score = violations.length === 0 ? 100 : Math.max(0, 100 - highCount * 50 - medCount * 15);
+    const violationMessages = violations.map(v => v.rule);
+    const passed = score >= 75;
+
+    frameworkLogger.log('xray', 'enforce-result', passed ? 'success' : 'warning', {
+      operation, score, violations: violationMessages.length, passed,
+    });
+
+    return { score, violations: violationMessages, compliance: passed ? 'FULL' : 'PARTIAL', operation, mode: 'local' };
   }
 }
 

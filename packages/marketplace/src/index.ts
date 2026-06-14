@@ -208,7 +208,19 @@ export async function registerPlugin(params: {
   }
 
   // 4. Codex enforcement (third subsystem per AGENTS.md: Governance precedes action)
-  const enforcement = await xrayBridge.enforce('register-plugin', [`did:${did}`]);
+  // Pass serialized params as newCode so enforcer can validate payload, metadata, pubkey format
+  const enforcement = await xrayBridge.enforce('register-plugin', [`did:${did}`], JSON.stringify({
+    pubkey: params.pubkey,
+    payload: params.payload,
+    metadata: params.metadata,
+    signature: params.signature,
+    challengeNonce: params.challengeNonce,
+    uiManifest: params.uiManifest,
+  }));
+  if (enforcement.score < 75) {
+    frameworkLogger.log('marketplace', 'enforcement-rejected', 'warning', { score: enforcement.score, violations: enforcement.violations });
+    return { status: 'gray', cooldown: 300_000 };
+  }
   if (enforcement.score < 100) {
     frameworkLogger.log('marketplace', 'enforcement-warning', 'warning', { score: enforcement.score, violations: enforcement.violations });
   }
