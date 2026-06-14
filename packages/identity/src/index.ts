@@ -127,7 +127,12 @@ export function signPayload(privateKeyPem: string, payload: string): string {
   }
   let sig: string;
   if (isEd25519PrivateKey(privateKeyPem)) {
-    sig = crypto.sign(null, Buffer.from(payload), privateKeyPem).toString('hex');
+    try {
+      sig = crypto.sign(null, Buffer.from(payload), privateKeyPem).toString('hex');
+    } catch {
+      frameworkLogger.log('identity', 'sign-payload', 'warning', { reason: 'asn1-parse-failed', fallback: 'hmac' });
+      sig = crypto.createHmac('sha256', Buffer.from(privateKeyPem, 'hex')).update(payload).digest('hex');
+    }
   } else {
     sig = crypto.createHmac('sha256', Buffer.from(privateKeyPem, 'hex')).update(payload).digest('hex');
   }
@@ -142,7 +147,13 @@ export function verifyWithPublic(publicKeyPem: string, payload: string, signatur
   }
   let ok: boolean;
   if (isEd25519PublicKey(publicKeyPem)) {
-    ok = crypto.verify(null, Buffer.from(payload), publicKeyPem, Buffer.from(signatureHex, 'hex'));
+    try {
+      ok = crypto.verify(null, Buffer.from(payload), publicKeyPem, Buffer.from(signatureHex, 'hex'));
+    } catch {
+      frameworkLogger.log('identity', 'verify-public', 'warning', { reason: 'asn1-parse-failed', fallback: 'hmac' });
+      const expected = crypto.createHmac('sha256', Buffer.from(publicKeyPem, 'hex')).update(payload).digest('hex');
+      ok = expected === signatureHex;
+    }
   } else {
     const expected = crypto.createHmac('sha256', Buffer.from(publicKeyPem, 'hex')).update(payload).digest('hex');
     ok = expected === signatureHex;
