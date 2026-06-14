@@ -85,7 +85,7 @@ The `xrayBridge.enforce('reasoning-evaluation', ...)` call evaluates the reasoni
 8. **Reasoning depth**: Each turn requires ≥ 20 chars of reasoning
 9. **xray reasoning evaluation**: `xrayBridge.enforce('reasoning-evaluation', ...)` with reasoning trace + task prompt. Falls back to keyword semantic coverage check when xray MCP unavailable.
 10. **Exponential backoff**: 3 failures → cooldown doubles each time
-11. **Dynamo privileged path**: Prior governance resonance ≥ 0.8 grants relaxed thresholds, checked via xrayBridge.govern. Graceful degradation when MCP unavailable.
+11. **Dynamo privileged path**: Prior governance resonance ≥ 0.8 grants relaxed thresholds, checked via xrayBridge.govern (with `source: 'system'` per 0xRay GovernanceProposal schema). Graceful degradation when MCP unavailable.
 
 ## MCP Graceful Degradation
 

@@ -111,9 +111,9 @@ Binds the entire trace to the server-issued session. Cannot replay a trace again
 6. **Duration enforcement** — minimum 3-4 seconds between first and last turn
 7. **Reasoning depth** — shallow responses flagged
 8. **Rate limiting** — exponential backoff after 3 failures (30s → 60s → 120s → ...)
-9. **Dynamo privileged path** — resonance ≥ 0.8 grants reduced minTurns + relaxed semantic threshold. Checked via xrayBridge.govern after PoP.
+9. **Dynamo privileged path** — resonance ≥ 0.8 grants reduced minTurns + relaxed semantic threshold. Checked via xrayBridge.govern (with `source: 'system'`) after PoP.
 10. **xray reasoning evaluation** — `xrayBridge.enforce('reasoning-evaluation', ...)` evaluates reasoning trace + task prompt before validateTrace. Falls back to keyword-based semantic coverage check when xray MCP unavailable.
-11. **Dynamo governance (supplementary)** — opaque governance gate via xray-governance
+11. **Dynamo governance (supplementary)** — opaque governance gate via xray-governance (`proposals` array with `source: 'system'`)
 12. **Codex enforcement (supplementary)** — opaque quality gate via xray-enforcer
 
 ### MCP Graceful Degradation

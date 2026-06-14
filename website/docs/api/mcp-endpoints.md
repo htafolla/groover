@@ -16,6 +16,17 @@ JSON-RPC 2.0 subset:
 { "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "<tool>", "arguments": {...} } }
 ```
 
+Errors follow JSON-RPC 2.0 spec:
+
+| Code | Meaning |
+|------|---------|
+| -32700 | Parse error (malformed JSON) |
+| -32601 | Method not found |
+| -32602 | Invalid params (e.g., missing pubkey) |
+| -32603 | Internal error |
+
+Error messages are sanitized — only whitelisted tokens (`pubkey is required`, `Challenge session not found`, etc.) are returned verbatim; all others return `Internal server error`.
+
 ## Tools
 
 ### get_registration_challenge
@@ -120,9 +131,13 @@ Retrieve a registered agent's UI manifest.
 
 ### list_mcp_servers
 
-List all 10 integrated MCP servers with their roles and key tools.
+List all integrated MCP servers with their roles and key tools.
 
 **Arguments:** none
+
+## MCP Governance Protocol
+
+`xrayBridge.govern()` sends proposals as an array (`{ proposals: [proposal] }`) per 0xRay governance protocol. Each proposal includes a `source` field (required) — automated calls use `source: 'system'`.
 
 ## Standard MCP Methods
 

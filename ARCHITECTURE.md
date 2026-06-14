@@ -93,11 +93,14 @@ This creates discoverability and composition for autonomous agents.
 - **Single-process session store**: The `Map` is not thread-safe. Acceptable for Node single-process deployment; would need a shared store (Redis, Postgres) for multi-instance scaling.
 - **No TLS termination**: The MCP server listens on plain HTTP. In production, terminate TLS at the reverse proxy (Railway handles this automatically).
 - **MCP graceful degradation**: When xray MCP servers (orchestrate/govern/enforce) are unavailable, registration proceeds without them (logged as warnings). The challenge trace is the primary behavioral gate; MCP gates are supplementary.
-- **Nixpacks builder**: Railway uses Nixpacks, not Docker. Type checking (`tsc -b --noEmit`) runs at build time but does not produce output; runtime uses `tsx`. True type safety enforced in CI rather than at deploy.
+- **Nixpacks builder**: Railway uses Nixpacks, not Docker. Build runs `tsc -b` (emits .d.ts for project references); runtime uses `tsx`.
 - **Race window in min duration check**: The duration check uses wall-clock timestamps from turns. A fast agent could manipulate timestamps, but the hash chain integrity check detects timestamp tampering (timestamps are included in the hash).
-- **No graceful shutdown**: On Railway SIGTERM, the server hard-exits. In-flight requests are dropped. Impact is low for MVP (MCP calls complete in ms).
+- **No graceful shutdown**: On Railway SIGTERM, the server handles SIGTERM/SIGINT with graceful `server.close()` before process exit.
 - **No file locking on registry.json**: Sequential writes in single-process Node are safe; concurrent writes from multiple processes would corrupt the file.
 - **Error message exposure**: The MCP server sanitizes error responses with a whitelist of safe message patterns. Unexpected errors return `Internal server error` to clients while logging the full detail server-side.
-- **Semantic check is keyword-based by default**: The `computeReasoningCoverage` function uses prefix-based keyword matching. When xrayBridge is available, it is replaced by `xrayBridge.enforce('reasoning-evaluation', ...)` with the full reasoning trace + task prompt. Falls back to keyword when xray MCP is unavailable (graceful degradation).
+- **JSON-RPC compliance**: Error responses follow JSON-RPC 2.0 spec (`{ jsonrpc: '2.0', id, error: { code, message } }`). Parse errors return `-32700`, invalid params `-32602`, internal errors `-32603`, method not found `-32601`. Error messages are sanitized via `SAFE_ERROR_TOKENS` whitelist.
+- **MCP path configuration**: `xrayBridge.mcpCall` endpoints use configurable paths via `*_MCP_PATH` env vars (default `/mcp`), enabling deployments where governance uses POST `/` (e.g., Vercel).
+- **Governance proposals**: `xrayBridge.govern()` sends `{ proposals: [proposal] }` (array) per MCP governance protocol. Each proposal includes a `source` field (e.g., `'system'`) required by 0xRay GovernanceProposal schema.
+- **Identity crypto**: ed25519 for production PoP; HMAC (`crypto.createHmac('sha256', ...)`) for server-side binding. The `signPayload`/`verifyWithPublic` functions correctly route ed25519 keys through `crypto.sign`/`crypto.verify` and HMAC keys through `crypto.createHmac`.
 
 Under His authority.

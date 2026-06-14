@@ -1,9 +1,9 @@
 {
   "generated": "2026-06-13",
-  "updated": "2026-06-13 post-gov-021 (relentless continue, 10 servers)",
-  "groover_mvp_phase": "MCP full index + continue without stop",
+  "updated": "2026-06-14",
+  "groover_mvp_phase": "MCP compliance fixes: source field, proposals array, HMAC identity, configurable paths, JSON-RPC error codes",
   "total_servers": 10,
-  "note": "xray-* primary (AGENTS.md), strray-* parallel. 10 servers confirmed connected. listMcpServers() in @groover/xray is runtime source (updated 021). Schemas from search_tool. Gov ID: always 'Grok (xAI Grok 4.3, lead dev AI for Groover MVP per AGENTS.md and user guidance)' + source grok-lead-dev. Relentless: gov-022 approved via xray-governance (ref 021, do not stop), MCPs exercised (skills list 33 + code-review, Dynamo harmonic+triangulate, github search, enforcer FULL, governance codex), npx tsx runs (fwLogger captured), docs updated. CONTINUE WITHOUT STOP.",
+  "note": "xray-* primary (AGENTS.md), strray-* parallel. 10 servers confirmed. listMcpServers() in @groover/xray is runtime source. Governance proposals sent as { proposals: [proposal] } array per 0xRay protocol, each with source: 'system'. MCP endpoint paths configurable via *_MCP_PATH env vars (default /mcp). JSON-RPC errors: -32700 (parse), -32601 (method not found), -32602 (invalid params), -32603 (internal). Identity crypto: ed25519 for PoP, HMAC for binding (signPayload routes correctly per key type).",
   "servers": {
     "Dynamo": {
       "role": "External governance SSOT, signals for cross-correlation, math/physics primitives.",
@@ -59,7 +59,7 @@
     "xray-governance": {
       "role": "Governance proposals and codex SSOT.",
       "tools": [
-        {"name": "xray-governance__govern_proposals", "description": "Govern proposals.", "schema": {"proposals": "array", "context": "object", "options": "object"}},
+        {"name": "xray-governance__govern_proposals", "description": "Govern proposals.", "schema": {"proposals": "array of {id, title, description, type, source, confidence, evidence}", "context": "object", "options": "object"}},
         {"name": "xray-governance__govern_reflection", "description": "Govern from reflection.", "schema": {"reflectionPath": "string", "reflectionContent": "string"}},
         {"name": "xray-governance__get_active_codex", "description": "Active codex (68 terms v3.0.10 from .xray/codex.json).", "schema": {"includeRaw": "boolean"}}
       ]
