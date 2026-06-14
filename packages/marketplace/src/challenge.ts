@@ -249,6 +249,7 @@ export interface ValidationResult {
 
 export interface ValidateTraceOptions {
   dynamoMetrics?: { resonance?: number };
+  xrayReasoningScore?: number;
 }
 
 export function validateTrace(session: ChallengeSession, trace: ChallengeTrace, options?: ValidateTraceOptions): ValidationResult {
@@ -359,9 +360,16 @@ export function validateTrace(session: ChallengeSession, trace: ChallengeTrace, 
   }
 
   // 12. Semantic reasoning vs task prompt keyword coverage
-  const coverage = computeReasoningCoverage(session.task.prompt, trace.turns);
-  if (coverage < effectiveCoverageThreshold) {
-    violations.push(`low-reasoning-coverage: ${Math.round(coverage * 100)}%`);
+  if (options?.xrayReasoningScore !== undefined) {
+    const normalized = options.xrayReasoningScore / 100;
+    if (normalized < effectiveCoverageThreshold) {
+      violations.push(`low-reasoning-coverage: ${Math.round(normalized * 100)}% (xray: ${options.xrayReasoningScore})`);
+    }
+  } else {
+    const coverage = computeReasoningCoverage(session.task.prompt, trace.turns);
+    if (coverage < effectiveCoverageThreshold) {
+      violations.push(`low-reasoning-coverage: ${Math.round(coverage * 100)}%`);
+    }
   }
 
   const valid = violations.length === 0 && score >= 70;

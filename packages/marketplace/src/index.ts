@@ -14,7 +14,7 @@ import { xrayBridge, listMcpServers } from '../../xray/src/index.js';
 import { generateDID, generateApiKey, verifyWithPublic } from '../../identity/src/index.js';
 import {
   createChallengeSession, getSession, validateTrace,
-  markSessionCompleted, markSessionFailed, computeReasoningCoverage,
+  markSessionCompleted, markSessionFailed,
   ChallengeSession, ChallengeTrace, ValidateTraceOptions,
 } from './challenge.js';
 import * as crypto from 'crypto';
@@ -191,8 +191,30 @@ export async function registerPlugin(params: {
     frameworkLogger.log('marketplace', 'adaptive-flow-rejected', 'warning', { sessionId: session.sessionId.slice(0, 16), did });
     return { status: 'gray', cooldown: 300_000 };
   }
+
+  // 2a. Evaluate reasoning with xray-enforcer (replaces keyword proxy when available)
+  let xrayReasoningScore: number | undefined;
+  try {
+    const reasoningEval = await xrayBridge.enforce('reasoning-evaluation', [`did:${did}`], JSON.stringify({
+      reasoningTrace: params.challengeTrace.turns.map(t => ({
+        tool: t.toolCall,
+        reasoning: t.reasoning,
+      })),
+      taskPrompt: session.task?.prompt,
+    })) as { score?: number };
+    xrayReasoningScore = reasoningEval?.score;
+    frameworkLogger.log('marketplace', 'reasoning-evaluation', 'info', {
+      xrayScore: xrayReasoningScore,
+      did,
+    });
+  } catch {
+    frameworkLogger.log('marketplace', 'reasoning-evaluation-unavailable', 'warning', { did });
+    // Fallback — keyword check inside validateTrace
+  }
+
   const validateOptions: ValidateTraceOptions = {};
   if (dynamoMetrics) validateOptions.dynamoMetrics = dynamoMetrics;
+  if (xrayReasoningScore !== undefined) validateOptions.xrayReasoningScore = xrayReasoningScore;
   const validation = validateTrace(session, params.challengeTrace, validateOptions);
   frameworkLogger.log('marketplace', 'challenge-validation', 'info', {
     valid: validation.valid,
@@ -251,15 +273,9 @@ export async function registerPlugin(params: {
 
   let enforcementScore = 100;
   try {
-    let reasoningQualityScore = validation.score;
-    if (session.task) {
-      const coverage = computeReasoningCoverage(session.task.prompt, params.challengeTrace.turns);
-      reasoningQualityScore = Math.round(validation.score * (0.5 + coverage * 0.5));
-      frameworkLogger.log('marketplace', 'reasoning-coverage', 'info', {
-        coverage: Math.round(coverage * 100),
-        adjustedScore: reasoningQualityScore,
-      });
-    }
+    const reasoningQualityScore = xrayReasoningScore !== undefined
+      ? Math.round(validation.score * (0.5 + (xrayReasoningScore / 100) * 0.5))
+      : validation.score;
     const enforcement = await xrayBridge.enforce('register-plugin', [`did:${did}`], JSON.stringify({
       pubkey: params.pubkey,
       payload: params.payload,
