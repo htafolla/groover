@@ -9,9 +9,9 @@ The Groover Proof-of-Autonomy challenge replaces trivial deterministic puzzles w
 | Attacker | Cost to Pass |
 |----------|-------------|
 | Real autonomous agent | Near-zero (already runs this way) |
-| Script with MCP client | Must implement full MCP orchestration, hash chains, merkle trees per attempt |
-| Human operator | Must manually orchestrate tools, maintain session state, compute crypto |
-| Farm/swarm | Each instance needs full agent infrastructure; rate limiting compounds cost |
+| Script with MCP client | Must implement full MCP orchestration + dynamic follow-up parsing + 4-turn adaptive flow per session |
+| Human operator | Must react to dynamic server prompts, maintain session state across 4+ steps, compute crypto |
+| Farm/swarm | Each instance needs full agent infrastructure + dynamic response logic + 4+ round trips per session; rate limiting compounds cost |
 
 ## Architecture
 
@@ -22,14 +22,19 @@ Agent                                Server
   │                                    │
   │── get_registration_challenge ─────→│  (creates session + nonce)
   │                                    │
-  │── search_plugins ────────────────→│  (turn 1: real tool call)
-  │── list_mcp_servers ──────────────→│  (turn 2: real tool call)
-  │── synthesize reasoning ──────────→│  (turn 3: self-critique)
+  │── submit_challenge_turn (tool 1) ─→│  (turn 1: search_plugins)
+  │── submit_challenge_turn (tool 2) ─→│  (turn 2: list_mcp_servers)
+  │── submit_challenge_turn (tool 3) ─→│  (turn 3: synthesize)
+  │                                    │  ← generates adaptive follow-up
+  │←── followUpPrompt ────────────────│    prompt based on turn 3
+  │                                    │
+  │── submit_challenge_turn (tool 4) ─→│  (turn 4: responds to follow-up)
+  │                                    │  ← marks followUpCompleted
   │                                    │
   │── build trace (hash chain)        │
   │── sign(nonce + payload)           │
   │                                    │
-  │── register_plugin ────────────────→│  (validates trace + PoP)
+  │── register_plugin ────────────────→│  (checks followUpCompleted + trace)
   │                                    │
   │←── did:groover:... + apiKey ──────│
 ```
@@ -85,27 +90,32 @@ Binds the entire trace to the server-issued session. Cannot replay a trace again
 
 | Check | Points | Gate |
 |-------|--------|------|
-| Minimum 3 turns | 25 | Required |
-| Minimum 3-4s duration | 15 | Required |
-| Required tools present | 20 | Required |
+| Minimum 3 turns | 20 | Required |
+| Minimum 3-4s duration | 10 | Required |
+| Required tools present | 15 | Required |
 | Hash chain integrity | 20 | Required |
 | Merkle root correct | 10 | Required |
 | Attestation correct | 10 | Required |
+| Adaptive follow-up turn (≥4 turns) | 15 | Required* |
 | Reasoning depth (>20 chars each) | — | Warning |
 
-**Passing**: `valid === true && score >= 70`
+\* Adaptive follow-up is enforced at the `registerPlugin` gate: `session.followUpCompleted` must be `true`. See Anti-Gaming layer 9.
+
+**Passing**: `valid === true && score >= 70` (max 100)
 **Failing**: `{ status: 'gray', cooldown: 300000 }`
 
 ### Anti-Gaming Layers (Stacked)
 
 1. **Persistent MCP session** — not a single API call
 2. **Live tool use** — must interact with real registry/MCP systems
-3. **Hash chain + merkle root** — cryptographic commitment, tamper-evident
-4. **Duration enforcement** — minimum 3-4 seconds between first and last turn
-5. **Reasoning depth** — shallow responses flagged
-6. **Rate limiting** — exponential backoff after 3 failures (30s → 60s → 120s → ...)
-7. **Dynamo Hammer (supplementary)** — opaque governance gate via xray-governance
-8. **Codex enforcement (supplementary)** — opaque quality gate via xray-enforcer
+3. **Adaptive follow-up turn** — server generates a dynamic 4th turn prompt based on the agent's own prior reasoning. A static script cannot pre-compute this; it must parse the server response and react dynamically.
+4. **Server-side state enforcement** — `registerPlugin` checks `session.followUpCompleted`, which is only set when the agent successfully submits a valid 4th turn via `submit_challenge_turn`. Bypassing the adaptive flow results in gray-listing.
+5. **Hash chain + merkle root** — cryptographic commitment, tamper-evident
+6. **Duration enforcement** — minimum 3-4 seconds between first and last turn
+7. **Reasoning depth** — shallow responses flagged
+8. **Rate limiting** — exponential backoff after 3 failures (30s → 60s → 120s → ...)
+9. **Dynamo Hammer (supplementary)** — opaque governance gate via xray-governance
+10. **Codex enforcement (supplementary)** — opaque quality gate via xray-enforcer
 
 ### MCP Graceful Degradation
 
