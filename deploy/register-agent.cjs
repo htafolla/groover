@@ -96,7 +96,7 @@ async function main() {
   console.error('[register-agent] Got challenge nonce:', challengeNonce.slice(0, 16) + '...');
 
   // Step 2: Sign { nonce + payload } with ed25519 private key
-  const msg = Buffer.from(challengeNonce + args.payload, 'utf-8');
+  const msg = Buffer.from(challengeNonce + '|' + args.payload, 'utf-8');
   const privateKey = loadPrivateKey(args['secret-key']);
   const signature = crypto.sign(null, msg, privateKey).toString('hex');
   console.error('[register-agent] Generated PoP signature:', signature.slice(0, 16) + '...');

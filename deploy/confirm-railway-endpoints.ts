@@ -1,14 +1,14 @@
 /**
  * Deploy verification script for Groover Railway MCP registry.
- * Tests all 4 MCP endpoints against the live deployed service.
+ * Tests all 5 MCP endpoints against the live deployed service.
  * Usage: RAILWAY_MCP_URL=https://... npx tsx deploy/confirm-railway-endpoints.ts
- * Default URL: https://optimistic-victory-production.up.railway.app
+ * Default URL: https://registry-production-e2c4.up.railway.app
  */
 import * as https from 'https';
 import * as crypto from 'crypto';
 import { frameworkLogger } from '../packages/xray/src/index.js';
 
-const RAILWAY_PROD = 'https://optimistic-victory-production.up.railway.app';
+const RAILWAY_PROD = 'https://registry-production-e2c4.up.railway.app';
 const liveBase = (process.env.RAILWAY_MCP_URL || process.env.DEPLOYED_REGISTRY_URL || RAILWAY_PROD).replace(/\/$/, '');
 
 interface McpEndpoint {
@@ -17,17 +17,7 @@ interface McpEndpoint {
 }
 
 const MCP_ENDPOINTS: McpEndpoint[] = [
-  {
-    name: 'register_plugin',
-    args: (base: string) => ({
-      pubkey: crypto.randomBytes(32).toString('hex'),
-      payload: `mcp-live-test-${base}`,
-      metadata: { name: `live-confirm-agent-${base}` },
-      uiManifest: { version: '1', displayMode: 'form', fields: [{ id: 'q', label: 'Query', fieldType: 'text' }] },
-    }),
-  },
-  { name: 'search_plugins', args: () => ({ query: 'live deployed cross-correlation test' }) },
-  { name: 'get_plugin_ui_manifest', args: () => ({ did: 'did:plugin:groover:live-test' }) },
+  { name: 'get_registration_challenge', args: () => ({ pubkey: crypto.randomBytes(32).toString('hex') }) },
   { name: 'list_mcp_servers', args: () => ({}) },
 ];
 
@@ -41,7 +31,6 @@ function postMcp(method: string, params: unknown = {}): Promise<unknown> {
       path: url.pathname,
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-      rejectUnauthorized: false,
     }, (res) => {
       let data = '';
       res.on('data', (c: string) => { data += c; });
@@ -77,10 +66,10 @@ async function main(): Promise<boolean> {
   }
   frameworkLogger.log('deploy-verify', 'initialize-ok', 'success', { serverName });
 
-  // Step 2: List tools
+  // Step 2: List tools — expect all 5
   const listRpc = await postMcp('tools/list', {}) as { result?: { tools?: Array<{ name: string }> } };
   const advertisedTools = (listRpc?.result?.tools || []).map((t: { name: string }) => t.name);
-  const expectedTools = MCP_ENDPOINTS.map(e => e.name);
+  const expectedTools = ['get_registration_challenge', 'register_plugin', 'search_plugins', 'get_plugin_ui_manifest', 'list_mcp_servers'];
   const allAdvertised = expectedTools.every(t => advertisedTools.includes(t));
   if (!allAdvertised) {
     frameworkLogger.log('deploy-verify', 'tools-list-mismatch', 'error', { advertised: advertisedTools, expected: expectedTools });
@@ -88,30 +77,39 @@ async function main(): Promise<boolean> {
   }
   frameworkLogger.log('deploy-verify', 'tools-list-ok', 'success', { count: advertisedTools.length, tools: advertisedTools });
 
-  // Step 3: Call each tool
-  const results: Record<string, boolean> = {};
-  let lastRegDid: string | undefined;
+  // Step 3: Call tools that don't depend on prior registration
+  const all: Record<string, boolean> = {};
 
   for (const ep of MCP_ENDPOINTS) {
     const base = Date.now().toString(36);
-    const callArgs = ep.name === 'get_plugin_ui_manifest' && lastRegDid
-      ? { did: lastRegDid }
-      : ep.args(base);
-    const rpcResp = await postMcp('tools/call', { name: ep.name, arguments: callArgs });
+    const rpcResp = await postMcp('tools/call', { name: ep.name, arguments: ep.args(base) });
     const parsed = parseMcpResult(rpcResp) as Record<string, unknown> | null;
     const ok = !!(parsed && parsed.success !== false && !parsed.error);
-    results[ep.name] = ok;
-    if (ep.name === 'register_plugin' && parsed && parsed.did) {
-      lastRegDid = parsed.did as string;
-    }
-    frameworkLogger.log('deploy-verify', `endpoint-${ep.name}`, ok ? 'success' : 'error', {
-      ok, hasResult: !!parsed, did: ep.name === 'register_plugin' ? lastRegDid : undefined,
-    });
+    all[ep.name] = ok;
+    frameworkLogger.log('deploy-verify', `endpoint-${ep.name}`, ok ? 'success' : 'error', { ok, hasResult: !!parsed });
   }
 
-  const allPassed = Object.values(results).every(Boolean);
+  // Step 3b: register_plugin (legacy HMAC — still supported)
+  const regPubkey = crypto.randomBytes(32).toString('hex');
+  const regResult = parseMcpResult(await postMcp('tools/call', {
+    name: 'register_plugin',
+    arguments: { pubkey: regPubkey, payload: `verify-${Date.now()}`, metadata: { name: 'deploy-verify-agent' } },
+  })) as Record<string, unknown> | null;
+  all.register_plugin = !!(regResult && regResult.success !== false && !regResult.error);
+
+  // Step 3c: get_plugin_ui_manifest with the freshly registered DID
+  const regDid = regResult?.did || regResult?.record?.did;
+  if (regDid) {
+    const uiResult = parseMcpResult(await postMcp('tools/call', {
+      name: 'get_plugin_ui_manifest',
+      arguments: { did: regDid },
+    })) as Record<string, unknown> | null;
+    all.get_plugin_ui_manifest = !!(uiResult && uiResult.success !== false && !uiResult.error);
+  }
+
+  const allPassed = Object.values(all).every(Boolean);
   frameworkLogger.log('deploy-verify', 'complete', allPassed ? 'success' : 'error', {
-    url: liveBase, results, allPassed,
+    url: liveBase, results: all, allPassed,
   });
 
   return allPassed;

@@ -33,7 +33,7 @@ describe('@groover/marketplace', () => {
     expect(challenge.ttl).toBeGreaterThan(0);
 
     const popPayload = 'pop-registration-' + Date.now();
-    const sig = signPayload(keys.privateKey, challenge.nonce + popPayload);
+    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + popPayload);
 
     const result = await registerPlugin({
       pubkey: keys.publicKey,
@@ -66,7 +66,7 @@ describe('@groover/marketplace', () => {
     const keys = generateKeyPair();
     const challenge = getRegistrationChallenge(keys.publicKey);
     const popPayload = 'pop-reuse-' + Date.now();
-    const sig = signPayload(keys.privateKey, challenge.nonce + popPayload);
+    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + popPayload);
 
     // First use succeeds
     await registerPlugin({

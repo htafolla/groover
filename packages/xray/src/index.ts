@@ -33,7 +33,7 @@ function mcpCall(server: string, method: string, params: unknown = {}): Promise<
       path: url.pathname,
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-      rejectUnauthorized: false,
+      rejectUnauthorized: process.env.MCP_REJECT_UNAUTHORIZED === 'false' ? false : true,
       timeout: 5000,
     }, (res) => {
       let data = '';

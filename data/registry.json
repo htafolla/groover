@@ -1,0 +1,178 @@
+[
+  [
+    "did:groover:aced0d13ce7a2d47",
+    {
+      "did": "did:groover:aced0d13ce7a2d47",
+      "pubkey": "8e52638b64161b6372a4f16ba8ff2567f96b338d6d9fbd0bb98dbf56ff526920",
+      "signature": "2596feefb04a9e98bbd671ab21b3b879beb73cc1c72232e6ab7cef95cf7cd53c",
+      "apiKey": "groover_290dfe762444eedb199048be911289e5a083b7baf553db9d",
+      "metadata": {
+        "name": "test-plugin",
+        "version": "0.1"
+      },
+      "registeredAt": "2026-06-14T12:54:05.653Z",
+      "reputation": 1,
+      "uiManifest": {
+        "version": "1",
+        "displayMode": "form",
+        "fields": [
+          {
+            "id": "q",
+            "label": "Query",
+            "fieldType": "text"
+          }
+        ]
+      }
+    }
+  ],
+  [
+    "did:groover:d49a527356918157",
+    {
+      "did": "did:groover:d49a527356918157",
+      "pubkey": "0c8a0db12abbcdf3f8476b251b1683c28df3838b81d2f5f259a695db569dcd2d",
+      "signature": "953c622e0a5b5e7616442dca1ea2dda6a9b5a33d5552e5360be7eadd9780b796",
+      "apiKey": "groover_aed82090c7950573552498f0be2fbb53bc1cb18a6d3e7026",
+      "metadata": {
+        "name": "mcp-test-agent"
+      },
+      "registeredAt": "2026-06-14T12:54:05.661Z",
+      "reputation": 1
+    }
+  ],
+  [
+    "did:groover:d61e1479093716e6",
+    {
+      "did": "did:groover:d61e1479093716e6",
+      "pubkey": "a23103a65d75f81fccf145a5c36f1fbc7fe04edb672c9756cbecf0a53a0258e5",
+      "signature": "cd65b97af1bd4fc2d44b666539669a39f43bcfd8eeaf14b37f9619a7f7eb4790",
+      "apiKey": "groover_6c09d7926b28cc509bcf52cc663cce6ab0a9733b1f45afd7",
+      "metadata": {
+        "name": "test-plugin",
+        "version": "0.1"
+      },
+      "registeredAt": "2026-06-14T12:54:18.941Z",
+      "reputation": 1,
+      "uiManifest": {
+        "version": "1",
+        "displayMode": "form",
+        "fields": [
+          {
+            "id": "q",
+            "label": "Query",
+            "fieldType": "text"
+          }
+        ]
+      }
+    }
+  ],
+  [
+    "did:groover:de820019fadc9654",
+    {
+      "did": "did:groover:de820019fadc9654",
+      "pubkey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAA5rPEBWGqFKrNQAmdkac8mem9mBGHt6IPaVQbBRK5y4=\n-----END PUBLIC KEY-----\n",
+      "signature": "6fb547e56c5fa5c25ce3280d29ae5dd95e066a50759eca0409f34e29d0f8faa27df17ed981164e35cbb594bc3a758222b7074daa464013fb7b07086c0ef1950b",
+      "apiKey": "groover_f3dd81f06c1e0908982d5210fc2d7b4fbeb35cf22dce51f5",
+      "metadata": {
+        "name": "pop-test-agent"
+      },
+      "registeredAt": "2026-06-14T12:54:18.943Z",
+      "reputation": 1
+    }
+  ],
+  [
+    "did:groover:f3b24ba449f1693f",
+    {
+      "did": "did:groover:f3b24ba449f1693f",
+      "pubkey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAu+2IgcUG+8bOV83mKhG3mhilIahXWLcIHyTFdilJwC0=\n-----END PUBLIC KEY-----\n",
+      "signature": "7fa8acc101750570e2fd17b298f52004b8a096b59f751a0c8fad48095b43b476a91b92cd936b144657706843831d36a4c9e4073a22e7fb0eed0315bdd6a6f100",
+      "apiKey": "groover_c67bae46867815599e75fd4b7fbf33ca43f454c446045e9e",
+      "metadata": {
+        "name": "pop-reuse-first"
+      },
+      "registeredAt": "2026-06-14T12:54:18.945Z",
+      "reputation": 1
+    }
+  ],
+  [
+    "did:groover:1da5f38b5ccb89fb",
+    {
+      "did": "did:groover:1da5f38b5ccb89fb",
+      "pubkey": "fca24d5614fb8d046bad46974c606de4dbd8968a977c585faa34666841599091",
+      "signature": "3ff3e437c1c26bd3f3a8adbeb25f715a0c7d766e063d11c126a40103b33e02ee",
+      "apiKey": "groover_e5b94a8c81e3ba725bc71c084f9f06d4b5c80e9a0cc4baa8",
+      "metadata": {
+        "name": "mcp-test-agent"
+      },
+      "registeredAt": "2026-06-14T12:54:18.947Z",
+      "reputation": 1
+    }
+  ],
+  [
+    "did:groover:982b597c74be2585",
+    {
+      "did": "did:groover:982b597c74be2585",
+      "pubkey": "a98fe4770ffa2a98460d9dae1c3aacb33a51d0379bd9da510b29e4d027c02cbf",
+      "signature": "ff6276014cde5bce3aff624660c4c960eb3bb139dca1fb89ea4ab48a19221bf9",
+      "apiKey": "groover_1995822dac9b2287afbff4864602bfc0550f702f553dd0f5",
+      "metadata": {
+        "name": "test-plugin",
+        "version": "0.1"
+      },
+      "registeredAt": "2026-06-14T12:54:53.526Z",
+      "reputation": 1,
+      "uiManifest": {
+        "version": "1",
+        "displayMode": "form",
+        "fields": [
+          {
+            "id": "q",
+            "label": "Query",
+            "fieldType": "text"
+          }
+        ]
+      }
+    }
+  ],
+  [
+    "did:groover:60adfe90a5694799",
+    {
+      "did": "did:groover:60adfe90a5694799",
+      "pubkey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA36RqyM5H1o6zKXiSAWAlsemRuS2O/k6eTC9mGJIFZUI=\n-----END PUBLIC KEY-----\n",
+      "signature": "73b7f92ecc39a0cef419b7312640f2ce72f41707cfdb6a64538124c4a73ecc157a3f773a9860adcc1728951a87cdba003bb521d8188ce1694aabfcfd478e950f",
+      "apiKey": "groover_37c5c987c845c6fdbe0621147a2d78b701ca760eb61074bf",
+      "metadata": {
+        "name": "pop-test-agent"
+      },
+      "registeredAt": "2026-06-14T12:54:53.529Z",
+      "reputation": 1
+    }
+  ],
+  [
+    "did:groover:f0075aea78b7031c",
+    {
+      "did": "did:groover:f0075aea78b7031c",
+      "pubkey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA0SfGCEzaH3T5DZIX+sAEhhQTSVGUM57yztH6VGdLUMM=\n-----END PUBLIC KEY-----\n",
+      "signature": "534dd45d1e6049619a116cd9f916dafa2d322f5d18fab9e356481593ab60ed1b4aa78dd0ab2f9c51c0f426de432c103addbdbfe6da838ebe00e40b2cb0f7bd04",
+      "apiKey": "groover_1b588a335ed0a5a4aa6b25e30f7fbb4af10eb18734f01e5e",
+      "metadata": {
+        "name": "pop-reuse-first"
+      },
+      "registeredAt": "2026-06-14T12:54:53.531Z",
+      "reputation": 1
+    }
+  ],
+  [
+    "did:groover:99cf056b9cd582a5",
+    {
+      "did": "did:groover:99cf056b9cd582a5",
+      "pubkey": "a74f0757b18227abd871ee0b9d48777b69639d628ad893949022acd1a69bf80f",
+      "signature": "5eadbb0cfd7380ec2ee0c5c9d9c7beef3192f1c40f54b528edc41e96f3500f22",
+      "apiKey": "groover_2e72c5286ea714c3749c4de522d8ef846331cff818cf4c1f",
+      "metadata": {
+        "name": "mcp-test-agent"
+      },
+      "registeredAt": "2026-06-14T12:54:53.533Z",
+      "reputation": 1
+    }
+  ]
+]

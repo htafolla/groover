@@ -110,6 +110,14 @@ export function generateKeyPair(): KeyPair {
   return { publicKey: pub, privateKey: priv };
 }
 
+function isEd25519PrivateKey(key: string): boolean {
+  return key.startsWith('-----BEGIN PRIVATE KEY-----') || key.startsWith('-----BEGIN EC PRIVATE KEY-----');
+}
+
+function isEd25519PublicKey(key: string): boolean {
+  return key.startsWith('-----BEGIN PUBLIC KEY-----');
+}
+
 /**
  * Sign payload with PEM private key (asymmetric).
  */
@@ -117,7 +125,7 @@ export function signPayload(privateKeyPem: string, payload: string): string {
   if (!privateKeyPem || !payload) {
     throw new Error('privateKeyPem and payload required');
   }
-  const keyType = privateKeyPem.includes('PRIVATE KEY') ? 'ed25519' : 'hmac';
+  const keyType = isEd25519PrivateKey(privateKeyPem) ? 'ed25519' : 'hmac';
   const sig = crypto.sign(keyType === 'ed25519' ? null : 'sha256', Buffer.from(payload), privateKeyPem).toString('hex');
   frameworkLogger.log('identity', 'sign-payload', 'success', { sigLen: sig.length });
   return sig;
@@ -128,7 +136,7 @@ export function verifyWithPublic(publicKeyPem: string, payload: string, signatur
     frameworkLogger.log('identity', 'verify-public', 'warning', { reason: 'missing-input' });
     return false;
   }
-  const keyType = publicKeyPem.includes('PUBLIC KEY') ? 'ed25519' : 'hmac';
+  const keyType = isEd25519PublicKey(publicKeyPem) ? 'ed25519' : 'hmac';
   const ok = crypto.verify(keyType === 'ed25519' ? null : 'sha256', Buffer.from(payload), publicKeyPem, Buffer.from(signatureHex, 'hex'));
   frameworkLogger.log('identity', 'verify-public', 'success', { ok });
   return ok;
