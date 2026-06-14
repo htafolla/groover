@@ -1,0 +1,16 @@
+{
+  "name": "@groover/identity",
+  "version": "0.1.0-mvp",
+  "description": "Agent Identity MCP binding. Simple crypto DID (did:groover:...) + pubkey/sig using node:crypto. Reusable for registration flow (crypto binding + verify) per ARCHITECTURE.md. Thin complete prod-ready.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "test": "tsx src/index.test.ts"
+  },
+  "dependencies": {
+    "@groover/xray": "file:../xray"
+  }
+}

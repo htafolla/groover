@@ -1,0 +1,10 @@
+node_modules/
+dist/
+logs/
+.strray/
+.xray/state/
+.xray/workflow_state.json
+.opencode/logs/
+.opencode/plugin/
+dist
+scripts

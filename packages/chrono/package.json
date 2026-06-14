@@ -1,0 +1,16 @@
+{
+  "name": "@groover/chrono",
+  "version": "0.1.0-mvp",
+  "description": "Temporal Resonance + versioning (from chrono-warp-drive). Provides time-decay and harmonic oscillator modulated versioning using Dynamo-fetched P_o. Thin complete prod-ready per ARCHITECTURE.md, TECH-SPEC, codex. Integrates for core temporal resonance.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "test": "tsx src/index.test.ts"
+  },
+  "dependencies": {
+    "@groover/xray": "file:../xray"
+  }
+}

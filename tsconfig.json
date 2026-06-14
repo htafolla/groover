@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "noEmitOnError": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "examples",
+    "**/*.test.ts"
+  ],
+  "references": [
+    {
+      "path": "./packages/core"
+    },
+    {
+      "path": "./packages/marketplace"
+    },
+    {
+      "path": "./packages/chrono"
+    },
+    {
+      "path": "./packages/identity"
+    },
+    {
+      "path": "./packages/xray"
+    }
+  ]
+}

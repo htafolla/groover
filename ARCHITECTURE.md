@@ -5,20 +5,15 @@
 groover/
 ├── packages/
 │   ├── core/                    # Cross-Correlation + Diffuser Engine (from zigzag)
-│   │   ├── correlation/
-│   │   ├── discovery/
-│   │   └── ranking/             # Dynamo-weighted
-│   ├── marketplace/             # Registry, CLI, search (from agent-marketplace-starters)
+│   ├── registry/                # Agent registry, CLI, search
 │   ├── chrono/                  # Temporal Resonance + versioning (from chrono-warp-drive)
-│   ├── identity/                # Agent Identity MCP integration
+│   ├── identity/                # Agent Identity + DID + API key credential issuance
 │   └── xray/                    # 0xRay MCP execution & orchestration
 ├── examples/
 │   └── stringray-plugin-consumer/
 ├── docs/
-│   ├── mcp-schemas/
-│   └── governance/
-├── governance/                  # Dynamo Hammer module
-└── infra/                       # K8s / Blaxel deployment
+│   └── mcp-schemas/
+└── infra/                       # Railway deployment
 ```
 
 ## Registration & Verification Data Flow
@@ -32,7 +27,7 @@ Dynamic Behavioral Challenge (multi-turn, tool orchestration)
 Dynamo Signal Submission (solar/alignment/neural metrics)
     ↓
 Dynamo Hammer Evaluation (opaque, internal)
-        ├── Yes → Mint did:plugin:... + Registry + Reputation
+        ├── Yes → Mint DID + API key credential + Registry entry + Reputation
         └── Gray/Abuse → "Try again later" + cooldown
 ```
 

@@ -1,0 +1,16 @@
+{
+  "name": "@groover/core",
+  "version": "0.1.0-mvp",
+  "description": "Cross-Correlation + Diffuser Engine (from zigzag). Semantic, temporal, governance, real-time signals + Dynamo-weighted ranking. Per ARCHITECTURE.md.",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "test": "tsx src/index.test.ts"
+  },
+  "dependencies": {
+    "@groover/xray": "file:../xray",
+    "@groover/chrono": "file:../chrono"
+  }
+}

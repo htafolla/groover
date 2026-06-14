@@ -1,0 +1,31 @@
+{
+  "name": "groover",
+  "version": "0.1.0-mvp",
+  "private": true,
+  "description": "MCP-native Plugin Marketplace + Cross-Correlation Engine for Autonomous Agents. Synthesized per ARCHITECTURE.md, README, TECH-SPEC, AGENTS.md and 0xRay codex 3.0.10. Governance via Dynamo precedes all actions.",
+  "type": "module",
+  "packageManager": "npm@10.8.2",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "turbo run lint",
+    "govern": "echo 'Governance must be performed via xray-governance__govern_proposals and Dynamo__* tools before changes. See AGENTS.md.'",
+    "enforce": "echo 'Run xray-enforcer__codex-enforcement and quality-gate-check via MCP on all changes.'",
+    "orchestrate": "echo 'Use xray-orchestrator__orchestrate-task for complex work.'",
+    "test:all": "vitest run",
+    "start": "node --import tsx packages/marketplace/src/mcp-server.ts",
+    "start:registry": "npx tsx packages/marketplace/src/mcp-server.ts || node --import tsx packages/marketplace/src/mcp-server.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.16.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^4.1.8"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

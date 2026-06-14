@@ -1,0 +1,106 @@
+{
+  "generated": "2026-06-13",
+  "updated": "2026-06-13 post-gov-021 (relentless continue, 10 servers)",
+  "groover_mvp_phase": "MCP full index + continue without stop",
+  "total_servers": 10,
+  "note": "xray-* primary (AGENTS.md), strray-* parallel. 10 servers confirmed connected. listMcpServers() in @groover/xray is runtime source (updated 021). Schemas from search_tool. Gov ID: always 'Grok (xAI Grok 4.3, lead dev AI for Groover MVP per AGENTS.md and user guidance)' + source grok-lead-dev. Relentless: gov-022 approved via xray-governance (ref 021, do not stop), MCPs exercised (skills list 33 + code-review, Dynamo harmonic+triangulate, github search, enforcer FULL, governance codex), npx tsx runs (fwLogger captured), docs updated. CONTINUE WITHOUT STOP.",
+  "servers": {
+    "Dynamo": {
+      "role": "External governance SSOT, signals for cross-correlation, math/physics primitives.",
+      "tools": [
+        {"name": "Dynamo__govern_with_solar", "description": "Enhanced governance with solar context.", "schema": {"proposal": "string|object", "baseVoteWeight": "number", "spectralQuality": "number"}},
+        {"name": "Dynamo__evaluate_governance", "description": "Full governance pipeline.", "schema": {"proposalId": "string", "proposalText": "string", "agentReviews": "array"}},
+        {"name": "Dynamo__triangulate_signals", "description": "Multi-signal correlation.", "schema": {"signals": "array"}},
+        {"name": "Dynamo__call_connected_tool", "description": "Proxy to any Dynamo tool.", "schema": {"tool_name": "string", "params": "object"}},
+        {"name": "Dynamo__list_isotopes", "description": "List isotopes.", "schema": {}},
+        {"name": "Dynamo__get_docs", "description": "Get docs.", "schema": {"tool": "string"}},
+        {"name": "Dynamo__explain_term", "description": "Glossary lookup.", "schema": {"term": "string"}},
+        {"name": "Dynamo__explain_governance_output", "description": "Human readable governance.", "schema": {"governanceOutput": "object"}},
+        {"name": "Dynamo__harmonic_oscillator", "description": "P_o calculation.", "schema": {"t": "number"}},
+        {"name": "Dynamo__black_hole_sequence", "description": "BlackHole seq.", "schema": {"voids": "number", "n": "number"}},
+        {"name": "Dynamo__validate_tlm", "description": "Validate Trinitarium ratio.", "schema": {"phi": "number"}},
+        {"name": "Dynamo__compute_tptt", "description": "tPTT calc.", "schema": {"T_c": "number", "P_s": "number", "E_t": "number"}},
+        {"name": "Dynamo__optimize_cascade", "description": "Cascade simulation.", "schema": {"n": "number", "deltaPhase": "number"}},
+        {"name": "Dynamo__wave_function", "description": "Wave amplitude.", "schema": {"x": "number", "t": "number", "isotope": "string"}},
+        {"name": "Dynamo__cross_correlate", "description": "Cross correlate (used in build)."},
+        {"name": "Dynamo__emit_isotopic_signal", "description": "Emit signal (used in build)."}
+      ]
+    },
+    "grok_com_github": {
+      "role": "GitHub signals and ops for marketplace/repo correlation.",
+      "tools": [
+        {"name": "grok_com_github__get_me", "description": "Auth user.", "schema": {}},
+        {"name": "grok_com_github__list_pull_requests", "description": "List PRs.", "schema": {"owner": "string", "repo": "string", "state": "string", "page": "number"}},
+        {"name": "grok_com_github__list_branches", "description": "List branches.", "schema": {"owner": "string", "repo": "string"}},
+        {"name": "grok_com_github__list_releases", "description": "List releases.", "schema": {"owner": "string", "repo": "string"}},
+        {"name": "grok_com_github__get_latest_release", "description": "Latest release.", "schema": {"owner": "string", "repo": "string"}},
+        {"name": "grok_com_github__fork_repository", "description": "Fork repo.", "schema": {"owner": "string", "repo": "string"}},
+        {"name": "grok_com_github__create_branch", "description": "Create branch.", "schema": {"owner": "string", "repo": "string", "branch": "string"}},
+        {"name": "grok_com_github__search_code", "description": "Search code.", "schema": {"query": "string"}},
+        {"name": "grok_com_github__search_issues", "description": "Search issues.", "schema": {"query": "string"}},
+        {"name": "grok_com_github__create_repository", "description": "Create repo.", "schema": {"name": "string"}},
+        {"name": "grok_com_github__create_or_update_file", "description": "Create/update file.", "schema": {"owner": "string", "repo": "string", "path": "string", "content": "string", "message": "string", "branch": "string"}},
+        {"name": "grok_com_github__pull_request_review_write", "description": "PR review."}
+      ]
+    },
+    "xray-enforcer": {
+      "role": "Codex enforcement and quality gates (used on all MVP changes).",
+      "tools": [
+        {"name": "xray-enforcer__codex-enforcement", "description": "Codex compliance.", "schema": {"operation": "string", "files": "array", "newCode": "string", "focusAreas": "array"}},
+        {"name": "xray-enforcer__quality-gate-check", "description": "Quality gate.", "schema": {"operation": "string", "context": "object", "strictMode": "boolean"}},
+        {"name": "xray-enforcer__get-enforcement-status", "description": "Enforcement stats.", "schema": {"includeHistory": "boolean"}},
+        {"name": "xray-enforcer__run-pre-commit-validation", "description": "Pre-commit.", "schema": {"files": "array", "operation": "string", "autoFix": "boolean"}}
+      ]
+    },
+    "strray-enforcer": {
+      "role": "Parallel to xray-enforcer.",
+      "tools": ["Same as xray-enforcer: codex-enforcement, quality-gate-check, get-enforcement-status, run-pre-commit-validation"]
+    },
+    "xray-governance": {
+      "role": "Governance proposals and codex SSOT.",
+      "tools": [
+        {"name": "xray-governance__govern_proposals", "description": "Govern proposals.", "schema": {"proposals": "array", "context": "object", "options": "object"}},
+        {"name": "xray-governance__govern_reflection", "description": "Govern from reflection.", "schema": {"reflectionPath": "string", "reflectionContent": "string"}},
+        {"name": "xray-governance__get_active_codex", "description": "Active codex (68 terms v3.0.10 from .xray/codex.json).", "schema": {"includeRaw": "boolean"}}
+      ]
+    },
+    "strray-governance": {
+      "role": "Parallel to xray-governance.",
+      "tools": ["Same as xray-governance"]
+    },
+    "xray-orchestrator": {
+      "role": "Task orchestration, complexity, delegation (used for subagents and build validation).",
+      "tools": [
+        {"name": "xray-orchestrator__orchestrate-task", "description": "Orchestrate tasks.", "schema": {"description": "string", "tasks": "array", "executionMode": "string", "timeout": "number"}},
+        {"name": "xray-orchestrator__analyze-complexity", "description": "Analyze complexity.", "schema": {"tasks": "array"}},
+        {"name": "xray-orchestrator__govern-and-apply", "description": "Govern and apply.", "schema": {"proposals": "array"}},
+        {"name": "xray-orchestrator__optimize-orchestration", "description": "Optimize.", "schema": {"history": "boolean"}},
+        {"name": "xray-orchestrator__cancel-orchestration", "description": "Cancel.", "schema": {"sessionId": "string"}},
+        {"name": "xray-orchestrator__get-orchestration-status", "description": "Status.", "schema": {"sessionId": "string"}}
+      ]
+    },
+    "strray-orchestrator": {
+      "role": "Parallel to xray-orchestrator.",
+      "tools": ["Same as xray-orchestrator + more cancel/optimize variants"]
+    },
+    "xray-skills": {
+      "role": "Skill invocation for specialized work (code-review, api-design, ui-ux, docs, project-analysis, security-audit, etc.).",
+      "tools": [
+        {"name": "xray-skills__list-skills", "description": "List ~33 skills.", "schema": {"category": "string"}},
+        {"name": "xray-skills__invoke-skill", "description": "Invoke skill.", "schema": {"skillName": "string", "toolName": "string", "args": "object"}},
+        {"name": "xray-skills__skill-api-design", "description": "API design.", "schema": {"resources": "array"}},
+        {"name": "xray-skills__skill-code-review", "description": "Code review.", "schema": {"code": "string", "language": "string"}},
+        {"name": "xray-skills__skill-project-analysis", "description": "Project analysis.", "schema": {"scope": "string", "analysis": "array"}},
+        {"name": "xray-skills__skill-documentation-generation", "description": "Docs gen.", "schema": {"type": "string", "code": "string"}},
+        {"name": "xray-skills__skill-security-audit", "description": "Security audit.", "schema": {"files": "array"}},
+        {"name": "xray-skills__skill-ui-ux-design", "description": "UI/UX design.", "schema": {"component": "string"}},
+        {"name": "xray-skills__skill-performance-optimization", "description": "Perf opt.", "schema": {"code": "string"}}
+      ]
+    },
+    "strray-skills": {
+      "role": "Parallel to xray-skills.",
+      "tools": ["Same as xray-skills"]
+    }
+  },
+  "integration_notes": "See docs/mcp-servers-index.md for full compiled details. Use in Groover via xray bridge + orchestrator for plugin capabilities declaration."
+}

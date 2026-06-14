@@ -1,0 +1,20 @@
+{
+  "name": "@groover/marketplace",
+  "version": "0.1.0-mvp",
+  "description": "Plugin Registry, CLI, search. Self-registration with Proof of Autonomy (crypto + behavioral challenge + Dynamo Hammer). Per ARCHITECTURE.md + README.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "groover-marketplace": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "test": "tsx src/index.test.ts"
+  },
+  "dependencies": {
+    "@groover/core": "file:../core",
+    "@groover/xray": "file:../xray",
+    "@groover/identity": "file:../identity"
+  }
+}
