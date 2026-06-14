@@ -10,6 +10,7 @@
  */
 import { frameworkLogger } from '../../packages/xray/src/index.js';
 import { registerPlugin, searchPlugins } from '../../packages/marketplace/src/index.js';
+import { bindCrypto } from '../../packages/identity/src/index.js';
 import * as crypto from 'crypto';
 
 async function main() {
