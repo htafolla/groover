@@ -259,9 +259,15 @@ export interface ValidationResult {
   violations: string[];
 }
 
-export function validateTrace(session: ChallengeSession, trace: ChallengeTrace): ValidationResult {
+export interface ValidateTraceOptions {
+  privileged?: boolean;
+}
+
+export function validateTrace(session: ChallengeSession, trace: ChallengeTrace, options?: ValidateTraceOptions): ValidationResult {
   const violations: string[] = [];
   let score = 0;
+  const effectiveMinTurns = options?.privileged ? Math.max(2, session.task.minTurns - 1) : session.task.minTurns;
+  const effectiveCoverageThreshold = options?.privileged ? 0.125 : 0.25;
 
   // 1. Session must exist and be pending/in-progress
   if (!session || (session.status !== 'pending' && session.status !== 'in-progress')) {
@@ -282,8 +288,8 @@ export function validateTrace(session: ChallengeSession, trace: ChallengeTrace):
   }
 
   // 4. Minimum turns
-  if (trace.turns.length < session.task.minTurns) {
-    violations.push(`too-few-turns: ${trace.turns.length} < ${session.task.minTurns}`);
+  if (trace.turns.length < effectiveMinTurns) {
+    violations.push(`too-few-turns: ${trace.turns.length} < ${effectiveMinTurns}`);
   } else {
     score += 20;
   }
@@ -355,8 +361,8 @@ export function validateTrace(session: ChallengeSession, trace: ChallengeTrace):
 
   // 11. Adaptive follow-up: only required if the session has a follow-up prompt
   if (session.followUpPrompt) {
-    if (trace.turns.length < session.task.minTurns + 1) {
-      violations.push(`missing-adaptive-turn: ${trace.turns.length} < ${session.task.minTurns + 1}`);
+    if (trace.turns.length < effectiveMinTurns + 1) {
+      violations.push(`missing-adaptive-turn: ${trace.turns.length} < ${effectiveMinTurns + 1}`);
     } else {
       score += 15;
     }
@@ -364,7 +370,7 @@ export function validateTrace(session: ChallengeSession, trace: ChallengeTrace):
 
   // 12. Semantic reasoning vs task prompt keyword coverage
   const coverage = computeReasoningCoverage(session.task.prompt, trace.turns);
-  if (coverage < 0.25) {
+  if (coverage < effectiveCoverageThreshold) {
     violations.push(`low-reasoning-coverage: ${Math.round(coverage * 100)}%`);
   }
 

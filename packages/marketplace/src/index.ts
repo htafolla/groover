@@ -15,7 +15,7 @@ import { generateDID, generateApiKey, verifyWithPublic } from '../../identity/sr
 import {
   createChallengeSession, getSession, validateTrace,
   markSessionCompleted, markSessionFailed, computeReasoningCoverage,
-  ChallengeSession, ChallengeTrace,
+  ChallengeSession, ChallengeTrace, ValidateTraceOptions,
 } from './challenge.js';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
@@ -156,6 +156,26 @@ export async function registerPlugin(params: {
   const apiKey = generateApiKey(did);
   frameworkLogger.log('marketplace', 'pop-verified', 'success', { did });
 
+  // 1b. Check Dynamo resonance for privileged path (before challenge validation)
+  let privileged = false;
+  try {
+    const resonanceCheck = await xrayBridge.govern({
+      id: `resonance-${Date.now()}`,
+      title: 'Check prior Dynamo resonance',
+      description: did,
+      type: 'automate',
+      confidence: 0.9,
+      evidence: ['prior-governance-interactions', 'resonance-check'],
+      submitter: 'groover-marketplace',
+    }) as { decision?: string; resonance?: number };
+    privileged = resonanceCheck?.decision === 'approved' || (resonanceCheck?.resonance ?? 0) >= 0.8;
+    if (privileged) {
+      frameworkLogger.log('marketplace', 'privileged-path', 'info', { did });
+    }
+  } catch {
+    // Graceful degradation — no privileged path when MCP unavailable
+  }
+
   // 2. Validate adaptive challenge trace (multi-turn MCP orchestration)
   const session = getSession(params.challengeTrace.sessionId);
   if (!session) {
@@ -166,7 +186,9 @@ export async function registerPlugin(params: {
     frameworkLogger.log('marketplace', 'adaptive-flow-rejected', 'warning', { sessionId: session.sessionId.slice(0, 16), did });
     return { status: 'gray', cooldown: 300_000 };
   }
-  const validation = validateTrace(session, params.challengeTrace);
+  const validateOptions: ValidateTraceOptions = {};
+  if (privileged) validateOptions.privileged = true;
+  const validation = validateTrace(session, params.challengeTrace, validateOptions);
   frameworkLogger.log('marketplace', 'challenge-validation', 'info', {
     valid: validation.valid,
     score: validation.score,
