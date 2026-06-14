@@ -146,10 +146,11 @@ async function main() {
   log('Task: ' + task.prompt.slice(0, 80) + '...');
   log('Required tools: ' + task.requiredTools.join(', '));
 
-  // Step 2: Build adaptive multi-turn trace by exercising real MCP tools
+  // Step 2: Submit turns via submit_challenge_turn to get adaptive follow-up
   let prevHash = PREV_HASH_SEED;
   const turns = [];
   const startTime = Date.now();
+  let followUpPrompt = null;
 
   // Turn 1: search plugins
   log('Turn 1: searching plugins...');
@@ -159,11 +160,13 @@ async function main() {
     arguments: { query: 'cross-correlation marketplace' },
   });
   const searchResult = parseMcpResult(searchRpc);
-  turns.push(buildTurn(prevHash, 'search_plugins', 'cross-correlation marketplace',
+  const t1 = buildTurn(prevHash, 'search_plugins', 'cross-correlation marketplace',
     JSON.stringify(searchResult?.results?.slice(0, 2) || []),
     'Discovered cross-correlation signals from registry for plugin synthesis and governance alignment.',
-    t1Time));
-  prevHash = turns[turns.length - 1].hash;
+    t1Time);
+  turns.push(t1);
+  prevHash = t1.hash;
+  await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t1.toolCall, input: t1.input, output: t1.output, reasoning: t1.reasoning, hash: t1.hash } });
 
   // Turn 2: list MCP servers
   log('Turn 2: listing MCP servers...');
@@ -173,22 +176,56 @@ async function main() {
     arguments: {},
   });
   const mcpsResult = parseMcpResult(mcpsRpc);
-  turns.push(buildTurn(prevHash, 'list_mcp_servers', '{}',
+  const t2 = buildTurn(prevHash, 'list_mcp_servers', '{}',
     JSON.stringify((mcpsResult?.servers || []).map(s => s.name).slice(0, 3)),
     'Identified available MCP servers. Cross-referencing with governance and enforcement capabilities for orchestration.',
-    t2Time));
-  prevHash = turns[turns.length - 1].hash;
+    t2Time);
+  turns.push(t2);
+  prevHash = t2.hash;
+  await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t2.toolCall, input: t2.input, output: t2.output, reasoning: t2.reasoning, hash: t2.hash } });
 
-  // Turn 3: synthesize reasoning
+  // Turn 3: synthesize reasoning — response may include follow-up prompt
   log('Turn 3: synthesizing...');
   const t3Time = startTime + 4500;
-  turns.push(buildTurn(prevHash, 'synthesize',
+  const t3 = buildTurn(prevHash, 'synthesize',
     'cross-correlation + MCP ecosystem analysis',
     'novel-plugin-concept: automated governance resilience plugin',
     'Synthesized a novel plugin concept combining cross-correlation signals with MCP orchestration. Self-critique: the concept improves automated governance resilience but should account for edge cases in signal drift and MCP server availability.',
-    t3Time));
-  log('Built ' + turns.length + '-turn trace (duration: ' + (t3Time - t1Time) + 'ms)');
+    t3Time);
+  turns.push(t3);
+  prevHash = t3.hash;
+  const turn3Resp = parseMcpResult(await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t3.toolCall, input: t3.input, output: t3.output, reasoning: t3.reasoning, hash: t3.hash } }));
+  followUpPrompt = turn3Resp?.followUpPrompt || null;
+  log('Built 3 turns (duration: ' + (t3Time - t1Time) + 'ms)' + (followUpPrompt ? ' — follow-up received' : ''));
 
+  // Turn 4 (adaptive): respond to the follow-up prompt
+  if (followUpPrompt) {
+    log('Follow-up: ' + followUpPrompt.slice(0, 80) + '...');
+    const t4Time = startTime + 6000;
+    // Determine which tool to use based on the follow-up prompt
+    const followUpTool = followUpPrompt.includes('search_plugins') ? 'search_plugins' : 'list_mcp_servers';
+    let followUpResult;
+    if (followUpTool === 'search_plugins') {
+      const rpc = await postMcp('tools/call', { name: 'search_plugins', arguments: { query: 'governance proposals' } });
+      followUpResult = parseMcpResult(rpc);
+    } else {
+      const rpc = await postMcp('tools/call', { name: 'list_mcp_servers', arguments: {} });
+      followUpResult = parseMcpResult(rpc);
+    }
+    const t4 = buildTurn(prevHash, followUpTool,
+      followUpPrompt.slice(0, 80),
+      JSON.stringify(followUpResult?.results?.slice(0, 2) || followUpResult?.servers?.slice(0, 2) || []),
+      'Responding to adaptive follow-up: ' + followUpPrompt.slice(0, 100) + '. This analysis addresses the specific gap identified in the prior turn and cross-references registry data for validation.',
+      t4Time);
+    turns.push(t4);
+    prevHash = t4.hash;
+    const turn4Resp = parseMcpResult(await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t4.toolCall, input: t4.input, output: t4.output, reasoning: t4.reasoning, hash: t4.hash } }));
+    log('Adaptive turn 4 submitted — follow-up ' + (turn4Resp?.success ? 'completed' : 'status: ' + JSON.stringify(turn4Resp)));
+  } else {
+    log('Warning: no follow-up prompt received — registration may fail');
+  }
+
+  log('Built ' + turns.length + '-turn trace');
   const trace = buildTrace(sessionId, turns);
   log('Merkle root: ' + trace.merkleRoot.slice(0, 16) + '...');
 

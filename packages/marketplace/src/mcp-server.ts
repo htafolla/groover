@@ -9,7 +9,7 @@ import * as http from 'http';
 import { frameworkLogger } from '../../xray/src/index.js';
 import { registerPlugin, searchPlugins, getPluginUiManifest, getRegistrationChallenge } from './index.js';
 import { listMcpServers } from '../../xray/src/index.js';
-import { getSession, ChallengeTrace, ChallengeTurn } from './challenge.js';
+import { getSession, ChallengeTrace, ChallengeTurn, generateFollowUp } from './challenge.js';
 
 interface McpToolRequest {
   name: string;
@@ -17,7 +17,7 @@ interface McpToolRequest {
 }
 
 async function handleMcpToolCall(request: McpToolRequest): Promise<unknown> {
-  frameworkLogger.log('marketplace-mcp', 'tool-call', 'info', { tool: request.name });
+      frameworkLogger.log('marketplace-mcp', 'tool-call', 'info', { tool: request.name });
 
   switch (request.name) {
     case 'register_plugin': {
@@ -51,6 +51,8 @@ async function handleMcpToolCall(request: McpToolRequest): Promise<unknown> {
           sessionId: challenge.session.sessionId,
           task: challenge.session.task,
           status: challenge.session.status,
+          followUpPrompt: challenge.session.followUpPrompt || null,
+          followUpCompleted: challenge.session.followUpCompleted || false,
         },
       };
     }
@@ -58,7 +60,7 @@ async function handleMcpToolCall(request: McpToolRequest): Promise<unknown> {
       const sessionId = (request.arguments.sessionId as string) || '';
       const session = getSession(sessionId);
       if (!session) throw new Error('Challenge session not found');
-      // Append turn to session — client builds trace locally, this is just for server-side tracking
+      // Append turn to session — server tracks state for adaptive follow-up
       const turn: ChallengeTurn = {
         toolCall: (request.arguments.toolCall as string) || '',
         input: (request.arguments.input as string) || '',
@@ -69,7 +71,32 @@ async function handleMcpToolCall(request: McpToolRequest): Promise<unknown> {
       };
       session.turns.push(turn);
       if (session.status === 'pending') session.status = 'in-progress';
-      return { success: true, sessionId, turnCount: session.turns.length };
+
+      // Adaptive follow-up: after 3+ turns, generate and return a follow-up prompt
+      let followUpPrompt: string | null = null;
+      if (session.turns.length >= session.task.minTurns && !session.followUpPrompt) {
+        followUpPrompt = generateFollowUp(session);
+        session.followUpPrompt = followUpPrompt;
+        session.adaptiveTurnIndex = session.turns.length;
+        frameworkLogger.log('marketplace-mcp', 'follow-up-generated', 'info', {
+          sessionId: sessionId.slice(0, 16),
+          followUpPrompt: followUpPrompt.slice(0, 80),
+        });
+      }
+
+      // If this turn was a response to the follow-up, mark completed
+      if (session.followUpPrompt && !session.followUpCompleted && session.turns.length >= (session.adaptiveTurnIndex || 0) + 1) {
+        const reasoning = (request.arguments.reasoning as string) || '';
+        if (reasoning.length >= 30 && (request.arguments.toolCall as string)?.length > 0) {
+          session.followUpCompleted = true;
+          frameworkLogger.log('marketplace-mcp', 'follow-up-completed', 'success', {
+            sessionId: sessionId.slice(0, 16),
+            turnCount: session.turns.length,
+          });
+        }
+      }
+
+      return { success: true, sessionId, turnCount: session.turns.length, followUpPrompt };
     }
     case 'search_plugins': {
       const query = (request.arguments.query as string) || 'cross-correlation';

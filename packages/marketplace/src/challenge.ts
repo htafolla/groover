@@ -49,6 +49,9 @@ export interface ChallengeSession {
   status: ChallengeStatus;
   failCount: number;
   rateLimitedUntil: number;
+  followUpPrompt?: string;
+  followUpCompleted?: boolean;
+  adaptiveTurnIndex?: number;
 }
 
 // --- Task Prompts ---
@@ -151,6 +154,26 @@ export function getSession(sessionId: string): ChallengeSession | undefined {
   return sessions.get(sessionId);
 }
 
+// --- Adaptive Follow-up ---
+
+export function generateFollowUp(session: ChallengeSession): string {
+  const lastTurn = session.turns[session.turns.length - 1];
+  const priorReasoning = lastTurn?.reasoning?.slice(0, 60) || 'your prior analysis';
+  const priorTool = lastTurn?.toolCall || 'exploration';
+
+  const prompts = [
+    `Your ${priorTool} work touched on "${priorReasoning}...". Now search the registry for plugins related to this concept and critique how they compare — use search_plugins.`,
+    `Based on your insight "${priorReasoning}...", investigate which MCP servers would implement this. Use list_mcp_servers and cross-reference.`,
+    `You mentioned "${priorReasoning}...". Now search the Groover registry for existing solutions addressing this gap and explain how your approach differs — use search_plugins.`,
+    `Follow up on "${priorReasoning}...". Look up current governance signals in the registry via search_plugins, then critique alignment.`,
+  ];
+  return prompts[Math.floor(Math.random() * prompts.length)];
+}
+
+export function computeFollowUpDigest(followUpPrompt: string): string {
+  return crypto.createHash('sha256').update(followUpPrompt).digest('hex').slice(0, 16);
+}
+
 // --- Trace Building (client-side) ---
 
 export const PREV_HASH_SEED = 'groover-challenge-seed-v1';
@@ -235,7 +258,7 @@ export function validateTrace(session: ChallengeSession, trace: ChallengeTrace):
   if (trace.turns.length < session.task.minTurns) {
     violations.push(`too-few-turns: ${trace.turns.length} < ${session.task.minTurns}`);
   } else {
-    score += 25;
+    score += 20;
   }
 
   // 5. Minimum duration
@@ -244,7 +267,7 @@ export function validateTrace(session: ChallengeSession, trace: ChallengeTrace):
     if (duration < session.task.minDurationMs) {
       violations.push(`too-fast: ${duration}ms < ${session.task.minDurationMs}ms`);
     } else {
-      score += 15;
+      score += 10;
     }
   } else {
     violations.push('insufficient-turns-for-duration-check');
@@ -258,7 +281,7 @@ export function validateTrace(session: ChallengeSession, trace: ChallengeTrace):
     }
   }
   const coverRatio = session.task.requiredTools.filter(t => toolCalls.includes(t)).length / session.task.requiredTools.length;
-  score += Math.round(20 * coverRatio);
+  score += Math.round(15 * coverRatio);
 
   // 7. Hash chain integrity
   let prevHash = PREV_HASH_SEED;
@@ -300,6 +323,15 @@ export function validateTrace(session: ChallengeSession, trace: ChallengeTrace):
   for (let i = 0; i < trace.turns.length; i++) {
     if (!trace.turns[i].reasoning || trace.turns[i].reasoning.trim().length < 20) {
       violations.push(`shallow-reasoning-at-turn-${i}`);
+    }
+  }
+
+  // 11. Adaptive follow-up: only required if the session has a follow-up prompt
+  if (session.followUpPrompt) {
+    if (trace.turns.length < session.task.minTurns + 1) {
+      violations.push(`missing-adaptive-turn: ${trace.turns.length} < ${session.task.minTurns + 1}`);
+    } else {
+      score += 15;
     }
   }
 

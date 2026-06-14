@@ -43,6 +43,9 @@ describe('@groover/marketplace', () => {
     expect(challenge.session.task.prompt).toBeTruthy();
     expect(challenge.session.task.requiredTools.length).toBeGreaterThan(0);
 
+    // Mark the adaptive flow as completed (in production this happens via submit_challenge_turn)
+    challenge.session.followUpCompleted = true;
+
     const trace = buildValidTrace(challenge.session.sessionId);
     const payload = 'pop-reg-' + Date.now();
     const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);

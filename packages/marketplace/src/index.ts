@@ -159,6 +159,11 @@ export async function registerPlugin(params: {
   if (!session) {
     throw new Error('Challenge session not found');
   }
+  if (!session.followUpCompleted) {
+    markSessionFailed(session.sessionId);
+    frameworkLogger.log('marketplace', 'adaptive-flow-rejected', 'warning', { sessionId: session.sessionId.slice(0, 16), did });
+    return { status: 'gray', cooldown: 300_000 };
+  }
   const validation = validateTrace(session, params.challengeTrace);
   frameworkLogger.log('marketplace', 'challenge-validation', 'info', {
     valid: validation.valid,
