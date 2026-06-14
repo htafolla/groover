@@ -174,6 +174,33 @@ export function computeFollowUpDigest(followUpPrompt: string): string {
   return crypto.createHash('sha256').update(followUpPrompt).digest('hex').slice(0, 16);
 }
 
+export function submitTurn(
+  sessionId: string,
+  turn: { toolCall: string; input: string; output: string; reasoning: string; timestamp: number; hash: string }
+): { followUpPrompt: string | null } {
+  const session = sessions.get(sessionId);
+  if (!session) throw new Error('Challenge session not found');
+
+  session.turns.push(turn as ChallengeTurn);
+  if (session.status === 'pending') session.status = 'in-progress';
+
+  let followUpPrompt: string | null = null;
+  if (session.turns.length >= session.task.minTurns && !session.followUpPrompt) {
+    followUpPrompt = generateFollowUp(session);
+    session.followUpPrompt = followUpPrompt;
+    session.adaptiveTurnIndex = session.turns.length;
+  }
+
+  if (session.followUpPrompt && !session.followUpCompleted && session.turns.length >= (session.adaptiveTurnIndex || 0) + 1) {
+    const r = turn.reasoning || '';
+    if (r.length >= 30 && turn.toolCall.length > 0) {
+      session.followUpCompleted = true;
+    }
+  }
+
+  return { followUpPrompt };
+}
+
 // --- Trace Building (client-side) ---
 
 export const PREV_HASH_SEED = 'groover-challenge-seed-v1';
@@ -339,10 +366,6 @@ export function validateTrace(session: ChallengeSession, trace: ChallengeTrace):
   const coverage = computeReasoningCoverage(session.task.prompt, trace.turns);
   if (coverage < 0.25) {
     violations.push(`low-reasoning-coverage: ${Math.round(coverage * 100)}%`);
-  } else if (coverage < 0.4) {
-    score += 0; // marginal — no bonus, no violation
-  } else {
-    score += 0; // full coverage already reflected in other checks
   }
 
   const valid = violations.length === 0 && score >= 70;

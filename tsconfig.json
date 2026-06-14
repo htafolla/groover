@@ -25,6 +25,7 @@
     "examples",
     "deploy",
     "scripts",
+    "website",
     "**/*.test.ts",
     "**/*.tsbuildinfo"
   ],

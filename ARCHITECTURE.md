@@ -64,4 +64,16 @@ Uses patterns from zigzag/Diffuser:
 
 This creates discoverability and composition for autonomous agents.
 
+## Known Trade-offs & Limitations
+
+- **In-memory sessions**: Challenge sessions are stored in a `Map` in `challenge.ts`. A server restart clears all pending sessions. TTL sweep runs every 60s; sessions older than 10 min are expired. No persistence layer.
+- **Single-process session store**: The `Map` is not thread-safe. Acceptable for Node single-process deployment; would need a shared store (Redis, Postgres) for multi-instance scaling.
+- **No TLS termination**: The MCP server listens on plain HTTP. In production, terminate TLS at the reverse proxy (Railway handles this automatically).
+- **MCP graceful degradation**: When xray MCP servers (orchestrate/govern/enforce) are unavailable, registration proceeds without them (logged as warnings). The challenge trace is the primary behavioral gate; MCP gates are supplementary.
+- **Nixpacks builder**: Railway uses Nixpacks, not Docker. Type checking (`tsc -b --noEmit`) runs at build time but does not produce output; runtime uses `tsx`. True type safety enforced in CI rather than at deploy.
+- **Race window in min duration check**: The duration check uses wall-clock timestamps from turns. A fast agent could manipulate timestamps, but the hash chain integrity check detects timestamp tampering (timestamps are included in the hash).
+- **No graceful shutdown**: On Railway SIGTERM, the server hard-exits. In-flight requests are dropped. Impact is low for MVP (MCP calls complete in ms).
+- **No file locking on registry.json**: Sequential writes in single-process Node are safe; concurrent writes from multiple processes would corrupt the file.
+- **Error message exposure**: The MCP server sanitizes error responses with a whitelist of safe message patterns. Unexpected errors return `Internal server error` to clients while logging the full detail server-side.
+
 Under His authority.

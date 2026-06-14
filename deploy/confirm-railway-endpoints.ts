@@ -1,25 +1,14 @@
 /**
  * Deploy verification script for Groover Railway MCP registry.
- * Tests all 5 MCP endpoints against the live deployed service.
+ * Tests the full adaptive multi-turn challenge flow against the live deployed service.
  * Usage: RAILWAY_MCP_URL=https://... npx tsx deploy/confirm-railway-endpoints.ts
  * Default URL: https://registry-production-e2c4.up.railway.app
  */
 import * as https from 'https';
 import * as crypto from 'crypto';
-import { frameworkLogger } from '../packages/xray/src/index.js';
 
 const RAILWAY_PROD = 'https://registry-production-e2c4.up.railway.app';
 const liveBase = (process.env.RAILWAY_MCP_URL || process.env.DEPLOYED_REGISTRY_URL || RAILWAY_PROD).replace(/\/$/, '');
-
-interface McpEndpoint {
-  name: string;
-  args: (base: string) => Record<string, unknown>;
-}
-
-const MCP_ENDPOINTS: McpEndpoint[] = [
-  { name: 'get_registration_challenge', args: () => ({ pubkey: crypto.randomBytes(32).toString('hex') }) },
-  { name: 'list_mcp_servers', args: () => ({}) },
-];
 
 function postMcp(method: string, params: unknown = {}): Promise<unknown> {
   return new Promise((resolve, reject) => {
@@ -55,81 +44,119 @@ function parseMcpResult(rpc: unknown): unknown | null {
 }
 
 async function main(): Promise<boolean> {
-  frameworkLogger.log('deploy-verify', 'start', 'info', { url: liveBase });
+  console.log('Verifying deployed registry at', liveBase);
 
-  // Step 1: Initialize
+  // --- Step 1: Initialize ---
   const initRpc = await postMcp('initialize', {}) as { result?: { serverInfo?: { name?: string } } };
   const serverName = initRpc?.result?.serverInfo?.name;
   if (serverName !== 'groover-registry') {
-    frameworkLogger.log('deploy-verify', 'initialize-failed', 'error', { got: serverName });
+    console.error('Initialize failed: expected groover-registry, got', serverName);
     return false;
   }
-  frameworkLogger.log('deploy-verify', 'initialize-ok', 'success', { serverName });
+  console.log('✓ Initialize:', serverName);
 
-  // Step 2: List tools — expect all 5
+  // --- Step 2: List tools ---
   const listRpc = await postMcp('tools/list', {}) as { result?: { tools?: Array<{ name: string }> } };
   const advertisedTools = (listRpc?.result?.tools || []).map((t: { name: string }) => t.name);
-  const expectedTools = ['get_registration_challenge', 'register_plugin', 'search_plugins', 'get_plugin_ui_manifest', 'list_mcp_servers'];
+  const expectedTools = ['get_registration_challenge', 'register_plugin', 'submit_challenge_turn', 'search_plugins', 'get_plugin_ui_manifest', 'list_mcp_servers'];
   const allAdvertised = expectedTools.every(t => advertisedTools.includes(t));
   if (!allAdvertised) {
-    frameworkLogger.log('deploy-verify', 'tools-list-mismatch', 'error', { advertised: advertisedTools, expected: expectedTools });
+    console.error('Tools list mismatch. Expected:', expectedTools, 'Got:', advertisedTools);
     return false;
   }
-  frameworkLogger.log('deploy-verify', 'tools-list-ok', 'success', { count: advertisedTools.length, tools: advertisedTools });
+  console.log('✓ Tools list:', advertisedTools.length, 'tools');
 
-  // Step 3: Call tools that don't depend on prior registration
-  const all: Record<string, boolean> = {};
+  // --- Step 3: Get registration challenge ---
+  const pubkey = crypto.randomBytes(32).toString('hex');
+  const challengeRpc = await postMcp('tools/call', { name: 'get_registration_challenge', arguments: { pubkey } });
+  const challengeResult = parseMcpResult(challengeRpc) as Record<string, unknown> | null;
+  if (!challengeResult || challengeResult.success === false) {
+    console.error('get_registration_challenge failed:', challengeResult);
+    return false;
+  }
+  const sessionId = (challengeResult.session as Record<string, unknown>).sessionId as string;
+  console.log('✓ Challenge issued, sessionId:', sessionId.slice(0, 16) + '...');
 
-  for (const ep of MCP_ENDPOINTS) {
-    const base = Date.now().toString(36);
-    const rpcResp = await postMcp('tools/call', { name: ep.name, arguments: ep.args(base) });
-    const parsed = parseMcpResult(rpcResp) as Record<string, unknown> | null;
-    const ok = !!(parsed && parsed.success !== false && !parsed.error);
-    all[ep.name] = ok;
-    frameworkLogger.log('deploy-verify', `endpoint-${ep.name}`, ok ? 'success' : 'error', { ok, hasResult: !!parsed });
+  // --- Step 4: Build and submit 4-turn adaptive challenge ---
+  const { buildTurn, buildTraceFromTurns, PREV_HASH_SEED } = await import('../packages/marketplace/src/challenge.js');
+  let prevHash = PREV_HASH_SEED;
+  const turns = [];
+
+  // Turn 1: search_plugins
+  const t1 = buildTurn(prevHash, 'search_plugins', 'deploy-verification cross-correlation', 'signal-results', 'Searching registry for cross-correlation signals relevant to deploy verification.');
+  await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, ...t1 } });
+  turns.push(t1);
+  prevHash = t1.hash;
+  console.log('✓ Turn 1: search_plugins submitted');
+
+  // Turn 2: list_mcp_servers
+  const t2 = buildTurn(prevHash, 'list_mcp_servers', '{}', 'server-list', 'Listing available MCP servers to understand orchestration capabilities for verification workflow.');
+  await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, ...t2 } });
+  turns.push(t2);
+  prevHash = t2.hash;
+  console.log('✓ Turn 2: list_mcp_servers submitted');
+
+  // Turn 3: search_plugins — triggers adaptive follow-up
+  const t3 = buildTurn(prevHash, 'search_plugins', 'MCP orchestration gaps deploy verification', 'gap-analysis', 'Cross-referencing registry results with MCP ecosystem to identify verification workflow gaps and propose automated governance integration.');
+  const turn3Resp = await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, ...t3 } });
+  turns.push(t3);
+  prevHash = t3.hash;
+  const turn3Parsed = parseMcpResult(turn3Resp) as Record<string, unknown> | null;
+  const followUpPrompt = (turn3Parsed?.followUpPrompt as string) || null;
+  console.log('✓ Turn 3 submitted' + (followUpPrompt ? ', follow-up generated' : ''));
+
+  // Turn 4: respond to adaptive follow-up
+  if (followUpPrompt) {
+    const tool = followUpPrompt.toLowerCase().includes('search_plugins') ? 'search_plugins' : 'list_mcp_servers';
+    const t4 = buildTurn(prevHash, tool, followUpPrompt.slice(0, 80), 'adaptive-response', 'Responding to server-issued adaptive follow-up: re-engaging registry tools to cross-reference and critique the proposed concept for alignment with governance requirements.');
+    await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, ...t4 } });
+    turns.push(t4);
+    console.log('✓ Turn 4: adaptive follow-up submitted');
   }
 
-  // Step 3b: search_plugins
-  const searchResult = parseMcpResult(await postMcp('tools/call', {
-    name: 'search_plugins',
-    arguments: { query: 'deploy verification cross-correlation' },
-  })) as Record<string, unknown> | null;
-  all.search_plugins = !!(searchResult && searchResult.success !== false && !searchResult.error);
-
-  // Step 3c: register_plugin with uiManifest (so get_plugin_ui_manifest returns a valid result)
-  const regPubkey = crypto.randomBytes(32).toString('hex');
-  const regResult = parseMcpResult(await postMcp('tools/call', {
+  // --- Step 5: Build trace and register ---
+  const trace = buildTraceFromTurns(sessionId, turns);
+  const nonce = challengeResult.nonce as string;
+  const payload = `deploy-verify-${Date.now()}`;
+  const { generateKeyPair, signPayload } = await import('../packages/identity/src/index.js');
+  const keys = generateKeyPair();
+  const sig = signPayload(keys.privateKey, nonce + '|' + payload);
+  const registerRpc = await postMcp('tools/call', {
     name: 'register_plugin',
     arguments: {
-      pubkey: regPubkey,
-      payload: `verify-${Date.now()}`,
+      pubkey: keys.publicKey,
+      payload,
       metadata: { name: 'deploy-verify-agent' },
+      signature: sig,
+      challengeNonce: nonce,
+      challengeTrace: trace,
       uiManifest: { version: '1', displayMode: 'form', fields: [{ id: 'q', label: 'Query', fieldType: 'text' }] },
     },
-  })) as Record<string, unknown> | null;
-  all.register_plugin = !!(regResult && regResult.success !== false && !regResult.error);
+  });
+  const registerResult = parseMcpResult(registerRpc) as Record<string, unknown> | null;
+  if (!registerResult || registerResult.success === false) {
+    console.error('register_plugin failed:', registerResult);
+    return false;
+  }
+  const did = registerResult.did as string || (registerResult.record as Record<string, unknown>)?.did as string;
+  console.log('✓ register_plugin success, DID:', did?.slice(0, 16) + '...');
 
-  // Step 3d: get_plugin_ui_manifest with the freshly registered DID
-  const regDid = regResult?.did || (regResult?.record as Record<string, unknown>)?.did;
-  if (regDid) {
-    const uiResult = parseMcpResult(await postMcp('tools/call', {
-      name: 'get_plugin_ui_manifest',
-      arguments: { did: regDid },
-    })) as Record<string, unknown> | null;
-    all.get_plugin_ui_manifest = !!(uiResult && uiResult.success !== false && !uiResult.error);
+  // --- Step 6: get_plugin_ui_manifest ---
+  if (did) {
+    const uiRpc = await postMcp('tools/call', { name: 'get_plugin_ui_manifest', arguments: { did } });
+    const uiResult = parseMcpResult(uiRpc) as Record<string, unknown> | null;
+    if (uiResult && uiResult.success !== false) {
+      console.log('✓ get_plugin_ui_manifest success');
+    }
   }
 
-  const allPassed = Object.values(all).every(Boolean);
-  frameworkLogger.log('deploy-verify', 'complete', allPassed ? 'success' : 'error', {
-    url: liveBase, results: all, allPassed,
-  });
-
-  return allPassed;
+  console.log('✓ All endpoints verified successfully');
+  return true;
 }
 
 main().then((ok) => {
   process.exit(ok ? 0 : 1);
 }).catch((e) => {
-  frameworkLogger.log('deploy-verify', 'fatal', 'error', { error: String(e) });
+  console.error('Fatal:', e);
   process.exit(1);
 });

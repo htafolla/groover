@@ -11,3 +11,5 @@ scripts
 data/
 *.tmp
 *.tsbuildinfo
+website/.docusaurus/
+website/build/

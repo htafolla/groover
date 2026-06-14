@@ -9,7 +9,7 @@ import * as http from 'http';
 import { frameworkLogger } from '../../xray/src/index.js';
 import { registerPlugin, searchPlugins, getPluginUiManifest, getRegistrationChallenge } from './index.js';
 import { listMcpServers } from '../../xray/src/index.js';
-import { getSession, ChallengeTrace, ChallengeTurn, generateFollowUp } from './challenge.js';
+import { getSession, submitTurn, ChallengeTrace } from './challenge.js';
 
 interface McpToolRequest {
   name: string;
@@ -60,42 +60,26 @@ async function handleMcpToolCall(request: McpToolRequest): Promise<unknown> {
       const sessionId = (request.arguments.sessionId as string) || '';
       const session = getSession(sessionId);
       if (!session) throw new Error('Challenge session not found');
-      // Append turn to session — server tracks state for adaptive follow-up
-      const turn: ChallengeTurn = {
+      const { followUpPrompt } = submitTurn(sessionId, {
         toolCall: (request.arguments.toolCall as string) || '',
         input: (request.arguments.input as string) || '',
         output: (request.arguments.output as string) || '',
         reasoning: (request.arguments.reasoning as string) || '',
         timestamp: Date.now(),
         hash: (request.arguments.hash as string) || '',
-      };
-      session.turns.push(turn);
-      if (session.status === 'pending') session.status = 'in-progress';
-
-      // Adaptive follow-up: after 3+ turns, generate and return a follow-up prompt
-      let followUpPrompt: string | null = null;
-      if (session.turns.length >= session.task.minTurns && !session.followUpPrompt) {
-        followUpPrompt = generateFollowUp(session);
-        session.followUpPrompt = followUpPrompt;
-        session.adaptiveTurnIndex = session.turns.length;
+      });
+      if (followUpPrompt) {
         frameworkLogger.log('marketplace-mcp', 'follow-up-generated', 'info', {
           sessionId: sessionId.slice(0, 16),
           followUpPrompt: followUpPrompt.slice(0, 80),
         });
       }
-
-      // If this turn was a response to the follow-up, mark completed
-      if (session.followUpPrompt && !session.followUpCompleted && session.turns.length >= (session.adaptiveTurnIndex || 0) + 1) {
-        const reasoning = (request.arguments.reasoning as string) || '';
-        if (reasoning.length >= 30 && (request.arguments.toolCall as string)?.length > 0) {
-          session.followUpCompleted = true;
-          frameworkLogger.log('marketplace-mcp', 'follow-up-completed', 'success', {
-            sessionId: sessionId.slice(0, 16),
-            turnCount: session.turns.length,
-          });
-        }
+      if (session.followUpCompleted) {
+        frameworkLogger.log('marketplace-mcp', 'follow-up-completed', 'success', {
+          sessionId: sessionId.slice(0, 16),
+          turnCount: session.turns.length,
+        });
       }
-
       return { success: true, sessionId, turnCount: session.turns.length, followUpPrompt };
     }
     case 'search_plugins': {
@@ -158,16 +142,33 @@ const server = http.createServer(async (req: any, res: any) => {
         res.end(JSON.stringify(resp));
         frameworkLogger.log('marketplace-mcp', 'mcp-http', 'success', { method: rpc.method });
       } catch (e) {
+        const raw = e instanceof Error ? e.message : String(e);
+        const message = sanitizeErrorMessage(raw);
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'bad request' }));
-        frameworkLogger.log('marketplace-mcp', 'mcp-http-error', 'error', { error: String(e) });
+        res.end(JSON.stringify({ error: message }));
+        frameworkLogger.log('marketplace-mcp', 'mcp-http-error', 'error', { error: raw });
       }
     });
+  } else if (req.method === 'GET' && (req.url === '/' || req.url === '/health')) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'healthy',
+      server: 'groover-registry',
+      version: '0.2-mvp',
+      uptime: process.uptime(),
+    }));
   } else {
     res.writeHead(200);
-    res.end('Groover MCP Registry active. POST /mcp for tools.');
+    res.end('Groover MCP Registry active. POST /mcp for tools, GET /health for status.');
   }
 });
+
+const SAFE_ERROR_TOKENS = ['pubkey is required', 'Challenge session not found', 'Unknown tool', 'Invalid or already-used', 'Challenge nonce expired', 'Proof-of-possession failed'];
+
+function sanitizeErrorMessage(raw: string): string {
+  if (SAFE_ERROR_TOKENS.some(t => raw.includes(t))) return raw;
+  return 'Internal server error';
+}
 
 async function runMcpServer() {
   frameworkLogger.log('marketplace-mcp', 'server-start', 'success', {
@@ -177,6 +178,15 @@ async function runMcpServer() {
   });
   server.listen(PORT, () => {
     frameworkLogger.log('marketplace-mcp', 'listening', 'success', { port: PORT, url: 'http://localhost:' + PORT + '/mcp' });
+  });
+
+  process.on('SIGTERM', () => {
+    frameworkLogger.log('marketplace-mcp', 'shutdown', 'info', { signal: 'SIGTERM' });
+    server.close(() => process.exit(0));
+  });
+  process.on('SIGINT', () => {
+    frameworkLogger.log('marketplace-mcp', 'shutdown', 'info', { signal: 'SIGINT' });
+    server.close(() => process.exit(0));
   });
 }
 

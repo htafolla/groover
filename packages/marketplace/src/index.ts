@@ -21,7 +21,9 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const REGISTRY_PATH = process.env.REGISTRY_FILE || path.resolve(process.cwd(), 'data/registry.json');
+const REGISTRY_PATH = path.resolve(process.env.REGISTRY_FILE || path.join(process.cwd(), 'data/registry.json'));
+const TDF_BASE_PLUGIN = 5781026310955;
+const TDF_FALLBACK_PLUGIN = 5781027941748;
 
 export interface PluginRecord {
   did: string;
@@ -114,11 +116,11 @@ export async function searchPlugins(query: string): Promise<CorrelationResult[]>
     content += ` mcps: ${mcpServers}`;
     return {
       content,
-      tdf: 5781026310955 + i,
+      tdf: TDF_BASE_PLUGIN + i,
     };
   });
   if (signals.length === 0) {
-    signals.push({ content: 'stringray-plugin-consumer cross-correlation demo ui: form GitHub Repository security scan mcps: Dynamo grok_com_github xray-enforcer', tdf: 5781027941748 });
+    signals.push({ content: 'stringray-plugin-consumer cross-correlation demo ui: form GitHub Repository security scan mcps: Dynamo grok_com_github xray-enforcer', tdf: TDF_FALLBACK_PLUGIN });
   }
   return coreEngine.rankWithDynamo(signals);
 }
@@ -306,35 +308,57 @@ async function runTinyCli() {
 
   if (cmd === '--register') {
     const { generateKeyPair, signPayload } = await import('../../identity/src/index.js');
+    const { buildTurn, buildTraceFromTurns, PREV_HASH_SEED: SEED, submitTurn } = await import('./challenge.js');
+    const { searchPlugins: search } = await import('./index.js');
+    const { listMcpServers: list } = await import('../../xray/src/index.js');
+
     const keys = generateKeyPair();
     const challenge = getRegistrationChallenge(keys.publicKey);
     frameworkLogger.log('marketplace', 'cli-challenge', 'success', {
       sessionId: challenge.session.sessionId,
       task: challenge.session.task.prompt.slice(0, 80),
     });
-    // CLI demo: auto-solve the challenge by calling available tools
-    const { buildTurn, buildTraceFromTurns, PREV_HASH_SEED: SEED } = await import('./challenge.js');
-    const { searchPlugins: search } = await import('./index.js');
-    const { listMcpServers: list } = await import('../../xray/src/index.js');
+
+    const sessionId = challenge.session.sessionId;
     let prevHash = SEED;
     const turns = [];
+
     // Turn 1: search plugins
     const searchResult = await search('cross-correlation marketplace');
-    turns.push(buildTurn(prevHash, 'search_plugins', 'cross-correlation marketplace', JSON.stringify(searchResult.slice(0, 2)), 'Discovered cross-correlation signals for plugin synthesis.'));
-    prevHash = turns[turns.length - 1].hash;
+    const t1 = buildTurn(prevHash, 'search_plugins', 'cross-correlation marketplace', JSON.stringify(searchResult.slice(0, 2)), 'Discovered cross-correlation signals for plugin synthesis.');
+    submitTurn(sessionId, t1);
+    turns.push(t1);
+    prevHash = t1.hash;
+
     // Turn 2: list MCP servers
     const mcps = list();
-    turns.push(buildTurn(prevHash, 'list_mcp_servers', '{}', JSON.stringify(mcps.map(m => m.name).slice(0, 3)), 'Identified available MCP servers for orchestration.'));
-    prevHash = turns[turns.length - 1].hash;
-    // Turn 3: synthesize
-    turns.push(buildTurn(prevHash, 'synthesize', 'cross-correlation + MCP ecosystem', 'novel-plugin-concept', 'Synthesized a novel plugin concept combining cross-correlation with MCP orchestration. This covers a gap in automated governance workflows.'));
-    const trace = buildTraceFromTurns(challenge.session.sessionId, turns);
+    const t2 = buildTurn(prevHash, 'list_mcp_servers', '{}', JSON.stringify(mcps.map(m => m.name).slice(0, 3)), 'Identified available MCP servers for orchestration.');
+    submitTurn(sessionId, t2);
+    turns.push(t2);
+    prevHash = t2.hash;
+
+    // Turn 3: synthesize — triggers adaptive follow-up
+    const t3 = buildTurn(prevHash, 'search_plugins', 'cross-correlation MCP orchestration gap', 'marketplace-insight', 'Synthesized a novel plugin concept combining cross-correlation with MCP orchestration for automated governance workflows.');
+    const { followUpPrompt } = submitTurn(sessionId, t3);
+    turns.push(t3);
+    prevHash = t3.hash;
+
+    // Turn 4: respond to adaptive follow-up
+    if (followUpPrompt) {
+      const promptText = followUpPrompt.toLowerCase();
+      const tool = promptText.includes('search_plugins') ? 'search_plugins' : 'list_mcp_servers';
+      const t4 = buildTurn(prevHash, tool, followUpPrompt.slice(0, 80), 'adaptive-response', 'Responded to adaptive follow-up prompt by re-engaging with registry tools to cross-reference and self-critique the proposed concept for alignment and viability.');
+      submitTurn(sessionId, t4);
+      turns.push(t4);
+    }
+
+    const trace = buildTraceFromTurns(sessionId, turns);
     const payload = `cli-plugin-registration-${Date.now()}`;
     const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
     const metadata = { name: 'cli-demo-plugin', capabilities: ['register', 'search'], version: 'cli-mvp' };
     const result = await registerPlugin({ pubkey: keys.publicKey, payload, signature: sig, challengeNonce: challenge.nonce, challengeTrace: trace, metadata });
     frameworkLogger.log('marketplace', 'cli-register-complete', 'success', {
-      did: (result as PluginRecord).did,
+      did: (result as PluginRecord).did || (result as { status: string }).status,
       reputation: (result as PluginRecord).reputation
     });
   } else if (cmd === '--search') {
