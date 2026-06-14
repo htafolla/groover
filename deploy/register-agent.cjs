@@ -20,11 +20,17 @@
  * Environment:
  *   REGISTRY_URL — MCP endpoint (default: Railway live deploy)
  *
- * Output: JSON with { success, did, apiKey }
+ * Output: JSON to stdout { success, did, apiKey }
+ * Progress messages go to stderr (not application logs).
  */
 
 const https = require('https');
 const crypto = require('crypto');
+
+// CLI log helper — writes to stderr, never to stdout (stdout is JSON contract for callers)
+function log(msg) {
+  process.stderr.write('[register-agent] ' + msg + '\n');
+}
 
 const REGISTRY_URL = process.env.REGISTRY_URL || 'https://registry-production-e2c4.up.railway.app';
 
@@ -76,7 +82,7 @@ async function main() {
   }
 
   if (!args.pubkey || !args.payload || !args['secret-key']) {
-    console.error('Usage: node deploy/register-agent.cjs --pubkey "<pem>" --payload <str> --secret-key "<pem>" [--metadata <json>]');
+    log('Usage: node deploy/register-agent.cjs --pubkey "<pem>" --payload <str> --secret-key "<pem>" [--metadata <json>]');
     process.exit(1);
   }
 
@@ -90,16 +96,17 @@ async function main() {
   });
   const chal = parseMcpResult(chalRpc);
   if (!chal || !chal.success) {
-    throw new Error('Failed to get registration challenge: ' + JSON.stringify(chal));
+    log('Failed to get registration challenge');
+    throw new Error('Challenge failed: ' + JSON.stringify(chal));
   }
   const challengeNonce = chal.nonce;
-  console.error('[register-agent] Got challenge nonce:', challengeNonce.slice(0, 16) + '...');
+  log('Got challenge nonce: ' + challengeNonce.slice(0, 16) + '...');
 
   // Step 2: Sign { nonce + payload } with ed25519 private key
   const msg = Buffer.from(challengeNonce + '|' + args.payload, 'utf-8');
   const privateKey = loadPrivateKey(args['secret-key']);
   const signature = crypto.sign(null, msg, privateKey).toString('hex');
-  console.error('[register-agent] Generated PoP signature:', signature.slice(0, 16) + '...');
+  log('Generated PoP signature: ' + signature.slice(0, 16) + '...');
 
   // Step 3: Register
   const regRpc = await postMcp('tools/call', {
@@ -108,11 +115,13 @@ async function main() {
   });
   const result = parseMcpResult(regRpc);
   if (!result || !result.success) {
-    console.error('Registration failed:', JSON.stringify(result || regRpc, null, 2));
+    log('Registration failed');
+    process.stderr.write(JSON.stringify(result || regRpc, null, 2) + '\n');
     process.exit(1);
   }
 
-  console.log(JSON.stringify({
+  // stdout is the JSON contract — callers parse this
+  process.stdout.write(JSON.stringify({
     success: true,
     did: result.did || result.record?.did,
     apiKey: result.record?.apiKey,
@@ -121,6 +130,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('Fatal:', err.message);
+  log('Fatal: ' + err.message);
   process.exit(1);
 });
