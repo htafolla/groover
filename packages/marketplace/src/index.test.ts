@@ -195,7 +195,33 @@ describe('Challenge trace validation', () => {
     expect(validation.score).toBeGreaterThanOrEqual(70);
   });
 
-it('trace with missing required tool fails', () => {
+  it('privileged resonance >= 0.8 relaxes minTurns and coverage threshold', () => {
+    const session = createChallengeSession('test-pubkey-privileged');
+    const baseTime = Date.now() - 5000;
+    let prevHash = PREV_HASH_SEED;
+    const turns = [];
+    const t0 = { ...buildTurn(prevHash, 'search_plugins', 'governance query', '[result]', 'Discovered registry signals for temporal governance and reversible capital alignment. Execution trace for autonomous verification.'), timestamp: baseTime };
+    t0.hash = computeTurnHash(prevHash, t0);
+    prevHash = t0.hash;
+    turns.push(t0);
+    const t1 = { ...buildTurn(prevHash, 'list_mcp_servers', '{}', '["Dynamo","xray-governance"]', 'Identified MCP servers for orchestration workflow and governance ecosystem. Self-critique for resilience patterns.'), timestamp: baseTime + 5000 };
+    t1.hash = computeTurnHash(prevHash, t1);
+    turns.push(t1);
+    const trace = buildTraceFromTurns(session.sessionId, turns);
+
+    // Without resonance: 2 turns < minTurns 3 → fails
+    const normalValidation = validateTrace(session, trace, {});
+    expect(normalValidation.valid).toBe(false);
+    expect(normalValidation.violations.some(v => v.includes('too-few-turns'))).toBe(true);
+
+    // With resonance >= 0.8: effectiveMinTurns = 2, so 2 turns passes
+    const privilegedValidation = validateTrace(session, trace, { dynamoMetrics: { resonance: 0.9 } });
+    expect(privilegedValidation.valid).toBe(true);
+    expect(privilegedValidation.score).toBeGreaterThanOrEqual(70);
+    expect(privilegedValidation.violations.some(v => v.includes('too-few-turns'))).toBe(false);
+  });
+
+  it('trace with missing required tool fails', () => {
     const session = createChallengeSession('test-pubkey');
     const baseTime = Date.now() - 5000;
     let prevHash = PREV_HASH_SEED;
