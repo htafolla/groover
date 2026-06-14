@@ -89,16 +89,28 @@ async function main(): Promise<boolean> {
     frameworkLogger.log('deploy-verify', `endpoint-${ep.name}`, ok ? 'success' : 'error', { ok, hasResult: !!parsed });
   }
 
-  // Step 3b: register_plugin (legacy HMAC — still supported)
+  // Step 3b: search_plugins
+  const searchResult = parseMcpResult(await postMcp('tools/call', {
+    name: 'search_plugins',
+    arguments: { query: 'deploy verification cross-correlation' },
+  })) as Record<string, unknown> | null;
+  all.search_plugins = !!(searchResult && searchResult.success !== false && !searchResult.error);
+
+  // Step 3c: register_plugin with uiManifest (so get_plugin_ui_manifest returns a valid result)
   const regPubkey = crypto.randomBytes(32).toString('hex');
   const regResult = parseMcpResult(await postMcp('tools/call', {
     name: 'register_plugin',
-    arguments: { pubkey: regPubkey, payload: `verify-${Date.now()}`, metadata: { name: 'deploy-verify-agent' } },
+    arguments: {
+      pubkey: regPubkey,
+      payload: `verify-${Date.now()}`,
+      metadata: { name: 'deploy-verify-agent' },
+      uiManifest: { version: '1', displayMode: 'form', fields: [{ id: 'q', label: 'Query', fieldType: 'text' }] },
+    },
   })) as Record<string, unknown> | null;
   all.register_plugin = !!(regResult && regResult.success !== false && !regResult.error);
 
-  // Step 3c: get_plugin_ui_manifest with the freshly registered DID
-  const regDid = regResult?.did || regResult?.record?.did;
+  // Step 3d: get_plugin_ui_manifest with the freshly registered DID
+  const regDid = regResult?.did || (regResult?.record as Record<string, unknown>)?.did;
   if (regDid) {
     const uiResult = parseMcpResult(await postMcp('tools/call', {
       name: 'get_plugin_ui_manifest',

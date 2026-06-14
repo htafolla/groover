@@ -48,7 +48,9 @@ function saveRegistry(): void {
   try {
     const dir = path.dirname(REGISTRY_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(REGISTRY_PATH, JSON.stringify(Array.from(registry.entries()), null, 2));
+    const tmp = REGISTRY_PATH + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(Array.from(registry.entries()), null, 2));
+    fs.renameSync(tmp, REGISTRY_PATH);
   } catch (e) {
     frameworkLogger.log('marketplace', 'registry-save-failed', 'error', { error: String(e) });
   }
@@ -164,18 +166,19 @@ export async function registerPlugin(params: {
     signature = params.signature;
     frameworkLogger.log('marketplace', 'pop-verified', 'success', { did });
   } else {
-    // Legacy HMAC binding path (backward compat)
+    // Legacy HMAC binding path (backward compat) — DEPRECATED
+    frameworkLogger.log('marketplace', 'hmac-fallback', 'warning', { pubkeyPrefix: params.pubkey.slice(0, 16), message: 'HMAC registration is deprecated. Use Proof-of-Possession with ed25519.' });
     const binding = bindForRegistration(params.pubkey, params.payload, params.metadata || {});
     did = binding.did;
     signature = binding.signature;
     apiKey = binding.apiKey ?? '';
   }
 
-  // 2. Dynamic behavioral challenge (delegated to xray-orchestrator MCP in real runtime; here we simulate successful multi-turn via bridge)
-  const challengeProposal = await xrayBridge.orchestrate('behavioral-challenge-for-registration', [
+  // 2. Dynamic behavioral challenge (delegated to xray-orchestrator MCP in real runtime)
+  const challengeProposal = (await xrayBridge.orchestrate('behavioral-challenge-for-registration', [
     { id: 'challenge-1', description: 'Verify tool orchestration capability', type: 'behavioral' },
     { id: 'challenge-2', description: 'Confirm governance resonance', type: 'governance' },
-  ]);
+  ])) as { status?: string };
 
   // 3. Dynamo signal + hammer (via bridge which exercises the MCPs we govern with)
   const gov = (await xrayBridge.govern({
@@ -190,6 +193,14 @@ export async function registerPlugin(params: {
 
   frameworkLogger.log('marketplace', 'dynamo-hammer-delegated', 'success', { gov, challenge: challengeProposal, hasUiManifest: !!params.uiManifest });
 
+  // Gate on behavioral challenge result
+  const challengeStatus = challengeProposal?.status || 'delegated';
+  if (challengeStatus === 'failed' || challengeStatus === 'error') {
+    frameworkLogger.log('marketplace', 'challenge-rejected', 'warning', { status: challengeStatus, did });
+    return { status: 'gray', cooldown: 300_000 };
+  }
+
+  // Gate on governance decision
   const govDecision = gov?.decision || 'delegated-to-mcp';
   if (govDecision !== 'delegated-to-mcp' && govDecision !== 'approved') {
     frameworkLogger.log('marketplace', 'governance-rejected', 'warning', { decision: govDecision, did });
@@ -212,7 +223,6 @@ export async function registerPlugin(params: {
     }
   }
 
-  // MVP: treat as approved (in full flow the bridge + evaluate_governance would decide yes/gray)
   const record: PluginRecord = {
     did,
     pubkey: params.pubkey,

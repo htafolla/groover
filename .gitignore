@@ -8,3 +8,5 @@ logs/
 .opencode/plugin/
 dist
 scripts
+data/
+*.tmp
