@@ -13,19 +13,25 @@ import * as http from 'http';
 
 export { frameworkLogger, getFrameworkLogger };
 
-const MCP_ENDPOINTS: Record<string, string> = {
-  'xray-orchestrator': process.env.ORCHESTRATOR_MCP_URL || 'http://localhost:4001',
-  'xray-governance': process.env.GOVERNANCE_MCP_URL || 'http://localhost:4002',
-  'xray-enforcer': process.env.ENFORCER_MCP_URL || 'http://localhost:4003',
+interface McpEndpoint {
+  url: string;
+  path: string;
+}
+
+const MCP_ENDPOINTS: Record<string, McpEndpoint> = {
+  'xray-orchestrator': { url: process.env.ORCHESTRATOR_MCP_URL || 'http://localhost:4001', path: process.env.ORCHESTRATOR_MCP_PATH || '/mcp' },
+  'xray-governance': { url: process.env.GOVERNANCE_MCP_URL || 'http://localhost:4002', path: process.env.GOVERNANCE_MCP_PATH || '/mcp' },
+  'xray-enforcer': { url: process.env.ENFORCER_MCP_URL || 'http://localhost:4003', path: process.env.ENFORCER_MCP_PATH || '/mcp' },
 };
 
 export function mcpCall(server: string, method: string, params: unknown = {}): Promise<unknown> {
-  const baseUrl = MCP_ENDPOINTS[server];
-  if (!baseUrl) return Promise.reject(new Error(`No URL configured for MCP server: ${server}`));
+  const endpoint = MCP_ENDPOINTS[server];
+  if (!endpoint) return Promise.reject(new Error(`No URL configured for MCP server: ${server}`));
+  const { url: baseUrl, path: mcpPath } = endpoint;
   const proto = baseUrl.startsWith('https') ? https : http;
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method, params });
-    const url = new URL(baseUrl + '/mcp');
+    const url = new URL(baseUrl + mcpPath);
     const req = proto.request({
       hostname: url.hostname,
       port: url.port || (url.protocol === 'https:' ? 443 : 80),
@@ -50,7 +56,7 @@ export function mcpCall(server: string, method: string, params: unknown = {}): P
 
 interface MCPBridge {
   orchestrate(description: string, tasks: Array<{id: string; description: string; type: string}>): Promise<unknown>;
-  govern(proposal: {id: string; title: string; description: string; type: string; confidence: number; evidence: string[]}): Promise<unknown>;
+  govern(proposal: {id: string; title: string; description: string; type: string; source: string; confidence: number; evidence: string[]}): Promise<unknown>;
   enforce(operation: string, files: string[], newCode?: string): Promise<{score: number; violations: unknown[]}>;
 }
 
@@ -62,9 +68,9 @@ export class XrayBridge implements MCPBridge {
 
     frameworkLogger.log('xray', 'bridge-init', 'success', {
       mcpEndpoints: Object.keys(MCP_ENDPOINTS),
-      orchestrateUrl: MCP_ENDPOINTS['xray-orchestrator'],
-      governUrl: MCP_ENDPOINTS['xray-governance'],
-      enforceUrl: MCP_ENDPOINTS['xray-enforcer'],
+      orchestrateUrl: MCP_ENDPOINTS['xray-orchestrator'].url,
+      governUrl: MCP_ENDPOINTS['xray-governance'].url,
+      enforceUrl: MCP_ENDPOINTS['xray-enforcer'].url,
     });
   }
 
@@ -75,7 +81,7 @@ export class XrayBridge implements MCPBridge {
 
   async govern(proposal: any) {
     frameworkLogger.log('xray', 'govern-proposal', 'info', { id: proposal.id, type: proposal.type });
-    return await this._mcpCall('xray-governance', 'tools/call', { name: 'govern_proposals', arguments: { proposal } });
+    return await this._mcpCall('xray-governance', 'tools/call', { name: 'govern_proposals', arguments: { proposals: [proposal] } });
   }
 
   async enforce(operation: string, files: string[], newCode?: string) {

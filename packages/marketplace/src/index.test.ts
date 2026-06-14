@@ -14,7 +14,7 @@ vi.mock('../../xray/src/index.js', async (importOriginal) => {
 });
 
 import { registerPlugin, searchPlugins, getRegistrySnapshot, getPluginUiManifest, getRegistrationChallenge } from './index.js';
-import { buildTurn, buildTraceFromTurns, validateTrace, computeTurnHash, PREV_HASH_SEED, createChallengeSession } from './challenge.js';
+import { buildTurn, buildTraceFromTurns, validateTrace, computeTurnHash, PREV_HASH_SEED, createChallengeSession, getSession } from './challenge.js';
 import { listMcpServers, frameworkLogger } from '../../xray/src/index.js';
 import { handleMcpToolCall } from './mcp-server.js';
 import { generateKeyPair, signPayload } from '../../identity/src/index.js';
@@ -242,5 +242,74 @@ describe('MCP handler (local)', () => {
     const res = await handleMcpToolCall({ name: 'list_mcp_servers', arguments: {} });
     expect((res as any).success).toBe(true);
     expect((res as any).count).toBeGreaterThanOrEqual(4);
+  });
+
+  it('full adaptive submit_challenge_turn flow completes and allows registration', async () => {
+    const keys = generateKeyPair();
+    const chal = await handleMcpToolCall({ name: 'get_registration_challenge', arguments: { pubkey: keys.publicKey } }) as any;
+    expect(chal.success).toBe(true);
+    const sessionId = chal.session.sessionId;
+    const taskPrompt: string = chal.session.task.prompt;
+    const baseTime = Date.now() - 5000;
+    let prevHash = PREV_HASH_SEED;
+    const turns = [];
+
+    // Extract significant terms from the actual task prompt for reasoning coverage
+    const sigTerms = taskPrompt.toLowerCase().replace(/[^a-z0-9_\s-]/g, '').split(/\s+/).filter(w => w.length > 4);
+    const useTerms = sigTerms.slice(0, 8).join(' ');
+
+    // Submit 3 turns via MCP handler
+    for (let i = 0; i < 3; i++) {
+      const tool = i === 0 ? 'search_plugins' : i === 1 ? 'list_mcp_servers' : 'synthesize';
+      const reasoning = i === 0
+        ? 'Searching registry: ' + useTerms
+        : i === 1
+        ? 'Listing servers for: ' + useTerms
+        : 'Synthesizing with: ' + useTerms + ' novel plugin concept self-critique';
+      const turn = { ...buildTurn(prevHash, tool, 'input-' + i, 'output-' + i, reasoning), timestamp: baseTime + i * 1500 };
+      turn.hash = computeTurnHash(prevHash, turn);
+      const resp = await handleMcpToolCall({ name: 'submit_challenge_turn', arguments: { sessionId, toolCall: turn.toolCall, input: turn.input, output: turn.output, reasoning: turn.reasoning, hash: turn.hash } }) as any;
+      expect(resp.success).toBe(true);
+      prevHash = turn.hash;
+      turns.push(turn);
+      if (i === 2) {
+        // Turn 3 should generate a follow-up prompt
+        expect(resp.followUpPrompt).toBeTruthy();
+      }
+    }
+
+    const session = getSession(sessionId);
+    expect(session).toBeTruthy();
+    expect(session!.followUpPrompt).toBeTruthy();
+    expect(session!.followUpCompleted).toBeUndefined();
+
+    // Submit 4th adaptive turn
+    const t4 = { ...buildTurn(prevHash, 'list_mcp_servers', 'follow-up-input', 'follow-up-output', 'Adaptive follow-up: ' + useTerms + ' cross-correlate governance resonance mitigation workflow.'), timestamp: baseTime + 5500 };
+    t4.hash = computeTurnHash(prevHash, t4);
+    const resp4 = await handleMcpToolCall({ name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t4.toolCall, input: t4.input, output: t4.output, reasoning: t4.reasoning, hash: t4.hash } }) as any;
+    expect(resp4.success).toBe(true);
+    expect(session!.followUpCompleted).toBe(true);
+
+    // Now register with the full 4-turn trace
+    turns.push(t4);
+    const trace = buildTraceFromTurns(sessionId, turns);
+    const payload = 'adaptive-test-' + Date.now();
+    const sig = signPayload(keys.privateKey, chal.nonce + '|' + payload);
+
+    // Verify session state before registering
+    const sessionBefore = getSession(sessionId);
+    expect(sessionBefore?.followUpCompleted).toBe(true);
+    expect(sessionBefore?.status).toBe('in-progress');
+
+    const result = await registerPlugin({
+      pubkey: keys.publicKey,
+      payload,
+      signature: sig,
+      challengeNonce: chal.nonce,
+      challengeTrace: trace,
+      metadata: { name: 'adaptive-flow-test' },
+    }) as any;
+    expect(result.did).toMatch(/^did:groover:/);
+    expect((result as any).apiKey).toMatch(/^groover_/);
   });
 });

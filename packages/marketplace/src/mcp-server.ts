@@ -108,8 +108,15 @@ const server = http.createServer(async (req: any, res: any) => {
     let body = '';
     req.on('data', (chunk: any) => { body += chunk; });
     req.on('end', async () => {
+      let rpc: any;
       try {
-        const rpc = JSON.parse(body);
+        rpc = JSON.parse(body);
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }));
+        return;
+      }
+      try {
         let resp: any = { jsonrpc: '2.0', id: rpc.id || null };
 
         if (rpc.method === 'initialize') {
@@ -121,12 +128,12 @@ const server = http.createServer(async (req: any, res: any) => {
         } else if (rpc.method === 'tools/list') {
           resp.result = {
             tools: [
-              { name: 'register_plugin', description: 'Register agent with Proof of Autonomy (ed25519 PoP + adaptive MCP challenge trace)', inputSchema: { type: 'object' } },
-              { name: 'get_registration_challenge', description: 'Start registration: get nonce + adaptive challenge session for multi-turn MCP orchestration', inputSchema: { type: 'object' } },
-              { name: 'submit_challenge_turn', description: 'Submit a turn in the adaptive challenge session (for server-side tracking)', inputSchema: { type: 'object' } },
-              { name: 'search_plugins', description: 'Search registry with MCP signals', inputSchema: { type: 'object' } },
-              { name: 'get_plugin_ui_manifest', description: 'Retrieve UI manifest', inputSchema: { type: 'object' } },
-              { name: 'list_mcp_servers', description: 'List 10 integrated MCP servers', inputSchema: { type: 'object' } }
+              { name: 'register_plugin', description: 'Register agent with Proof of Autonomy (ed25519 PoP + adaptive MCP challenge trace)', inputSchema: { type: 'object', properties: { pubkey: { type: 'string', description: 'Ed25519 public key (PEM)' }, payload: { type: 'string', description: 'Arbitrary payload string' }, signature: { type: 'string', description: 'Ed25519 signature over nonce+payload' }, challengeNonce: { type: 'string', description: 'Nonce from get_registration_challenge' }, challengeTrace: { type: 'object', description: 'Adaptive multi-turn challenge trace' }, metadata: { type: 'object', description: 'Plugin metadata (name, version, etc.)' }, uiManifest: { type: 'object', description: 'Optional UI manifest for marketplace display' } }, required: ['pubkey', 'payload', 'signature', 'challengeNonce', 'challengeTrace'] } },
+              { name: 'get_registration_challenge', description: 'Start registration: get nonce + adaptive challenge session for multi-turn MCP orchestration', inputSchema: { type: 'object', properties: { pubkey: { type: 'string', description: 'Ed25519 public key (PEM)' } }, required: ['pubkey'] } },
+              { name: 'submit_challenge_turn', description: 'Submit a turn in the adaptive challenge session (for server-side tracking)', inputSchema: { type: 'object', properties: { sessionId: { type: 'string', description: 'Challenge session ID' }, toolCall: { type: 'string', description: 'MCP tool invoked' }, input: { type: 'string', description: 'Tool input' }, output: { type: 'string', description: 'Tool output' }, reasoning: { type: 'string', description: 'Agent reasoning' }, hash: { type: 'string', description: 'Turn hash for chain integrity' } }, required: ['sessionId', 'toolCall', 'hash'] } },
+              { name: 'search_plugins', description: 'Search registry with MCP signals', inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'Search query' } } } },
+              { name: 'get_plugin_ui_manifest', description: 'Retrieve UI manifest', inputSchema: { type: 'object', properties: { did: { type: 'string', description: 'DID of the plugin' } }, required: ['did'] } },
+              { name: 'list_mcp_servers', description: 'List available MCP servers for correlation', inputSchema: { type: 'object' } }
             ]
           };
         } else if (rpc.method === 'tools/call') {
@@ -144,8 +151,9 @@ const server = http.createServer(async (req: any, res: any) => {
       } catch (e) {
         const raw = e instanceof Error ? e.message : String(e);
         const message = sanitizeErrorMessage(raw);
+        const code = raw.startsWith('pubkey is required') || raw.startsWith('Challenge session not found') ? -32602 : -32603;
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: message }));
+        res.end(JSON.stringify({ jsonrpc: '2.0', id: rpc?.id || null, error: { code, message } }));
         frameworkLogger.log('marketplace-mcp', 'mcp-http-error', 'error', { error: raw });
       }
     });

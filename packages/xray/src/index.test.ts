@@ -38,14 +38,14 @@ describe('@groover/xray', () => {
     it('calls xray-governance MCP server', async () => {
       const mockMcp = vi.fn().mockResolvedValue({ result: { decision: 'approved', id: 'g1' } });
       const bridge = new XrayBridge(mockMcp);
-      const proposal = { id: 'g1', title: 'test', description: 'test', type: 'refactor', confidence: 0.9, evidence: ['src/'] };
+      const proposal = { id: 'g1', title: 'test', description: 'test', source: 'system', type: 'refactor', confidence: 0.9, evidence: ['src/'] };
 
       const result = await bridge.govern(proposal);
 
       expect(mockMcp).toHaveBeenCalledOnce();
       expect(mockMcp).toHaveBeenCalledWith('xray-governance', 'tools/call', {
         name: 'govern_proposals',
-        arguments: { proposal },
+        arguments: { proposals: [proposal] },
       });
       expect(result).toEqual({ result: { decision: 'approved', id: 'g1' } });
     });
@@ -54,7 +54,7 @@ describe('@groover/xray', () => {
       const mockMcp = vi.fn().mockRejectedValue(new Error('timeout'));
       const bridge = new XrayBridge(mockMcp);
 
-      await expect(bridge.govern({ id: '', title: '', description: '', type: '', confidence: 0, evidence: [] })).rejects.toThrow('timeout');
+      await expect(bridge.govern({ id: '', title: '', description: '', source: 'system', type: '', confidence: 0, evidence: [] })).rejects.toThrow('timeout');
     });
   });
 

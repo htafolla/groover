@@ -164,6 +164,7 @@ export async function registerPlugin(params: {
       title: 'Check prior Dynamo resonance',
       description: did,
       type: 'automate',
+      source: 'system',
       confidence: 0.9,
       evidence: ['prior-governance-interactions', 'resonance-check'],
       submitter: 'groover-marketplace',
@@ -258,9 +259,10 @@ export async function registerPlugin(params: {
       title: 'Plugin registration request',
       description: JSON.stringify(params.metadata),
       type: 'automate',
+      source: 'system',
       confidence: 0.9,
       evidence: ['crypto-bound', 'challenge-passed', params.uiManifest ? 'ui-manifest-provided' : 'no-ui-manifest', 'mcp-discovery-integrated'],
-      submitter: 'Grok (xAI Grok 4.3, lead dev AI for Groover MVP per AGENTS.md and user guidance)',
+      submitter: 'groover-marketplace',
     })) as { decision?: string };
     govDecision = gov?.decision || 'delegated-to-mcp';
   } catch (e) {

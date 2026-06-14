@@ -125,8 +125,12 @@ export function signPayload(privateKeyPem: string, payload: string): string {
   if (!privateKeyPem || !payload) {
     throw new Error('privateKeyPem and payload required');
   }
-  const keyType = isEd25519PrivateKey(privateKeyPem) ? 'ed25519' : 'hmac';
-  const sig = crypto.sign(keyType === 'ed25519' ? null : 'sha256', Buffer.from(payload), privateKeyPem).toString('hex');
+  let sig: string;
+  if (isEd25519PrivateKey(privateKeyPem)) {
+    sig = crypto.sign(null, Buffer.from(payload), privateKeyPem).toString('hex');
+  } else {
+    sig = crypto.createHmac('sha256', Buffer.from(privateKeyPem, 'hex')).update(payload).digest('hex');
+  }
   frameworkLogger.log('identity', 'sign-payload', 'success', { sigLen: sig.length });
   return sig;
 }
@@ -136,8 +140,13 @@ export function verifyWithPublic(publicKeyPem: string, payload: string, signatur
     frameworkLogger.log('identity', 'verify-public', 'warning', { reason: 'missing-input' });
     return false;
   }
-  const keyType = isEd25519PublicKey(publicKeyPem) ? 'ed25519' : 'hmac';
-  const ok = crypto.verify(keyType === 'ed25519' ? null : 'sha256', Buffer.from(payload), publicKeyPem, Buffer.from(signatureHex, 'hex'));
+  let ok: boolean;
+  if (isEd25519PublicKey(publicKeyPem)) {
+    ok = crypto.verify(null, Buffer.from(payload), publicKeyPem, Buffer.from(signatureHex, 'hex'));
+  } else {
+    const expected = crypto.createHmac('sha256', Buffer.from(publicKeyPem, 'hex')).update(payload).digest('hex');
+    ok = expected === signatureHex;
+  }
   frameworkLogger.log('identity', 'verify-public', 'success', { ok });
   return ok;
 }
