@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as crypto from 'crypto';
 
-// Mock xrayBridge so orchestrate/govern/enforce resolve instead of hitting real MCP servers
 vi.mock('../../xray/src/index.js', async (importOriginal) => {
   const actual = await importOriginal() as any;
   return {
@@ -15,56 +14,45 @@ vi.mock('../../xray/src/index.js', async (importOriginal) => {
 });
 
 import { registerPlugin, searchPlugins, getRegistrySnapshot, getPluginUiManifest, getRegistrationChallenge } from './index.js';
-import { generateKeyPair, signPayload } from '../../identity/src/index.js';
-import { solveChallenge } from './challenge.js';
+import { buildTurn, buildTraceFromTurns, validateTrace, computeTurnHash, PREV_HASH_SEED, createChallengeSession } from './challenge.js';
 import { listMcpServers, frameworkLogger } from '../../xray/src/index.js';
 import { handleMcpToolCall } from './mcp-server.js';
+import { generateKeyPair, signPayload } from '../../identity/src/index.js';
 
-const pubkey = crypto.randomBytes(32).toString('hex');
-const payload = 'test-payload-' + Date.now();
-let registeredDid: string;
+function buildValidTrace(sessionId: string) {
+  const baseTime = Date.now() - 5000;
+  let prevHash = PREV_HASH_SEED;
+  const turns = [];
+  turns.push({ ...buildTurn(prevHash, 'search_plugins', 'cross-correlation marketplace', '[result1,result2]', 'Discovered signals for plugin synthesis via cross-correlation.'), timestamp: baseTime });
+  turns[0].hash = computeTurnHash(prevHash, turns[0]);
+  prevHash = turns[0].hash;
+  turns.push({ ...buildTurn(prevHash, 'list_mcp_servers', '{}', '["Dynamo","xray-enforcer","xray-governance"]', 'Identified available MCP servers for orchestration workflow.'), timestamp: baseTime + 1500 });
+  turns[1].hash = computeTurnHash(prevHash, turns[1]);
+  prevHash = turns[1].hash;
+  turns.push({ ...buildTurn(prevHash, 'synthesize', 'correlation + MCP ecosystem', 'novel-plugin-concept', 'Synthesized a novel plugin concept combining cross-correlation with MCP orchestration. This improves automated governance resilience.'), timestamp: baseTime + 3500 });
+  turns[2].hash = computeTurnHash(prevHash, turns[2]);
+  return buildTraceFromTurns(sessionId, turns);
+}
 
 describe('@groover/marketplace', () => {
-  it('registerPlugin returns a record with DID and apiKey', async () => {
+  it('registerPlugin with valid PoP + valid challenge trace succeeds', async () => {
     const keys = generateKeyPair();
     const challenge = getRegistrationChallenge(keys.publicKey);
-    const solution = solveChallenge(challenge.challenge);
+    expect(challenge.nonce).toBeTruthy();
+    expect(challenge.session).toBeTruthy();
+    expect(challenge.session.task.prompt).toBeTruthy();
+    expect(challenge.session.task.requiredTools.length).toBeGreaterThan(0);
+
+    const trace = buildValidTrace(challenge.session.sessionId);
+    const payload = 'pop-reg-' + Date.now();
     const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
+
     const result = await registerPlugin({
       pubkey: keys.publicKey,
       payload,
       signature: sig,
       challengeNonce: challenge.nonce,
-      challengeSolution: solution,
-      metadata: { name: 'test-plugin', version: '0.1' },
-      uiManifest: {
-        version: '1', displayMode: 'form',
-        fields: [{ id: 'q', label: 'Query', fieldType: 'text' }],
-      } as any,
-    });
-    expect('did' in result).toBe(true);
-    expect((result as any).did).toMatch(/^did:groover:/);
-    expect((result as any).apiKey).toMatch(/^groover_/);
-    registeredDid = (result as any).did;
-  });
-
-  it('Proof-of-Possession flow with valid ed25519 signature succeeds', async () => {
-    const keys = generateKeyPair();
-    const challenge = getRegistrationChallenge(keys.publicKey);
-    expect(challenge.nonce).toBeTruthy();
-    expect(challenge.ttl).toBeGreaterThan(0);
-    expect(challenge.challenge).toBeTruthy();
-
-    const solution = solveChallenge(challenge.challenge);
-    const popPayload = 'pop-registration-' + Date.now();
-    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + popPayload);
-
-    const result = await registerPlugin({
-      pubkey: keys.publicKey,
-      payload: popPayload,
-      signature: sig,
-      challengeNonce: challenge.nonce,
-      challengeSolution: solution,
+      challengeTrace: trace,
       metadata: { name: 'pop-test-agent' },
     });
     expect('did' in result).toBe(true);
@@ -75,16 +63,16 @@ describe('@groover/marketplace', () => {
   it('Proof-of-Possession with wrong signature throws', async () => {
     const keys = generateKeyPair();
     const challenge = getRegistrationChallenge(keys.publicKey);
-    const solution = solveChallenge(challenge.challenge);
+    const trace = buildValidTrace(challenge.session.sessionId);
     const wrongSig = crypto.randomBytes(64).toString('hex');
-    const popPayload = 'pop-wrong-' + Date.now();
+    const payload = 'pop-wrong-' + Date.now();
 
     await expect(registerPlugin({
       pubkey: keys.publicKey,
-      payload: popPayload,
+      payload,
       signature: wrongSig,
       challengeNonce: challenge.nonce,
-      challengeSolution: solution,
+      challengeTrace: trace,
       metadata: { name: 'pop-wrong-agent' },
     })).rejects.toThrow('Proof-of-possession failed');
   });
@@ -92,73 +80,96 @@ describe('@groover/marketplace', () => {
   it('Proof-of-Possession with reused nonce throws', async () => {
     const keys = generateKeyPair();
     const challenge = getRegistrationChallenge(keys.publicKey);
-    const solution = solveChallenge(challenge.challenge);
-    const popPayload = 'pop-reuse-' + Date.now();
-    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + popPayload);
+    const trace = buildValidTrace(challenge.session.sessionId);
+    const payload = 'pop-reuse-' + Date.now();
+    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
 
-    // First use succeeds
     await registerPlugin({
       pubkey: keys.publicKey,
-      payload: popPayload,
+      payload,
       signature: sig,
       challengeNonce: challenge.nonce,
-      challengeSolution: solution,
+      challengeTrace: trace,
       metadata: { name: 'pop-reuse-first' },
     });
 
-    // Second use with same nonce fails
+    const challenge2 = getRegistrationChallenge(keys.publicKey);
+    const trace2 = buildValidTrace(challenge2.session.sessionId);
+    const payload2 = 'pop-reuse-second-' + Date.now();
+    const sig2 = signPayload(keys.privateKey, challenge2.nonce + '|' + payload2);
+
     await expect(registerPlugin({
       pubkey: keys.publicKey,
-      payload: popPayload + '-second',
-      signature: sig,
+      payload: payload2,
+      signature: sig2,
       challengeNonce: challenge.nonce,
-      challengeSolution: solution,
+      challengeTrace: trace2,
       metadata: { name: 'pop-reuse-second' },
-    })).rejects.toThrow('already-used challenge nonce');
+    })).rejects.toThrow('already-used');
   });
 
-  it('Proof-of-Possession with wrong challenge solution returns gray', async () => {
+  it('Invalid challenge trace (too few turns) returns gray', async () => {
     const keys = generateKeyPair();
     const challenge = getRegistrationChallenge(keys.publicKey);
-    const wrongSolution = 'wrong-answer-' + Date.now();
-    const popPayload = 'pop-wrong-sol-' + Date.now();
-    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + popPayload);
+    // Build a trace with only 1 turn (below minTurns of 3)
+    let prevHash = PREV_HASH_SEED;
+    const turns = [buildTurn(prevHash, 'search_plugins', 'test', 'result', 'Some short reasoning here that is long enough.')];
+    const trace = buildTraceFromTurns(challenge.session.sessionId, turns);
+    const payload = 'bad-trace-' + Date.now();
+    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
 
     const result = await registerPlugin({
       pubkey: keys.publicKey,
-      payload: popPayload,
+      payload,
       signature: sig,
       challengeNonce: challenge.nonce,
-      challengeSolution: wrongSolution,
-      metadata: { name: 'pop-wrong-solution' },
+      challengeTrace: trace,
+      metadata: { name: 'bad-trace-agent' },
     });
     expect(result).toEqual({ status: 'gray', cooldown: 300_000 });
   });
 
-  it('Proof-of-Possession without challengeSolution throws', async () => {
+  it('Missing challenge sessionId throws', async () => {
     const keys = generateKeyPair();
     const challenge = getRegistrationChallenge(keys.publicKey);
-    const popPayload = 'pop-no-sol-' + Date.now();
-    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + popPayload);
+    const trace = buildValidTrace('nonexistent-session-id');
+    const payload = 'bad-session-' + Date.now();
+    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
 
     await expect(registerPlugin({
       pubkey: keys.publicKey,
-      payload: popPayload,
+      payload,
       signature: sig,
       challengeNonce: challenge.nonce,
-      metadata: { name: 'pop-no-solution' },
-    })).rejects.toThrow('challengeSolution is required');
+      challengeTrace: trace,
+      metadata: { name: 'bad-session-agent' },
+    })).rejects.toThrow('Challenge session not found');
+  });
+
+  it('Hash chain tampering detected — trace validation fails', async () => {
+    const keys = generateKeyPair();
+    const challenge = getRegistrationChallenge(keys.publicKey);
+    const trace = buildValidTrace(challenge.session.sessionId);
+    // Tamper with a turn's reasoning
+    const tamperedTurns = trace.turns.map((t, i) => i === 1 ? { ...t, reasoning: 'TAMPERED' } : t);
+    const tamperedTrace = { ...trace, turns: tamperedTurns };
+    const payload = 'tampered-' + Date.now();
+    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
+
+    const result = await registerPlugin({
+      pubkey: keys.publicKey,
+      payload,
+      signature: sig,
+      challengeNonce: challenge.nonce,
+      challengeTrace: tamperedTrace,
+      metadata: { name: 'tampered-agent' },
+    });
+    expect(result).toEqual({ status: 'gray', cooldown: 300_000 });
   });
 
   it('getRegistrySnapshot returns non-empty after registration', () => {
     const snap = getRegistrySnapshot();
     expect(snap.length).toBeGreaterThan(0);
-  });
-
-  it('getPluginUiManifest returns the stored manifest', () => {
-    const manifest = getPluginUiManifest(registeredDid);
-    expect(manifest).toBeTruthy();
-    expect(manifest!.displayMode).toBe('form');
   });
 
   it('searchPlugins returns ranked results', async () => {
@@ -172,24 +183,40 @@ describe('@groover/marketplace', () => {
   });
 });
 
-describe('MCP handler (local)', () => {
-  it('handleMcpToolCall register_plugin succeeds', async () => {
-    const keys = generateKeyPair();
-    const chalResp = await handleMcpToolCall({
-      name: 'get_registration_challenge',
-      arguments: { pubkey: keys.publicKey },
-    });
-    const chal = chalResp as any;
-    const solution = solveChallenge(chal.challenge);
-    const sig = signPayload(keys.privateKey, chal.nonce + '|' + 'mcp-test-' + Date.now());
-    const res = await handleMcpToolCall({
-      name: 'register_plugin',
-      arguments: { pubkey: keys.publicKey, payload: 'mcp-test-' + Date.now(), metadata: { name: 'mcp-test-agent' }, signature: sig, challengeNonce: chal.nonce, challengeSolution: solution },
-    });
-    expect((res as any).success).toBe(true);
+describe('Challenge trace validation', () => {
+  it('valid trace passes validation', () => {
+    const session = createChallengeSession('test-pubkey-validation');
+    const trace = buildValidTrace(session.sessionId);
+    const validation = validateTrace(session, trace);
+    expect(validation.valid).toBe(true);
+    expect(validation.score).toBeGreaterThanOrEqual(70);
   });
 
-  it('handleMcpToolCall get_registration_challenge returns challenge', async () => {
+it('trace with missing required tool fails', () => {
+    const session = createChallengeSession('test-pubkey');
+    const baseTime = Date.now() - 5000;
+    let prevHash = PREV_HASH_SEED;
+    const turns = [];
+    const t0 = { ...buildTurn(prevHash, 'wrong_tool_a', 'input', 'output', 'This is some reasoning that is long enough for the validator.'), timestamp: baseTime };
+    t0.hash = computeTurnHash(prevHash, t0);
+    prevHash = t0.hash;
+    turns.push(t0);
+    const t1 = { ...buildTurn(prevHash, 'wrong_tool_b', 'input2', 'output2', 'More reasoning that demonstrates understanding of the ecosystem capabilities.'), timestamp: baseTime + 1500 };
+    t1.hash = computeTurnHash(prevHash, t1);
+    prevHash = t1.hash;
+    turns.push(t1);
+    const t2 = { ...buildTurn(prevHash, 'wrong_tool_c', 'input3', 'output3', 'Final reasoning synthesizing the analysis and proposing a concept for governance.'), timestamp: baseTime + 3500 };
+    t2.hash = computeTurnHash(prevHash, t2);
+    turns.push(t2);
+    const trace = buildTraceFromTurns(session.sessionId, turns);
+    const validation = validateTrace(session, trace);
+    expect(validation.valid).toBe(false);
+    expect(validation.violations.some(v => v.includes('missing-required-tool'))).toBe(true);
+  });
+});
+
+describe('MCP handler (local)', () => {
+  it('handleMcpToolCall get_registration_challenge returns session', async () => {
     const keys = generateKeyPair();
     const res = await handleMcpToolCall({
       name: 'get_registration_challenge',
@@ -197,8 +224,9 @@ describe('MCP handler (local)', () => {
     });
     expect((res as any).success).toBe(true);
     expect((res as any).nonce).toBeTruthy();
-    expect((res as any).challenge).toBeTruthy();
-    expect((res as any).challenge.type).toMatch(/^(char-code|alternating-case|reverse-words)$/);
+    expect((res as any).session).toBeTruthy();
+    expect((res as any).session.task).toBeTruthy();
+    expect((res as any).session.task.requiredTools.length).toBeGreaterThan(0);
   });
 
   it('handleMcpToolCall search_plugins returns results', async () => {

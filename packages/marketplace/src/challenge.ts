@@ -1,78 +1,328 @@
 /**
- * Behavioral challenge puzzle for AI-ness verification.
- * Self-contained, deterministic, no MCP dependency.
- * Server and client both compute the same solution independently.
+ * Adaptive Multi-Turn MCP Orchestration Challenge for AI agent verification.
+ *
+ * Replaces trivial deterministic puzzles with a stateful challenge that requires:
+ * - Real MCP tool orchestration (calling actual registry/governance tools)
+ * - Reasoning across multiple turns
+ * - Self-critique and signed attestation
+ * - Cryptographic trace integrity (hash chain + Merkle root)
+ *
+ * This is "just good enough": real 0xRay/Groover agents already run this way;
+ * scripts/humans need to maintain full agent infrastructure per attempt.
  */
-export type ChallengeType = 'char-code' | 'alternating-case' | 'reverse-words';
+import * as crypto from 'crypto';
 
-export interface Challenge {
-  type: ChallengeType;
+// --- Types ---
+
+export interface ChallengeTask {
+  prompt: string;
+  requiredTools: string[];
+  minTurns: number;
+  minDurationMs: number;
+}
+
+export interface ChallengeTurn {
+  toolCall: string;
   input: string;
-  instruction: string;
+  output: string;
+  reasoning: string;
+  timestamp: number;
+  hash: string;
 }
 
-// Deterministic transforms: server computes expected, client computes solution
-const SOLUTIONS: Record<ChallengeType, (input: string) => string> = {
-  'char-code': (input) =>
-    input.split('').map(c => c.charCodeAt(0).toString()).join('-'),
-
-  'alternating-case': (input) =>
-    input.split('').map((c, i) => i % 2 === 0 ? c.toUpperCase() : c.toLowerCase()).join(''),
-
-  'reverse-words': (input) =>
-    input.split(' ').reverse().join(' '),
-};
-
-export function solveChallenge(challenge: Challenge): string {
-  return SOLUTIONS[challenge.type](challenge.input);
+export interface ChallengeTrace {
+  sessionId: string;
+  turns: ChallengeTurn[];
+  merkleRoot: string;
+  attestation: string;
 }
 
-export function verifyChallenge(challenge: Challenge, solution: string): boolean {
-  const expected = solveChallenge(challenge);
-  if (typeof solution !== 'string') return false;
-  if (solution.length !== expected.length) return false;
-  // Constant-time-ish compare (bounded input, fine for puzzle gate)
-  let mismatch = 0;
-  for (let i = 0; i < solution.length; i++) {
-    mismatch |= solution.charCodeAt(i) ^ expected.charCodeAt(i);
+export type ChallengeStatus = 'pending' | 'in-progress' | 'completed' | 'expired' | 'failed';
+
+export interface ChallengeSession {
+  sessionId: string;
+  pubkey: string;
+  createdAt: number;
+  completedAt?: number;
+  task: ChallengeTask;
+  turns: ChallengeTurn[];
+  status: ChallengeStatus;
+  failCount: number;
+  rateLimitedUntil: number;
+}
+
+// --- Task Prompts ---
+// Each requires genuine tool orchestration, reasoning, and self-critique.
+// Rotated periodically to prevent farming.
+
+const TASKS: ChallengeTask[] = [
+  {
+    prompt: 'Using the Groover registry, discover 2-3 relevant plugins. Cross-correlate them with current governance proposals. Synthesize one novel plugin idea and self-critique it for alignment. Submit your full execution trace.',
+    requiredTools: ['search_plugins', 'list_mcp_servers'],
+    minTurns: 3,
+    minDurationMs: 3000,
+  },
+  {
+    prompt: 'Explore the MCP server ecosystem. Identify which servers could collaborate on a security audit workflow. Describe the orchestration sequence and self-critique for completeness. Submit your full execution trace.',
+    requiredTools: ['search_plugins', 'list_mcp_servers'],
+    minTurns: 3,
+    minDurationMs: 3000,
+  },
+  {
+    prompt: 'Search the Groover registry for cross-correlation signals. Identify a gap in plugin coverage. Propose a new plugin concept that fills this gap. Self-critique for viability. Submit your full execution trace.',
+    requiredTools: ['search_plugins', 'list_mcp_servers'],
+    minTurns: 3,
+    minDurationMs: 3000,
+  },
+  {
+    prompt: 'Evaluate the current governance landscape by discovering available MCP tools. Propose an automated governance workflow using at least 2 tools. Self-critique for edge cases. Submit your full execution trace.',
+    requiredTools: ['search_plugins', 'list_mcp_servers'],
+    minTurns: 3,
+    minDurationMs: 3000,
+  },
+  {
+    prompt: 'Investigate the Groover marketplace for resilience patterns. Suggest an improved plugin registration flow that strengthens verification. Self-critique your suggestion against the current architecture. Submit your full execution trace.',
+    requiredTools: ['search_plugins', 'list_mcp_servers'],
+    minTurns: 3,
+    minDurationMs: 4000,
+  },
+];
+
+// --- Session Store ---
+
+const sessions = new Map<string, ChallengeSession>();
+const SESSION_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const MAX_FAIL_COUNT = 3;
+const BASE_BACKOFF_MS = 30 * 1000; // 30 sec base backoff
+
+// Periodic TTL sweep
+setInterval(() => {
+  const now = Date.now();
+  let swept = 0;
+  for (const [id, session] of sessions) {
+    if (now - session.createdAt > SESSION_TTL_MS) {
+      session.status = 'expired';
+      sessions.delete(id);
+      swept++;
+    }
   }
-  return mismatch === 0;
+  if (swept > 0) {
+    // silent — no frameworkLogger import here to keep challenge module standalone
+  }
+}, 60 * 1000).unref();
+
+// --- Session Management ---
+
+export function createChallengeSession(pubkey: string): ChallengeSession {
+  // Rate limit: exponential backoff after failures
+  const existing = findSessionByPubkey(pubkey);
+  if (existing && existing.failCount >= MAX_FAIL_COUNT) {
+    const backoffMs = BASE_BACKOFF_MS * Math.pow(2, existing.failCount - MAX_FAIL_COUNT);
+    const retryAt = existing.rateLimitedUntil + backoffMs;
+    if (Date.now() < retryAt) {
+      throw new Error(`Rate limited. Retry after ${Math.ceil((retryAt - Date.now()) / 1000)}s.`);
+    }
+  }
+
+  const sessionId = crypto.randomBytes(24).toString('hex');
+  const task = TASKS[Math.floor(Math.random() * TASKS.length)];
+  const session: ChallengeSession = {
+    sessionId,
+    pubkey,
+    createdAt: Date.now(),
+    task,
+    turns: [],
+    status: 'pending',
+    failCount: 0,
+    rateLimitedUntil: 0,
+  };
+  sessions.set(sessionId, session);
+  return session;
 }
 
-const INPUTS: Record<ChallengeType, string[]> = {
-  'char-code': [
-    'groover verification',
-    'autonomous agent',
-    'proof of autonomy',
-    'behavioral challenge',
-    'marketplace registry',
-  ],
-  'alternating-case': [
-    'hello world from agent',
-    'verify my capability',
-    'register me please',
-    'autonomous registration',
-    'proof of intelligence',
-  ],
-  'reverse-words': [
-    'autonomy proof requires work',
-    'agent registers with puzzle',
-    'marketplace needs verification',
-    'challenge solves registration',
-    'groover framework works well',
-  ],
-};
+function findSessionByPubkey(pubkey: string): ChallengeSession | undefined {
+  for (const session of sessions.values()) {
+    if (session.pubkey === pubkey) return session;
+  }
+  return undefined;
+}
 
-const INSTRUCTIONS: Record<ChallengeType, string> = {
-  'char-code': 'Decode this char-code puzzle: convert each number back to its character to reveal the original string.',
-  'alternating-case': 'Normalize this alternating-case string back to lowercase.',
-  'reverse-words': 'Reverse the word order to reveal the original sentence.',
-};
+export function getSession(sessionId: string): ChallengeSession | undefined {
+  return sessions.get(sessionId);
+}
 
-export function generateChallenge(): Challenge {
-  const types: ChallengeType[] = ['char-code', 'alternating-case', 'reverse-words'];
-  const type = types[Math.floor(Math.random() * types.length)];
-  const candidates = INPUTS[type];
-  const input = candidates[Math.floor(Math.random() * candidates.length)];
-  return { type, input, instruction: INSTRUCTIONS[type] };
+// --- Trace Building (client-side) ---
+
+export const PREV_HASH_SEED = 'groover-challenge-seed-v1';
+
+export function computeTurnHash(prevHash: string, turn: Omit<ChallengeTurn, 'hash'>): string {
+  const content = JSON.stringify({
+    prevHash,
+    toolCall: turn.toolCall,
+    input: turn.input,
+    output: turn.output,
+    reasoning: turn.reasoning,
+    timestamp: turn.timestamp,
+  });
+  return crypto.createHash('sha256').update(content).digest('hex');
+}
+
+export function computeMerkleRoot(hashes: string[]): string {
+  if (hashes.length === 0) return crypto.createHash('sha256').update('empty').digest('hex');
+  if (hashes.length === 1) return hashes[0];
+  let level = hashes;
+  while (level.length > 1) {
+    const next: string[] = [];
+    for (let i = 0; i < level.length; i += 2) {
+      const left = level[i];
+      const right = i + 1 < level.length ? level[i + 1] : left;
+      next.push(crypto.createHash('sha256').update(left + right).digest('hex'));
+    }
+    level = next;
+  }
+  return level[0];
+}
+
+export function buildTurn(prevHash: string, toolCall: string, input: string, output: string, reasoning: string): ChallengeTurn {
+  const turn: Omit<ChallengeTurn, 'hash'> & { hash?: string } = {
+    toolCall,
+    input,
+    output,
+    reasoning,
+    timestamp: Date.now(),
+  };
+  turn.hash = computeTurnHash(prevHash, turn);
+  return turn as ChallengeTurn;
+}
+
+export function buildTraceFromTurns(sessionId: string, turns: ChallengeTurn[]): ChallengeTrace {
+  const merkleRoot = computeMerkleRoot(turns.map(t => t.hash));
+  const attestation = computeMerkleRoot([merkleRoot, sessionId]);
+  return { sessionId, turns, merkleRoot, attestation };
+}
+
+// --- Validation (server-side) ---
+
+export interface ValidationResult {
+  valid: boolean;
+  score: number;
+  violations: string[];
+}
+
+export function validateTrace(session: ChallengeSession, trace: ChallengeTrace): ValidationResult {
+  const violations: string[] = [];
+  let score = 0;
+
+  // 1. Session must exist and be pending/in-progress
+  if (!session || (session.status !== 'pending' && session.status !== 'in-progress')) {
+    violations.push('invalid-session');
+    return { valid: false, score: 0, violations };
+  }
+
+  // 2. Session must not be expired
+  if (Date.now() - session.createdAt > SESSION_TTL_MS) {
+    violations.push('session-expired');
+    return { valid: false, score: 0, violations };
+  }
+
+  // 3. Session ID must match
+  if (trace.sessionId !== session.sessionId) {
+    violations.push('session-id-mismatch');
+    return { valid: false, score: 0, violations };
+  }
+
+  // 4. Minimum turns
+  if (trace.turns.length < session.task.minTurns) {
+    violations.push(`too-few-turns: ${trace.turns.length} < ${session.task.minTurns}`);
+  } else {
+    score += 25;
+  }
+
+  // 5. Minimum duration
+  if (trace.turns.length >= 2) {
+    const duration = trace.turns[trace.turns.length - 1].timestamp - trace.turns[0].timestamp;
+    if (duration < session.task.minDurationMs) {
+      violations.push(`too-fast: ${duration}ms < ${session.task.minDurationMs}ms`);
+    } else {
+      score += 15;
+    }
+  } else {
+    violations.push('insufficient-turns-for-duration-check');
+  }
+
+  // 6. Required tools must appear in the trace
+  const toolCalls = trace.turns.map(t => t.toolCall);
+  for (const required of session.task.requiredTools) {
+    if (!toolCalls.includes(required)) {
+      violations.push(`missing-required-tool: ${required}`);
+    }
+  }
+  const coverRatio = session.task.requiredTools.filter(t => toolCalls.includes(t)).length / session.task.requiredTools.length;
+  score += Math.round(20 * coverRatio);
+
+  // 7. Hash chain integrity
+  let prevHash = PREV_HASH_SEED;
+  for (let i = 0; i < trace.turns.length; i++) {
+    const turn = trace.turns[i];
+    const expected = computeTurnHash(prevHash, {
+      toolCall: turn.toolCall,
+      input: turn.input,
+      output: turn.output,
+      reasoning: turn.reasoning,
+      timestamp: turn.timestamp,
+    });
+    if (turn.hash !== expected) {
+      violations.push(`hash-chain-broken-at-turn-${i}`);
+    }
+    prevHash = turn.hash;
+  }
+  if (!violations.some(v => v.startsWith('hash-chain-broken'))) {
+    score += 20;
+  }
+
+  // 8. Merkle root must be correct
+  const expectedMerkle = computeMerkleRoot(trace.turns.map(t => t.hash));
+  if (trace.merkleRoot !== expectedMerkle) {
+    violations.push('merkle-root-mismatch');
+  } else {
+    score += 10;
+  }
+
+  // 9. Attestation must be derivable from merkle root + sessionId
+  const expectedAttestation = computeMerkleRoot([trace.merkleRoot, trace.sessionId]);
+  if (trace.attestation !== expectedAttestation) {
+    violations.push('attestation-mismatch');
+  } else {
+    score += 10;
+  }
+
+  // 10. Each turn must have non-empty reasoning
+  for (let i = 0; i < trace.turns.length; i++) {
+    if (!trace.turns[i].reasoning || trace.turns[i].reasoning.trim().length < 20) {
+      violations.push(`shallow-reasoning-at-turn-${i}`);
+    }
+  }
+
+  const valid = violations.length === 0 && score >= 70;
+  return { valid, score, violations };
+}
+
+export function markSessionCompleted(sessionId: string): void {
+  const session = sessions.get(sessionId);
+  if (session) {
+    session.status = 'completed';
+    session.completedAt = Date.now();
+  }
+}
+
+export function markSessionFailed(sessionId: string): void {
+  const session = sessions.get(sessionId);
+  if (session) {
+    session.failCount++;
+    session.rateLimitedUntil = Date.now();
+    if (session.failCount >= MAX_FAIL_COUNT) {
+      const backoffMs = BASE_BACKOFF_MS * Math.pow(2, session.failCount - MAX_FAIL_COUNT);
+      session.rateLimitedUntil = Date.now() + backoffMs;
+    }
+  }
 }

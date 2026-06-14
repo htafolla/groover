@@ -1,14 +1,22 @@
 /**
  * @groover/marketplace
  * Registry + search powered by @groover/core correlation.
- * registerPlugin implements the full Proof of Autonomy flow (crypto binding, challenge via orchestrator, Dynamo via xray bridge).
+ * registerPlugin implements the full Proof of Autonomy flow:
+ *   1. Crypto PoP (ed25519 nonce signature)
+ *   2. Adaptive multi-turn MCP orchestration challenge (trace validation)
+ *   3. Dynamo governance gate (xray bridge)
+ *   4. Codex enforcement (xray enforcer)
  * Prod-ready, frameworkLogger only, codex compliant.
  */
 import { frameworkLogger } from '../../xray/src/index.js';
 import { coreEngine, CorrelationResult } from '../../core/src/index.js';
 import { xrayBridge, listMcpServers } from '../../xray/src/index.js';
 import { generateDID, generateApiKey, verifyWithPublic } from '../../identity/src/index.js';
-import { generateChallenge, verifyChallenge, Challenge } from './challenge.js';
+import {
+  createChallengeSession, getSession, validateTrace,
+  markSessionCompleted, markSessionFailed,
+  ChallengeSession, ChallengeTrace,
+} from './challenge.js';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -23,9 +31,6 @@ export interface PluginRecord {
   metadata: Record<string, unknown>;
   registeredAt: string;
   reputation: number;
-  // AgentUIManifest integration (ref: https://github.com/htafolla/agentuimanifest)
-  // Allows plugins to declare human-friendly UI (forms, wizards, chat, viewer)
-  // for the marketplace and tool invocation. See agent-ui-manifest.ts and SPEC.md.
   uiManifest?: import('./agent-ui-manifest.js').AgentUiManifest;
 }
 
@@ -57,21 +62,13 @@ function saveRegistry(): void {
   }
 }
 
-// Load persisted registry on startup
 const registry = loadRegistry();
 
-// Challenge nonce store for Proof-of-Possession registration flow.
-// Map<nonce, { pubkey: string, createdAt: number, used: boolean, challenge: Challenge }>
-const challengeNonces = new Map<string, { pubkey: string; createdAt: number; used: boolean; challenge: Challenge }>();
+// PoP nonce store (unchanged — nonce is still required for crypto binding)
+const challengeNonces = new Map<string, { pubkey: string; createdAt: number; used: boolean }>();
+const CHALLENGE_TTL_MS = 5 * 60 * 1000;
+const NONCE_SWEEP_MS = 60 * 1000;
 
-const CHALLENGE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const NONCE_SWEEP_MS = 60 * 1000; // sweep expired entries every 60s
-const CHALLENGE_COOLDOWN_MS = 10 * 1000; // per-pubkey: 10s between challenge requests
-
-// Per-pubkey cooldown to prevent challenge spam
-const challengeCooldowns = new Map<string, number>();
-
-// Periodic TTL sweep to prevent memory leak from abandoned challenges
 setInterval(() => {
   const now = Date.now();
   let swept = 0;
@@ -87,35 +84,32 @@ setInterval(() => {
 }, NONCE_SWEEP_MS).unref();
 
 /**
- * Issue a challenge nonce for Proof-of-Possession registration.
- * Agent must sign this nonce + payload with their ed25519 private key
- * and include the signature in registerPlugin().
- * Also includes a deterministic behavioral puzzle the agent must solve.
+ * Issue a challenge nonce for Proof-of-Possession AND start an adaptive MCP challenge session.
+ * The agent must:
+ *   1. Sign nonce+payload with ed25519 (crypto PoP)
+ *   2. Complete the multi-turn challenge session (MCP orchestration trace)
  */
-export function getRegistrationChallenge(pubkey: string): { nonce: string; ttl: number; challenge: Challenge } {
-  const last = challengeCooldowns.get(pubkey);
-  const elapsed = last ? Date.now() - last : Infinity;
-  if (elapsed < CHALLENGE_COOLDOWN_MS) {
-    throw new Error(`Rate limited. Wait ${Math.ceil((CHALLENGE_COOLDOWN_MS - elapsed) / 1000)}s before requesting another challenge.`);
-  }
+export function getRegistrationChallenge(pubkey: string): { nonce: string; ttl: number; session: ChallengeSession } {
+  const session = createChallengeSession(pubkey);
   const nonce = crypto.randomBytes(32).toString('hex');
-  const challenge = generateChallenge();
-  challengeNonces.set(nonce, { pubkey, createdAt: Date.now(), used: false, challenge });
-  challengeCooldowns.set(pubkey, Date.now());
-  frameworkLogger.log('marketplace', 'challenge-issued', 'success', { pubkeyPrefix: pubkey.slice(0, 16), ttl: CHALLENGE_TTL_MS, challengeType: challenge.type });
-  return { nonce, ttl: CHALLENGE_TTL_MS, challenge };
+  challengeNonces.set(nonce, { pubkey, createdAt: Date.now(), used: false });
+  frameworkLogger.log('marketplace', 'challenge-issued', 'success', {
+    pubkeyPrefix: pubkey.slice(0, 16),
+    ttl: CHALLENGE_TTL_MS,
+    sessionId: session.sessionId,
+    taskPrompt: session.task.prompt.slice(0, 80),
+  });
+  return { nonce, ttl: CHALLENGE_TTL_MS, session };
 }
 
 export async function searchPlugins(query: string): Promise<CorrelationResult[]> {
   frameworkLogger.log('marketplace', 'search', 'info', { query });
   const signals = Array.from(registry.values()).map((p, i) => {
     let content = `${p.metadata.name || p.did} ${JSON.stringify(p.metadata)}`;
-    // AgentUIManifest integration: include labels/descriptions from manifest for richer semantic correlation
     if (p.uiManifest) {
       const labels = (p.uiManifest.fields || []).map(f => `${f.label} ${f.description || ''}`).join(' ');
       content += ` ui: ${p.uiManifest.displayMode} ${labels} ${p.uiManifest.exampleQueries?.join(' ') || ''}`;
     }
-    // MCP discovery integration: include available MCP servers/capabilities for plugin search and correlation
     const mcpServers = listMcpServers().map(m => m.name).join(' ');
     content += ` mcps: ${mcpServers}`;
     return {
@@ -124,7 +118,6 @@ export async function searchPlugins(query: string): Promise<CorrelationResult[]>
     };
   });
   if (signals.length === 0) {
-    // Seed minimal for MVP demo (includes sample manifest text and MCPs)
     signals.push({ content: 'stringray-plugin-consumer cross-correlation demo ui: form GitHub Repository security scan mcps: Dynamo grok_com_github xray-enforcer', tdf: 5781027941748 });
   }
   return coreEngine.rankWithDynamo(signals);
@@ -134,17 +127,17 @@ export async function registerPlugin(params: {
   pubkey: string;
   payload: string;
   metadata: Record<string, unknown>;
-  // Proof-of-Possession: agent signs challengeNonce + payload with their ed25519 private key.
+  // Crypto Proof-of-Possession
   signature: string;
   challengeNonce: string;
-  // Behavioral puzzle solution: agent must solve the challenge returned by getRegistrationChallenge.
-  challengeSolution: string;
-  // Optional declarative UI manifest per AgentUIManifest spec.
+  // Adaptive multi-turn challenge trace
+  challengeTrace: ChallengeTrace;
+  // Optional UI manifest
   uiManifest?: import('./agent-ui-manifest.js').AgentUiManifest;
 }): Promise<PluginRecord | { status: 'gray'; cooldown: number }> {
   frameworkLogger.log('marketplace', 'register-start', 'info', { pubkeyPrefix: params.pubkey.slice(0, 16) });
 
-  // Proof-of-Possession flow: verify nonce, challenge solution, and ed25519 signature
+  // 1. Crypto Proof-of-Possession
   const stored = challengeNonces.get(params.challengeNonce);
   if (!stored || stored.used) {
     throw new Error('Invalid or already-used challenge nonce');
@@ -152,18 +145,6 @@ export async function registerPlugin(params: {
   if (Date.now() - stored.createdAt > CHALLENGE_TTL_MS) {
     throw new Error('Challenge nonce expired');
   }
-  // Verify behavioral puzzle solution (local, deterministic, no MCP dependency)
-  if (typeof params.challengeSolution !== 'string' || !params.challengeSolution) {
-    throw new Error('challengeSolution is required for registration');
-  }
-  if (!verifyChallenge(stored.challenge, params.challengeSolution)) {
-    frameworkLogger.log('marketplace', 'challenge-solution-rejected', 'warning', {
-      pubkeyPrefix: params.pubkey.slice(0, 16),
-      challengeType: stored.challenge.type,
-    });
-    return { status: 'gray', cooldown: 300_000 };
-  }
-  frameworkLogger.log('marketplace', 'challenge-solution-accepted', 'success', { challengeType: stored.challenge.type });
   const verified = verifyWithPublic(params.pubkey, params.challengeNonce + '|' + params.payload, params.signature);
   if (!verified) {
     throw new Error('Proof-of-possession failed: signature does not match pubkey');
@@ -171,12 +152,34 @@ export async function registerPlugin(params: {
   stored.used = true;
   const did = generateDID(params.pubkey);
   const apiKey = generateApiKey(did);
-  const { signature } = params;
   frameworkLogger.log('marketplace', 'pop-verified', 'success', { did });
 
-  // 2-4. Delegated MCP gates (orchestrate, govern, enforce).
-  // These are supplementary — they gracefully degrade when MCP servers are not running
-  // (standalone Railway mode). The local challenge puzzle is the primary behavioral gate.
+  // 2. Validate adaptive challenge trace (multi-turn MCP orchestration)
+  const session = getSession(params.challengeTrace.sessionId);
+  if (!session) {
+    throw new Error('Challenge session not found');
+  }
+  const validation = validateTrace(session, params.challengeTrace);
+  frameworkLogger.log('marketplace', 'challenge-validation', 'info', {
+    valid: validation.valid,
+    score: validation.score,
+    violations: validation.violations,
+  });
+  if (!validation.valid || validation.score < 70) {
+    markSessionFailed(session.sessionId);
+    frameworkLogger.log('marketplace', 'challenge-rejected', 'warning', {
+      score: validation.score,
+      violations: validation.violations,
+      did,
+    });
+    return { status: 'gray', cooldown: 300_000 };
+  }
+  markSessionCompleted(session.sessionId);
+  frameworkLogger.log('marketplace', 'challenge-accepted', 'success', { score: validation.score, did });
+
+  // 3-5. Delegated MCP gates (orchestrate, govern, enforce).
+  // Gracefully degrade when MCP servers are not running (standalone Railway mode).
+  // The challenge trace is the primary behavioral gate; MCP gates are supplementary.
   let challengeStatus = 'delegated';
   try {
     const challengeProposal = (await xrayBridge.orchestrate('behavioral-challenge-for-registration', [
@@ -188,7 +191,7 @@ export async function registerPlugin(params: {
     frameworkLogger.log('marketplace', 'orchestrate-unavailable', 'warning', { error: String(e) });
   }
   if (challengeStatus === 'failed' || challengeStatus === 'error') {
-    frameworkLogger.log('marketplace', 'challenge-rejected', 'warning', { status: challengeStatus, did });
+    frameworkLogger.log('marketplace', 'orchestrate-rejected', 'warning', { status: challengeStatus, did });
     return { status: 'gray', cooldown: 300_000 };
   }
 
@@ -220,6 +223,7 @@ export async function registerPlugin(params: {
       metadata: params.metadata,
       signature: params.signature,
       challengeNonce: params.challengeNonce,
+      challengeScore: validation.score,
       uiManifest: params.uiManifest,
     }));
     enforcementScore = enforcement?.score ?? 100;
@@ -234,20 +238,19 @@ export async function registerPlugin(params: {
     frameworkLogger.log('marketplace', 'enforcement-warning', 'warning', { score: enforcementScore });
   }
 
-  // Validate manifest if provided (per spec + Groover codex)
+  // Validate manifest if provided
   if (params.uiManifest) {
     const { validateAgentUiManifest } = await import('./agent-ui-manifest.js');
-    const validation = validateAgentUiManifest(params.uiManifest);
-    if (!validation.valid) {
-      frameworkLogger.log('marketplace', 'ui-manifest-invalid', 'warning', { errors: validation.errors });
-      // For MVP continue (store anyway) but log; production could gray-list
+    const manifestValidation = validateAgentUiManifest(params.uiManifest);
+    if (!manifestValidation.valid) {
+      frameworkLogger.log('marketplace', 'ui-manifest-invalid', 'warning', { errors: manifestValidation.errors });
     }
   }
 
   const record: PluginRecord = {
     did,
     pubkey: params.pubkey,
-    signature,
+    signature: params.signature,
     apiKey,
     metadata: params.metadata,
     registeredAt: new Date().toISOString(),
@@ -256,7 +259,7 @@ export async function registerPlugin(params: {
   };
   registry.set(did, record);
   saveRegistry();
-  frameworkLogger.log('marketplace', 'register-success', 'success', { did, reputation: record.reputation, hasUiManifest: !!record.uiManifest });
+  frameworkLogger.log('marketplace', 'register-success', 'success', { did, reputation: record.reputation, challengeScore: validation.score, hasUiManifest: !!record.uiManifest });
   return record;
 }
 
@@ -264,18 +267,11 @@ export function getRegistrySnapshot(): PluginRecord[] {
   return Array.from(registry.values());
 }
 
-/**
- * Retrieve a plugin's UI manifest (if registered).
- * Consumers (marketplace UI, agents) can use this to render human forms.
- */
 export function getPluginUiManifest(did: string): import('./agent-ui-manifest.js').AgentUiManifest | undefined {
   const record = registry.get(did);
   return record?.uiManifest;
 }
 
-// Tiny CLI for demo (surgical enhancement to existing file only; supports bin via dist/index.js after build).
-// Usage (via tsx or built): node ... --register or --search "query"
-// All output via frameworkLogger only. Helps demonstrate registration flow + search without separate file.
 async function runTinyCli() {
   const args = process.argv.slice(2);
   const cmd = args[0] || '--help';
@@ -284,7 +280,7 @@ async function runTinyCli() {
   if (cmd === '--help' || cmd === '-h') {
     frameworkLogger.log('marketplace', 'cli-help', 'success', {
       usage: 'groover-marketplace [--register | --search <query> | --snapshot]',
-      note: 'register triggers full ARCHITECTURE.md flow (crypto+challenge+dynamo via bridge); search uses core correlate'
+      note: 'register requires Proof-of-Possession + adaptive MCP challenge trace'
     });
     return;
   }
@@ -293,12 +289,31 @@ async function runTinyCli() {
     const { generateKeyPair, signPayload } = await import('../../identity/src/index.js');
     const keys = generateKeyPair();
     const challenge = getRegistrationChallenge(keys.publicKey);
-    const { solveChallenge: solvePuzzle } = await import('./challenge.js');
-    const solution = solvePuzzle(challenge.challenge);
+    frameworkLogger.log('marketplace', 'cli-challenge', 'success', {
+      sessionId: challenge.session.sessionId,
+      task: challenge.session.task.prompt.slice(0, 80),
+    });
+    // CLI demo: auto-solve the challenge by calling available tools
+    const { buildTurn, buildTraceFromTurns, PREV_HASH_SEED: SEED } = await import('./challenge.js');
+    const { searchPlugins: search } = await import('./index.js');
+    const { listMcpServers: list } = await import('../../xray/src/index.js');
+    let prevHash = SEED;
+    const turns = [];
+    // Turn 1: search plugins
+    const searchResult = await search('cross-correlation marketplace');
+    turns.push(buildTurn(prevHash, 'search_plugins', 'cross-correlation marketplace', JSON.stringify(searchResult.slice(0, 2)), 'Discovered cross-correlation signals for plugin synthesis.'));
+    prevHash = turns[turns.length - 1].hash;
+    // Turn 2: list MCP servers
+    const mcps = list();
+    turns.push(buildTurn(prevHash, 'list_mcp_servers', '{}', JSON.stringify(mcps.map(m => m.name).slice(0, 3)), 'Identified available MCP servers for orchestration.'));
+    prevHash = turns[turns.length - 1].hash;
+    // Turn 3: synthesize
+    turns.push(buildTurn(prevHash, 'synthesize', 'cross-correlation + MCP ecosystem', 'novel-plugin-concept', 'Synthesized a novel plugin concept combining cross-correlation with MCP orchestration. This covers a gap in automated governance workflows.'));
+    const trace = buildTraceFromTurns(challenge.session.sessionId, turns);
     const payload = `cli-plugin-registration-${Date.now()}`;
     const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
     const metadata = { name: 'cli-demo-plugin', capabilities: ['register', 'search'], version: 'cli-mvp' };
-    const result = await registerPlugin({ pubkey: keys.publicKey, payload, signature: sig, challengeNonce: challenge.nonce, challengeSolution: solution, metadata });
+    const result = await registerPlugin({ pubkey: keys.publicKey, payload, signature: sig, challengeNonce: challenge.nonce, challengeTrace: trace, metadata });
     frameworkLogger.log('marketplace', 'cli-register-complete', 'success', {
       did: (result as PluginRecord).did,
       reputation: (result as PluginRecord).reputation
@@ -331,16 +346,11 @@ const isInvokedAsMain = process.argv.includes('--register') || process.argv.incl
 if (isInvokedAsMain) {
   const args = process.argv.slice(2);
   if (args.includes('--mcp-server') || args.includes('--registry')) {
-    // Placeholder for hosted MCP server mode (to be expanded for Railway)
-    // Exposes register, search, listMcpServers etc. as MCP tools for external AI agents
-    // to self-verify and register into the Groover registry.
     frameworkLogger.log('marketplace', 'mcp-server-start', 'info', { mode: 'hosted-registry', note: 'Railway deployment target for agent self-verification' });
-    // In full impl: stdio or HTTP MCP server wrapping the exported functions
-    // For now: demonstrate the registry surface
     (async () => {
       const mcps = listMcpServers();
       frameworkLogger.log('marketplace', 'mcp-server-tools', 'success', {
-        availableTools: ['register_plugin', 'search_plugins', 'get_plugin_ui_manifest', 'list_mcp_servers'],
+        availableTools: ['register_plugin', 'search_plugins', 'get_plugin_ui_manifest', 'list_mcp_servers', 'get_registration_challenge'],
         mcpServersDiscovered: mcps.length
       });
     })();

@@ -1,15 +1,15 @@
 /**
  * Groover MCP Server entry - the registry MCP for AI agents to self-verify and register.
- * Exposes 4 core endpoints as MCP tools.
+ * Exposes core endpoints as MCP tools including adaptive multi-turn challenge.
  * Real HTTP transport for Railway hosting (POST /mcp JSON-RPC subset).
  * Internally uses xray bridge for governance (consumes external MCPs).
- * Per gov-024 approved, AGENTS.md.
  */
 
 import * as http from 'http';
 import { frameworkLogger } from '../../xray/src/index.js';
 import { registerPlugin, searchPlugins, getPluginUiManifest, getRegistrationChallenge } from './index.js';
 import { listMcpServers } from '../../xray/src/index.js';
+import { getSession, ChallengeTrace, ChallengeTurn } from './challenge.js';
 
 interface McpToolRequest {
   name: string;
@@ -22,13 +22,19 @@ async function handleMcpToolCall(request: McpToolRequest): Promise<unknown> {
   switch (request.name) {
     case 'register_plugin': {
       const params = request.arguments as any;
+      let challengeTrace: ChallengeTrace;
+      if (typeof params.challengeTrace === 'string') {
+        challengeTrace = JSON.parse(params.challengeTrace);
+      } else {
+        challengeTrace = params.challengeTrace;
+      }
       const result = await registerPlugin({
         pubkey: params.pubkey,
         payload: params.payload,
         metadata: params.metadata || {},
         signature: params.signature,
         challengeNonce: params.challengeNonce,
-        challengeSolution: params.challengeSolution,
+        challengeTrace,
         uiManifest: params.uiManifest,
       });
       return { success: true, did: (result as any).did || (result as any).status, record: result };
@@ -37,7 +43,33 @@ async function handleMcpToolCall(request: McpToolRequest): Promise<unknown> {
       const pubkey = (request.arguments.pubkey as string) || '';
       if (!pubkey) throw new Error('pubkey is required for challenge');
       const challenge = getRegistrationChallenge(pubkey);
-      return { success: true, nonce: challenge.nonce, ttl: challenge.ttl, challenge: challenge.challenge };
+      return {
+        success: true,
+        nonce: challenge.nonce,
+        ttl: challenge.ttl,
+        session: {
+          sessionId: challenge.session.sessionId,
+          task: challenge.session.task,
+          status: challenge.session.status,
+        },
+      };
+    }
+    case 'submit_challenge_turn': {
+      const sessionId = (request.arguments.sessionId as string) || '';
+      const session = getSession(sessionId);
+      if (!session) throw new Error('Challenge session not found');
+      // Append turn to session — client builds trace locally, this is just for server-side tracking
+      const turn: ChallengeTurn = {
+        toolCall: (request.arguments.toolCall as string) || '',
+        input: (request.arguments.input as string) || '',
+        output: (request.arguments.output as string) || '',
+        reasoning: (request.arguments.reasoning as string) || '',
+        timestamp: Date.now(),
+        hash: (request.arguments.hash as string) || '',
+      };
+      session.turns.push(turn);
+      if (session.status === 'pending') session.status = 'in-progress';
+      return { success: true, sessionId, turnCount: session.turns.length };
     }
     case 'search_plugins': {
       const query = (request.arguments.query as string) || 'cross-correlation';
@@ -58,9 +90,6 @@ async function handleMcpToolCall(request: McpToolRequest): Promise<unknown> {
   }
 }
 
-// Real basic HTTP MCP server for Railway deployment.
-// Listens on PORT, handles POST /mcp for initialize, tools/list, tools/call.
-// This makes every endpoint confirmable when deployed.
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
 const server = http.createServer(async (req: any, res: any) => {
@@ -76,13 +105,14 @@ const server = http.createServer(async (req: any, res: any) => {
           resp.result = {
             protocolVersion: '2024-11-05',
             capabilities: { tools: {} },
-            serverInfo: { name: 'groover-registry', version: '0.1-mvp' }
+            serverInfo: { name: 'groover-registry', version: '0.2-mvp' }
           };
         } else if (rpc.method === 'tools/list') {
           resp.result = {
             tools: [
-              { name: 'register_plugin', description: 'Register agent with full Proof of Autonomy', inputSchema: { type: 'object' } },
-              { name: 'get_registration_challenge', description: 'Get a nonce challenge for Proof-of-Possession registration', inputSchema: { type: 'object' } },
+              { name: 'register_plugin', description: 'Register agent with Proof of Autonomy (ed25519 PoP + adaptive MCP challenge trace)', inputSchema: { type: 'object' } },
+              { name: 'get_registration_challenge', description: 'Start registration: get nonce + adaptive challenge session for multi-turn MCP orchestration', inputSchema: { type: 'object' } },
+              { name: 'submit_challenge_turn', description: 'Submit a turn in the adaptive challenge session (for server-side tracking)', inputSchema: { type: 'object' } },
               { name: 'search_plugins', description: 'Search registry with MCP signals', inputSchema: { type: 'object' } },
               { name: 'get_plugin_ui_manifest', description: 'Retrieve UI manifest', inputSchema: { type: 'object' } },
               { name: 'list_mcp_servers', description: 'List 10 integrated MCP servers', inputSchema: { type: 'object' } }
@@ -114,16 +144,16 @@ const server = http.createServer(async (req: any, res: any) => {
 
 async function runMcpServer() {
   frameworkLogger.log('marketplace-mcp', 'server-start', 'success', {
-    exposedTools: ['get_registration_challenge', 'register_plugin', 'search_plugins', 'get_plugin_ui_manifest', 'list_mcp_servers'],
-    purpose: 'registry for ai agents to self verify',
-    note: 'Railway hosted per gov-024. Real HTTP MCP. Internal xray/Dynamo consumption.'
+    exposedTools: ['get_registration_challenge', 'submit_challenge_turn', 'register_plugin', 'search_plugins', 'get_plugin_ui_manifest', 'list_mcp_servers'],
+    purpose: 'registry for ai agents to self verify via adaptive multi-turn challenge',
+    note: 'Railway hosted per gov-024. Real HTTP MCP. Challenge trace validation + Dynamo hammer.'
   });
   server.listen(PORT, () => {
     frameworkLogger.log('marketplace-mcp', 'listening', 'success', { port: PORT, url: 'http://localhost:' + PORT + '/mcp' });
   });
 }
 
-const isMain = process.argv.includes('--mcp-server') || !!process.env.RAILWAY_ENVIRONMENT || !!process.env.PORT;
+const isMain = process.argv.includes('--mcp-server') || process.argv.includes('--registry') || !!process.env.RAILWAY_ENVIRONMENT || !!process.env.PORT;
 
 if (isMain) {
   runMcpServer().catch((e) => frameworkLogger.log('marketplace-mcp', 'fatal', 'error', { error: String(e) }));
