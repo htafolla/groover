@@ -96,7 +96,7 @@ export function versionWithResonance(baseVersion: string = '0.1.0', harmonicPo: 
     resonanceFactor,
     harmonic: harmonicPo,
   };
-  frameworkLogger.log('chrono', 'version-with-resonance', 'success', res);
+  frameworkLogger.log('chrono', 'version-with-resonance', 'success', res as unknown as Record<string, unknown>);
   return res;
 }
 

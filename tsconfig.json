@@ -23,7 +23,10 @@
     "node_modules",
     "dist",
     "examples",
-    "**/*.test.ts"
+    "deploy",
+    "scripts",
+    "**/*.test.ts",
+    "**/*.tsbuildinfo"
   ],
   "references": [
     {

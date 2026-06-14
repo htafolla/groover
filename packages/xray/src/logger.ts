@@ -75,7 +75,7 @@ export async function getFrameworkLogger(cwd: string = process.cwd()) {
 
 export const frameworkLogger = {
   log(module: string, event: string, status: string, data?: Record<string, unknown>) {
-    getFrameworkLogger().then(l => l.log(module, event, status, data)).catch(() => {
+    getFrameworkLogger().then(l => l?.log(module, event, status, data)).catch(() => {
       // Last-resort fallback if frameworkLogger init fails: write to os tmpdir to avoid silent data loss
       try { fs.appendFileSync(path.join(os.tmpdir(), 'groover-log-fallback.log'), `[${status}] ${module}:${event} ${JSON.stringify(data)}\n`); } catch {}
     });

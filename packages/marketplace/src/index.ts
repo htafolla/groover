@@ -7,7 +7,7 @@
 import { frameworkLogger } from '../../xray/src/index.js';
 import { coreEngine, CorrelationResult } from '../../core/src/index.js';
 import { xrayBridge, listMcpServers } from '../../xray/src/index.js';
-import { identityEngine, generateDID, bindForRegistration, bindCrypto, verifySignature, generateApiKey, verifyWithPublic } from '../../identity/src/index.js';
+import { generateDID, bindForRegistration, generateApiKey, verifyWithPublic } from '../../identity/src/index.js';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';

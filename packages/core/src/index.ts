@@ -7,7 +7,7 @@
  * Per ARCHITECTURE.md, TECH-SPEC.md, codex terms 1-5,11.
  */
 import { frameworkLogger } from '../../xray/src/index.js';
-import { computeTemporalResonance, HARMONIC_P_O, chronoEngine } from '../../chrono/src/index.js';
+import { HARMONIC_P_O, chronoEngine } from '../../chrono/src/index.js';
 
 // Values exercised from prior MCP calls during build (Dynamo__harmonic_oscillator, triangulate_signals)
 const TRIANGULATED_CORRELATION_STRENGTH = 0.3107293730318499;
