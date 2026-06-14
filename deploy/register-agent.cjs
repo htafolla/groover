@@ -2,32 +2,25 @@
 /**
  * register-agent.cjs — Register an AI agent with the Groover marketplace.
  *
- * Uses ed25519 Proof-of-Possession: agent signs a server-issued nonce to prove
+ * Auto-generates an ed25519 keypair on first run. No manual key setup needed.
+ * Uses Proof-of-Possession: agent signs a server-issued nonce to prove
  * it controls the private key corresponding to its public key.
+ * Also solves the server's behavioral challenge puzzle (AI-ness verification).
  *
  * Usage:
- *   node deploy/register-agent.cjs \
- *     --pubkey "<pem>" --payload <str> --secret-key "<pem>" \
- *     --metadata '{"name":"my-agent"}'
- *
- * Generate a keypair:
- *   npx tsx -e "
- *     import {generateKeyPair} from './packages/identity/src/index.ts';
- *     const k = generateKeyPair();
- *     console.log(JSON.stringify(k));
- *   "
+ *   node deploy/register-agent.cjs --payload <str> [--metadata '{"name":"my-agent"}']
+ *   node deploy/register-agent.cjs --pubkey "<pem>" --secret-key "<pem>" --payload <str>
  *
  * Environment:
  *   REGISTRY_URL — MCP endpoint (default: Railway live deploy)
  *
- * Output: JSON to stdout { success, did, apiKey }
+ * Output: JSON to stdout { success, did, apiKey, pubkey }
  * Progress messages go to stderr (not application logs).
  */
 
 const https = require('https');
 const crypto = require('crypto');
 
-// CLI log helper — writes to stderr, never to stdout (stdout is JSON contract for callers)
 function log(msg) {
   process.stderr.write('[register-agent] ' + msg + '\n');
 }
@@ -63,36 +56,43 @@ function parseMcpResult(rpc) {
   } catch { return null; }
 }
 
-function loadPrivateKey(keyStr) {
-  if (keyStr.includes('PRIVATE KEY')) {
-    return crypto.createPrivateKey(keyStr);
-  }
-  const raw = Buffer.from(keyStr, 'hex');
-  if (raw.length === 32) {
-    const prefix = Buffer.from('302e020100300506032b657004220420', 'hex');
-    return crypto.createPrivateKey({ key: Buffer.concat([prefix, raw]), format: 'der', type: 'pkcs8' });
-  }
-  return crypto.createPrivateKey({ key: keyStr, format: 'der', type: 'pkcs8' });
-}
-
 async function main() {
   const args = {};
   for (let i = 2; i < process.argv.length; i += 2) {
     args[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
   }
 
-  if (!args.pubkey || !args.payload || !args['secret-key']) {
-    log('Usage: node deploy/register-agent.cjs --pubkey "<pem>" --payload <str> --secret-key "<pem>" [--metadata <json>]');
+  if (!args.payload) {
+    log('Usage: node deploy/register-agent.cjs --payload <str> [--metadata <json>]');
+    log('');
+    log('A fresh ed25519 keypair is auto-generated on each run. To reuse a keypair:');
+    log('  node deploy/register-agent.cjs --pubkey "<pem>" --secret-key "<pem>" --payload <str>');
     process.exit(1);
   }
 
   let metadata = {};
   try { metadata = args.metadata ? JSON.parse(args.metadata) : {}; } catch { metadata = { name: args.metadata }; }
 
-  // Step 1: Get challenge nonce from server
+  // Generate or use provided ed25519 keypair (PEM format required by verifyWithPublic)
+  let pubkey, secretKey;
+  if (args.pubkey && args['secret-key']) {
+    pubkey = args.pubkey;
+    secretKey = args['secret-key'];
+    log('Using provided keypair');
+  } else {
+    const kp = crypto.generateKeyPairSync('ed25519', {
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+    });
+    pubkey = kp.publicKey;
+    secretKey = kp.privateKey;
+    log('Generated fresh ed25519 keypair (PEM)');
+  }
+
+  // Step 1: Get challenge nonce + puzzle from server
   const chalRpc = await postMcp('tools/call', {
     name: 'get_registration_challenge',
-    arguments: { pubkey: args.pubkey },
+    arguments: { pubkey },
   });
   const chal = parseMcpResult(chalRpc);
   if (!chal || !chal.success) {
@@ -102,16 +102,33 @@ async function main() {
   const challengeNonce = chal.nonce;
   log('Got challenge nonce: ' + challengeNonce.slice(0, 16) + '...');
 
-  // Step 2: Sign { nonce + payload } with ed25519 private key
+  // Step 2: Solve the deterministic behavioral puzzle
+  let challengeSolution = '';
+  if (chal.challenge) {
+    const puzzle = chal.challenge;
+    log('Solving puzzle type: ' + puzzle.type);
+    if (puzzle.type === 'char-code') {
+      challengeSolution = puzzle.input.split('').map(function(c) { return c.charCodeAt(0).toString(); }).join('-');
+    } else if (puzzle.type === 'alternating-case') {
+      challengeSolution = puzzle.input.split('').map(function(c, i) {
+        return i % 2 === 0 ? c.toUpperCase() : c.toLowerCase();
+      }).join('');
+    } else if (puzzle.type === 'reverse-words') {
+      challengeSolution = puzzle.input.split(' ').reverse().join(' ');
+    }
+    log('Solved puzzle, length ' + challengeSolution.length);
+  }
+
+  // Step 3: Sign { nonce + payload } with ed25519 private key
   const msg = Buffer.from(challengeNonce + '|' + args.payload, 'utf-8');
-  const privateKey = loadPrivateKey(args['secret-key']);
-  const signature = crypto.sign(null, msg, privateKey).toString('hex');
+  const privateKeyObj = crypto.createPrivateKey(secretKey);
+  const signature = crypto.sign(null, msg, privateKeyObj).toString('hex');
   log('Generated PoP signature: ' + signature.slice(0, 16) + '...');
 
-  // Step 3: Register
+  // Step 4: Register with signature + puzzle solution
   const regRpc = await postMcp('tools/call', {
     name: 'register_plugin',
-    arguments: { pubkey: args.pubkey, payload: args.payload, metadata, signature, challengeNonce },
+    arguments: { pubkey, payload: args.payload, metadata, signature, challengeNonce, challengeSolution },
   });
   const result = parseMcpResult(regRpc);
   if (!result || !result.success) {
@@ -120,12 +137,11 @@ async function main() {
     process.exit(1);
   }
 
-  // stdout is the JSON contract — callers parse this
   process.stdout.write(JSON.stringify({
     success: true,
     did: result.did || result.record?.did,
     apiKey: result.record?.apiKey,
-    pubkey: args.pubkey,
+    pubkey: pubkey,
   }, null, 2));
 }
 

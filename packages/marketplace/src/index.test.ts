@@ -15,9 +15,10 @@ vi.mock('../../xray/src/index.js', async (importOriginal) => {
 });
 
 import { registerPlugin, searchPlugins, getRegistrySnapshot, getPluginUiManifest, getRegistrationChallenge } from './index.js';
+import { generateKeyPair, signPayload } from '../../identity/src/index.js';
+import { solveChallenge } from './challenge.js';
 import { listMcpServers, frameworkLogger } from '../../xray/src/index.js';
 import { handleMcpToolCall } from './mcp-server.js';
-import { generateKeyPair, signPayload } from '../../identity/src/index.js';
 
 const pubkey = crypto.randomBytes(32).toString('hex');
 const payload = 'test-payload-' + Date.now();
@@ -25,9 +26,16 @@ let registeredDid: string;
 
 describe('@groover/marketplace', () => {
   it('registerPlugin returns a record with DID and apiKey', async () => {
+    const keys = generateKeyPair();
+    const challenge = getRegistrationChallenge(keys.publicKey);
+    const solution = solveChallenge(challenge.challenge);
+    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
     const result = await registerPlugin({
-      pubkey,
+      pubkey: keys.publicKey,
       payload,
+      signature: sig,
+      challengeNonce: challenge.nonce,
+      challengeSolution: solution,
       metadata: { name: 'test-plugin', version: '0.1' },
       uiManifest: {
         version: '1', displayMode: 'form',
@@ -45,7 +53,9 @@ describe('@groover/marketplace', () => {
     const challenge = getRegistrationChallenge(keys.publicKey);
     expect(challenge.nonce).toBeTruthy();
     expect(challenge.ttl).toBeGreaterThan(0);
+    expect(challenge.challenge).toBeTruthy();
 
+    const solution = solveChallenge(challenge.challenge);
     const popPayload = 'pop-registration-' + Date.now();
     const sig = signPayload(keys.privateKey, challenge.nonce + '|' + popPayload);
 
@@ -54,6 +64,7 @@ describe('@groover/marketplace', () => {
       payload: popPayload,
       signature: sig,
       challengeNonce: challenge.nonce,
+      challengeSolution: solution,
       metadata: { name: 'pop-test-agent' },
     });
     expect('did' in result).toBe(true);
@@ -64,6 +75,7 @@ describe('@groover/marketplace', () => {
   it('Proof-of-Possession with wrong signature throws', async () => {
     const keys = generateKeyPair();
     const challenge = getRegistrationChallenge(keys.publicKey);
+    const solution = solveChallenge(challenge.challenge);
     const wrongSig = crypto.randomBytes(64).toString('hex');
     const popPayload = 'pop-wrong-' + Date.now();
 
@@ -72,6 +84,7 @@ describe('@groover/marketplace', () => {
       payload: popPayload,
       signature: wrongSig,
       challengeNonce: challenge.nonce,
+      challengeSolution: solution,
       metadata: { name: 'pop-wrong-agent' },
     })).rejects.toThrow('Proof-of-possession failed');
   });
@@ -79,6 +92,7 @@ describe('@groover/marketplace', () => {
   it('Proof-of-Possession with reused nonce throws', async () => {
     const keys = generateKeyPair();
     const challenge = getRegistrationChallenge(keys.publicKey);
+    const solution = solveChallenge(challenge.challenge);
     const popPayload = 'pop-reuse-' + Date.now();
     const sig = signPayload(keys.privateKey, challenge.nonce + '|' + popPayload);
 
@@ -88,6 +102,7 @@ describe('@groover/marketplace', () => {
       payload: popPayload,
       signature: sig,
       challengeNonce: challenge.nonce,
+      challengeSolution: solution,
       metadata: { name: 'pop-reuse-first' },
     });
 
@@ -97,8 +112,42 @@ describe('@groover/marketplace', () => {
       payload: popPayload + '-second',
       signature: sig,
       challengeNonce: challenge.nonce,
+      challengeSolution: solution,
       metadata: { name: 'pop-reuse-second' },
     })).rejects.toThrow('already-used challenge nonce');
+  });
+
+  it('Proof-of-Possession with wrong challenge solution returns gray', async () => {
+    const keys = generateKeyPair();
+    const challenge = getRegistrationChallenge(keys.publicKey);
+    const wrongSolution = 'wrong-answer-' + Date.now();
+    const popPayload = 'pop-wrong-sol-' + Date.now();
+    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + popPayload);
+
+    const result = await registerPlugin({
+      pubkey: keys.publicKey,
+      payload: popPayload,
+      signature: sig,
+      challengeNonce: challenge.nonce,
+      challengeSolution: wrongSolution,
+      metadata: { name: 'pop-wrong-solution' },
+    });
+    expect(result).toEqual({ status: 'gray', cooldown: 300_000 });
+  });
+
+  it('Proof-of-Possession without challengeSolution throws', async () => {
+    const keys = generateKeyPair();
+    const challenge = getRegistrationChallenge(keys.publicKey);
+    const popPayload = 'pop-no-sol-' + Date.now();
+    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + popPayload);
+
+    await expect(registerPlugin({
+      pubkey: keys.publicKey,
+      payload: popPayload,
+      signature: sig,
+      challengeNonce: challenge.nonce,
+      metadata: { name: 'pop-no-solution' },
+    })).rejects.toThrow('challengeSolution is required');
   });
 
   it('getRegistrySnapshot returns non-empty after registration', () => {
@@ -125,12 +174,31 @@ describe('@groover/marketplace', () => {
 
 describe('MCP handler (local)', () => {
   it('handleMcpToolCall register_plugin succeeds', async () => {
-    const k = crypto.randomBytes(32).toString('hex');
+    const keys = generateKeyPair();
+    const chalResp = await handleMcpToolCall({
+      name: 'get_registration_challenge',
+      arguments: { pubkey: keys.publicKey },
+    });
+    const chal = chalResp as any;
+    const solution = solveChallenge(chal.challenge);
+    const sig = signPayload(keys.privateKey, chal.nonce + '|' + 'mcp-test-' + Date.now());
     const res = await handleMcpToolCall({
       name: 'register_plugin',
-      arguments: { pubkey: k, payload: 'mcp-test-' + Date.now(), metadata: { name: 'mcp-test-agent' } },
+      arguments: { pubkey: keys.publicKey, payload: 'mcp-test-' + Date.now(), metadata: { name: 'mcp-test-agent' }, signature: sig, challengeNonce: chal.nonce, challengeSolution: solution },
     });
     expect((res as any).success).toBe(true);
+  });
+
+  it('handleMcpToolCall get_registration_challenge returns challenge', async () => {
+    const keys = generateKeyPair();
+    const res = await handleMcpToolCall({
+      name: 'get_registration_challenge',
+      arguments: { pubkey: keys.publicKey },
+    });
+    expect((res as any).success).toBe(true);
+    expect((res as any).nonce).toBeTruthy();
+    expect((res as any).challenge).toBeTruthy();
+    expect((res as any).challenge.type).toMatch(/^(char-code|alternating-case|reverse-words)$/);
   });
 
   it('handleMcpToolCall search_plugins returns results', async () => {

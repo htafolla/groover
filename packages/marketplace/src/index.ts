@@ -7,7 +7,8 @@
 import { frameworkLogger } from '../../xray/src/index.js';
 import { coreEngine, CorrelationResult } from '../../core/src/index.js';
 import { xrayBridge, listMcpServers } from '../../xray/src/index.js';
-import { generateDID, bindForRegistration, generateApiKey, verifyWithPublic } from '../../identity/src/index.js';
+import { generateDID, generateApiKey, verifyWithPublic } from '../../identity/src/index.js';
+import { generateChallenge, verifyChallenge, Challenge } from './challenge.js';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -60,8 +61,8 @@ function saveRegistry(): void {
 const registry = loadRegistry();
 
 // Challenge nonce store for Proof-of-Possession registration flow.
-// Map<nonce, { pubkey: string, createdAt: number, used: boolean }>
-const challengeNonces = new Map<string, { pubkey: string; createdAt: number; used: boolean }>();
+// Map<nonce, { pubkey: string, createdAt: number, used: boolean, challenge: Challenge }>
+const challengeNonces = new Map<string, { pubkey: string; createdAt: number; used: boolean; challenge: Challenge }>();
 
 const CHALLENGE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const NONCE_SWEEP_MS = 60 * 1000; // sweep expired entries every 60s
@@ -89,18 +90,20 @@ setInterval(() => {
  * Issue a challenge nonce for Proof-of-Possession registration.
  * Agent must sign this nonce + payload with their ed25519 private key
  * and include the signature in registerPlugin().
+ * Also includes a deterministic behavioral puzzle the agent must solve.
  */
-export function getRegistrationChallenge(pubkey: string): { nonce: string; ttl: number } {
+export function getRegistrationChallenge(pubkey: string): { nonce: string; ttl: number; challenge: Challenge } {
   const last = challengeCooldowns.get(pubkey);
   const elapsed = last ? Date.now() - last : Infinity;
   if (elapsed < CHALLENGE_COOLDOWN_MS) {
     throw new Error(`Rate limited. Wait ${Math.ceil((CHALLENGE_COOLDOWN_MS - elapsed) / 1000)}s before requesting another challenge.`);
   }
   const nonce = crypto.randomBytes(32).toString('hex');
-  challengeNonces.set(nonce, { pubkey, createdAt: Date.now(), used: false });
+  const challenge = generateChallenge();
+  challengeNonces.set(nonce, { pubkey, createdAt: Date.now(), used: false, challenge });
   challengeCooldowns.set(pubkey, Date.now());
-  frameworkLogger.log('marketplace', 'challenge-issued', 'success', { pubkeyPrefix: pubkey.slice(0, 16), ttl: CHALLENGE_TTL_MS });
-  return { nonce, ttl: CHALLENGE_TTL_MS };
+  frameworkLogger.log('marketplace', 'challenge-issued', 'success', { pubkeyPrefix: pubkey.slice(0, 16), ttl: CHALLENGE_TTL_MS, challengeType: challenge.type });
+  return { nonce, ttl: CHALLENGE_TTL_MS, challenge };
 }
 
 export async function searchPlugins(query: string): Promise<CorrelationResult[]> {
@@ -132,97 +135,103 @@ export async function registerPlugin(params: {
   payload: string;
   metadata: Record<string, unknown>;
   // Proof-of-Possession: agent signs challengeNonce + payload with their ed25519 private key.
-  // When signature + challengeNonce are provided, the server verifies the agent controls the private key.
-  signature?: string;
-  challengeNonce?: string;
+  signature: string;
+  challengeNonce: string;
+  // Behavioral puzzle solution: agent must solve the challenge returned by getRegistrationChallenge.
+  challengeSolution: string;
   // Optional declarative UI manifest per AgentUIManifest spec.
-  // Enables beautiful human forms instead of raw LLM schemas.
   uiManifest?: import('./agent-ui-manifest.js').AgentUiManifest;
 }): Promise<PluginRecord | { status: 'gray'; cooldown: number }> {
-  frameworkLogger.log('marketplace', 'register-start', 'info', { pop: !!(params.signature && params.challengeNonce) });
+  frameworkLogger.log('marketplace', 'register-start', 'info', { pubkeyPrefix: params.pubkey.slice(0, 16) });
 
-  // PoP flow: verify the agent controls the private key by checking their signature over the challenge nonce.
-  // Falls back to HMAC binding if no signature/challengeNonce provided.
-  let did: string;
-  let signature: string;
-  let apiKey: string;
-
-  if (params.signature && params.challengeNonce) {
-    // Proof-of-Possession path
-    const stored = challengeNonces.get(params.challengeNonce);
-    if (!stored || stored.used) {
-      throw new Error('Invalid or already-used challenge nonce');
-    }
-    if (Date.now() - stored.createdAt > CHALLENGE_TTL_MS) {
-      throw new Error('Challenge nonce expired');
-    }
-    const verified = verifyWithPublic(params.pubkey, params.challengeNonce + '|' + params.payload, params.signature);
-    if (!verified) {
-      throw new Error('Proof-of-possession failed: signature does not match pubkey');
-    }
-    stored.used = true;
-    did = generateDID(params.pubkey);
-    apiKey = generateApiKey(did);
-    signature = params.signature;
-    frameworkLogger.log('marketplace', 'pop-verified', 'success', { did });
-  } else {
-    // Legacy HMAC binding path (backward compat) — DEPRECATED
-    frameworkLogger.log('marketplace', 'hmac-fallback', 'warning', { pubkeyPrefix: params.pubkey.slice(0, 16), message: 'HMAC registration is deprecated. Use Proof-of-Possession with ed25519.' });
-    const binding = bindForRegistration(params.pubkey, params.payload, params.metadata || {});
-    did = binding.did;
-    signature = binding.signature;
-    apiKey = binding.apiKey ?? '';
+  // Proof-of-Possession flow: verify nonce, challenge solution, and ed25519 signature
+  const stored = challengeNonces.get(params.challengeNonce);
+  if (!stored || stored.used) {
+    throw new Error('Invalid or already-used challenge nonce');
   }
+  if (Date.now() - stored.createdAt > CHALLENGE_TTL_MS) {
+    throw new Error('Challenge nonce expired');
+  }
+  // Verify behavioral puzzle solution (local, deterministic, no MCP dependency)
+  if (typeof params.challengeSolution !== 'string' || !params.challengeSolution) {
+    throw new Error('challengeSolution is required for registration');
+  }
+  if (!verifyChallenge(stored.challenge, params.challengeSolution)) {
+    frameworkLogger.log('marketplace', 'challenge-solution-rejected', 'warning', {
+      pubkeyPrefix: params.pubkey.slice(0, 16),
+      challengeType: stored.challenge.type,
+    });
+    return { status: 'gray', cooldown: 300_000 };
+  }
+  frameworkLogger.log('marketplace', 'challenge-solution-accepted', 'success', { challengeType: stored.challenge.type });
+  const verified = verifyWithPublic(params.pubkey, params.challengeNonce + '|' + params.payload, params.signature);
+  if (!verified) {
+    throw new Error('Proof-of-possession failed: signature does not match pubkey');
+  }
+  stored.used = true;
+  const did = generateDID(params.pubkey);
+  const apiKey = generateApiKey(did);
+  const { signature } = params;
+  frameworkLogger.log('marketplace', 'pop-verified', 'success', { did });
 
-  // 2. Dynamic behavioral challenge (delegated to xray-orchestrator MCP in real runtime)
-  const challengeProposal = (await xrayBridge.orchestrate('behavioral-challenge-for-registration', [
-    { id: 'challenge-1', description: 'Verify tool orchestration capability', type: 'behavioral' },
-    { id: 'challenge-2', description: 'Confirm governance resonance', type: 'governance' },
-  ])) as { status?: string };
-
-  // 3. Dynamo signal + hammer (via bridge which exercises the MCPs we govern with)
-  const gov = (await xrayBridge.govern({
-    id: `reg-${Date.now()}`,
-    title: 'Plugin registration request',
-    description: JSON.stringify(params.metadata),
-    type: 'automate',
-    confidence: 0.9,
-    evidence: ['crypto-bound', 'challenge-passed', params.uiManifest ? 'ui-manifest-provided' : 'no-ui-manifest', 'mcp-discovery-integrated'],
-    submitter: 'Grok (xAI Grok 4.3, lead dev AI for Groover MVP per AGENTS.md and user guidance)',
-  })) as { decision?: string };
-
-  frameworkLogger.log('marketplace', 'dynamo-hammer-delegated', 'success', { gov, challenge: challengeProposal, hasUiManifest: !!params.uiManifest });
-
-  // Gate on behavioral challenge result
-  const challengeStatus = challengeProposal?.status || 'delegated';
+  // 2-4. Delegated MCP gates (orchestrate, govern, enforce).
+  // These are supplementary — they gracefully degrade when MCP servers are not running
+  // (standalone Railway mode). The local challenge puzzle is the primary behavioral gate.
+  let challengeStatus = 'delegated';
+  try {
+    const challengeProposal = (await xrayBridge.orchestrate('behavioral-challenge-for-registration', [
+      { id: 'challenge-1', description: 'Verify tool orchestration capability', type: 'behavioral' },
+      { id: 'challenge-2', description: 'Confirm governance resonance', type: 'governance' },
+    ])) as { status?: string };
+    challengeStatus = challengeProposal?.status || 'delegated';
+  } catch (e) {
+    frameworkLogger.log('marketplace', 'orchestrate-unavailable', 'warning', { error: String(e) });
+  }
   if (challengeStatus === 'failed' || challengeStatus === 'error') {
     frameworkLogger.log('marketplace', 'challenge-rejected', 'warning', { status: challengeStatus, did });
     return { status: 'gray', cooldown: 300_000 };
   }
 
-  // Gate on governance decision
-  const govDecision = gov?.decision || 'delegated-to-mcp';
+  let govDecision = 'delegated-to-mcp';
+  try {
+    const gov = (await xrayBridge.govern({
+      id: `reg-${Date.now()}`,
+      title: 'Plugin registration request',
+      description: JSON.stringify(params.metadata),
+      type: 'automate',
+      confidence: 0.9,
+      evidence: ['crypto-bound', 'challenge-passed', params.uiManifest ? 'ui-manifest-provided' : 'no-ui-manifest', 'mcp-discovery-integrated'],
+      submitter: 'Grok (xAI Grok 4.3, lead dev AI for Groover MVP per AGENTS.md and user guidance)',
+    })) as { decision?: string };
+    govDecision = gov?.decision || 'delegated-to-mcp';
+  } catch (e) {
+    frameworkLogger.log('marketplace', 'govern-unavailable', 'warning', { error: String(e) });
+  }
   if (govDecision !== 'delegated-to-mcp' && govDecision !== 'approved') {
     frameworkLogger.log('marketplace', 'governance-rejected', 'warning', { decision: govDecision, did });
     return { status: 'gray', cooldown: 300_000 };
   }
 
-  // 4. Codex enforcement (third subsystem per AGENTS.md: Governance precedes action)
-  // Pass serialized params as newCode so enforcer can validate payload, metadata, pubkey format
-  const enforcement = await xrayBridge.enforce('register-plugin', [`did:${did}`], JSON.stringify({
-    pubkey: params.pubkey,
-    payload: params.payload,
-    metadata: params.metadata,
-    signature: params.signature,
-    challengeNonce: params.challengeNonce,
-    uiManifest: params.uiManifest,
-  }));
-  if (enforcement.score < 75) {
-    frameworkLogger.log('marketplace', 'enforcement-rejected', 'warning', { score: enforcement.score, violations: enforcement.violations });
+  let enforcementScore = 100;
+  try {
+    const enforcement = await xrayBridge.enforce('register-plugin', [`did:${did}`], JSON.stringify({
+      pubkey: params.pubkey,
+      payload: params.payload,
+      metadata: params.metadata,
+      signature: params.signature,
+      challengeNonce: params.challengeNonce,
+      uiManifest: params.uiManifest,
+    }));
+    enforcementScore = enforcement?.score ?? 100;
+  } catch (e) {
+    frameworkLogger.log('marketplace', 'enforce-unavailable', 'warning', { error: String(e) });
+  }
+  if (enforcementScore < 75) {
+    frameworkLogger.log('marketplace', 'enforcement-rejected', 'warning', { score: enforcementScore });
     return { status: 'gray', cooldown: 300_000 };
   }
-  if (enforcement.score < 100) {
-    frameworkLogger.log('marketplace', 'enforcement-warning', 'warning', { score: enforcement.score, violations: enforcement.violations });
+  if (enforcementScore < 100) {
+    frameworkLogger.log('marketplace', 'enforcement-warning', 'warning', { score: enforcementScore });
   }
 
   // Validate manifest if provided (per spec + Groover codex)
@@ -281,10 +290,15 @@ async function runTinyCli() {
   }
 
   if (cmd === '--register') {
-    const pubkey = crypto.randomBytes(32).toString('hex');
+    const { generateKeyPair, signPayload } = await import('../../identity/src/index.js');
+    const keys = generateKeyPair();
+    const challenge = getRegistrationChallenge(keys.publicKey);
+    const { solveChallenge: solvePuzzle } = await import('./challenge.js');
+    const solution = solvePuzzle(challenge.challenge);
     const payload = `cli-plugin-registration-${Date.now()}`;
+    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
     const metadata = { name: 'cli-demo-plugin', capabilities: ['register', 'search'], version: 'cli-mvp' };
-    const result = await registerPlugin({ pubkey, payload, metadata });
+    const result = await registerPlugin({ pubkey: keys.publicKey, payload, signature: sig, challengeNonce: challenge.nonce, challengeSolution: solution, metadata });
     frameworkLogger.log('marketplace', 'cli-register-complete', 'success', {
       did: (result as PluginRecord).did,
       reputation: (result as PluginRecord).reputation

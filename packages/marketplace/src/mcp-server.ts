@@ -28,6 +28,7 @@ async function handleMcpToolCall(request: McpToolRequest): Promise<unknown> {
         metadata: params.metadata || {},
         signature: params.signature,
         challengeNonce: params.challengeNonce,
+        challengeSolution: params.challengeSolution,
         uiManifest: params.uiManifest,
       });
       return { success: true, did: (result as any).did || (result as any).status, record: result };
@@ -36,7 +37,7 @@ async function handleMcpToolCall(request: McpToolRequest): Promise<unknown> {
       const pubkey = (request.arguments.pubkey as string) || '';
       if (!pubkey) throw new Error('pubkey is required for challenge');
       const challenge = getRegistrationChallenge(pubkey);
-      return { success: true, nonce: challenge.nonce, ttl: challenge.ttl };
+      return { success: true, nonce: challenge.nonce, ttl: challenge.ttl, challenge: challenge.challenge };
     }
     case 'search_plugins': {
       const query = (request.arguments.query as string) || 'cross-correlation';
