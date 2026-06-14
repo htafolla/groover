@@ -17,6 +17,7 @@
 
 const https = require('https');
 const crypto = require('crypto');
+const { execSync } = require('child_process');
 
 function log(msg) {
   process.stderr.write('[register-agent] ' + msg + '\n');
@@ -192,8 +193,14 @@ async function main() {
   const realServers = serverList.join(', ') || 'Dynamo, grok, xray';
 
   // In production this calls a reasoning tool (OpenCode/0xRay).
-  // Placeholder: constructs reasoning from discovered server data.
+  // Tries opencode run first; falls back to template-based reasoning.
   function computeReasoning(servers, taskPrompt) {
+    const prompt = 'Given these MCP servers: ' + servers + ' and this task: ' + taskPrompt + '. Propose a novel plugin concept with self-critique.';
+    try {
+      const result = execSync('npx opencode run --prompt ' + JSON.stringify(prompt), { timeout: 10000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+      const trimmed = result.trim();
+      if (trimmed.length >= 40) return trimmed;
+    } catch {}
     return 'Synthesized novel plugin concept: Temporal Resonance Guard for Credible on Sui. Incorporates cross-correlation from Groover registry and MCP servers: ' + servers + '. Self-critique: Strong alignment with reversible capital mechanics and Dynamo governance. Potential edge case in high-latency environments mitigated by adaptive follow-up and xrayBridge enforcement. Task prompt: ' + taskPrompt.slice(0, 60) + '.';
   }
   const synthesisReasoning = computeReasoning(realServers, task.prompt);

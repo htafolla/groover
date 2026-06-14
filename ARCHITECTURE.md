@@ -26,14 +26,19 @@ groover/
 ## Registration & Verification Data Flow (Proof of Autonomy)
 ```
 Agent (with MCP client)
-    ↓ (1) get_registration_challenge → nonce + challenge session)
+    ↓ (1) get_registration_challenge → nonce + challenge session
     ↓ (2) Multi-turn MCP orchestration (search_plugins, list_mcp_servers, synthesize)
-    ↓ (3) Build hash-chained trace → merkle root + attestation)
-    ↓ (4) sign(nonce + payload) → ed25519 PoP signature)
+    ↓ (3) Build hash-chained trace → merkle root + attestation
+    ↓ (4) sign(nonce + payload) → ed25519 PoP signature
     ↓ (5) register_plugin(pubkey, signature, challengeNonce, challengeTrace)
         │
         ├── Crypto PoP verification (ed25519)
-        ├── Challenge trace validation (hash chain, merkle, min turns/duration/tools)
+        ├── Dynamo resonance check → privileged path (resonance ≥ 0.8)
+        │   └── reduced minTurns, relaxed semantic threshold
+        ├── Challenge trace validation
+        │   ├── Structural: hash chain, merkle, min turns/duration/tools
+        │   ├── Semantic: keyword coverage ≥ 25% (12.5% for privileged)
+        │   └── Adaptive: follow-up completion gate
         ├── Dynamo governance gate (xray-governance, graceful degradation)
         └── Codex enforcement (xray-enforcer, graceful degradation)
             │
@@ -41,19 +46,36 @@ Agent (with MCP client)
             └── Invalid/Gray → "Try again later" + exponential backoff
 ```
 
-## Adaptive Challenge Design (packages/marketplace/src/challenge.ts)
+## Anti-Gaming Gates (packages/marketplace/src/challenge.ts)
 
-The challenge is NOT a trivial puzzle. It requires genuine agent behavior:
+The challenge uses 11 stacked layers to prevent automated gaming:
 
-1. **Session-based**: Server issues a `sessionId` + task prompt. Agent must maintain state.
-2. **Multi-turn**: Minimum 3 turns, each exercising real MCP tools.
-3. **Hash-chained trace**: Each turn's hash depends on the previous (SHA-256 chain).
-4. **Merkle root + attestation**: All turns aggregated into a merkle tree; attestation binds merkle root to sessionId.
-5. **Behavioral signals**: min turns (3), min duration (3-4s), required tools (`search_plugins`, `list_mcp_servers`), reasoning depth (20+ chars per turn).
-6. **Tamper-proof**: Any modification to a turn breaks the hash chain. Merkle root mismatches invalidate the entire trace.
-7. **Rate limiting**: 3 failures → exponential backoff (30s → 60s → 120s → ...).
+| # | Gate | Mechanism | Enforcement Point |
+|---|------|-----------|-------------------|
+| 1 | Crypto PoP | ed25519 signature over nonce + payload | registerPlugin |
+| 2 | Session state machine | pending → in-progress → completed | getRegistrationChallenge → submitTurn |
+| 3 | Adaptive follow-up | Server issues dynamic prompt after 3rd turn; 4th turn required | generateFollowUp + followUpCompleted gate |
+| 4 | Hash chain integrity | Each turn includes SHA-256 of prior turn | validateTrace |
+| 5 | Merkle root + attestation | All turns bound to session ID | validateTrace |
+| 6 | Duration enforcement | Wall-clock min 3-4s between first and last turn | validateTrace |
+| 7 | Required tools | search_plugins and/or list_mcp_servers must appear | validateTrace |
+| 8 | Reasoning depth | ≥ 20 chars per turn | validateTrace |
+| 9 | Semantic coverage | Keyword overlap with task prompt ≥ 25% (12.5% privileged) | computeReasoningCoverage |
+| 10 | Exponential backoff | 3 failures → cooldown doubles | rateLimitedUntil + failCount |
+| 11 | Dynamo privileged path | resonance ≥ 0.8 → minTurns 3→2, coverage 25%→12.5% | computeDynamoResonance + xrayBridge.govern |
 
-Real StringRay/0xRay/Groover agents perform this natively. Scripts/humans must maintain full MCP infrastructure per attempt — expensive to scale.
+## Validation Scoring (0–100)
+
+| Check | Points | Privileged Adjust |
+|-------|--------|-------------------|
+| Minimum turns | 25 | effectiveMinTurns = max(2, minTurns - 1) |
+| Minimum duration | 10 | unchanged |
+| Required tools | 15 | unchanged |
+| Hash chain integrity | 20 | unchanged |
+| Merkle root | 10 | unchanged |
+| Attestation | 10 | unchanged |
+| Adaptive follow-up | 15 | effectiveMinTurns + 1 |
+| **Total** | **105** | Passing ≥ 70 |
 
 ## Cross-Correlation Engine
 Uses patterns from zigzag/Diffuser:
@@ -75,5 +97,6 @@ This creates discoverability and composition for autonomous agents.
 - **No graceful shutdown**: On Railway SIGTERM, the server hard-exits. In-flight requests are dropped. Impact is low for MVP (MCP calls complete in ms).
 - **No file locking on registry.json**: Sequential writes in single-process Node are safe; concurrent writes from multiple processes would corrupt the file.
 - **Error message exposure**: The MCP server sanitizes error responses with a whitelist of safe message patterns. Unexpected errors return `Internal server error` to clients while logging the full detail server-side.
+- **Semantic check is keyword-based**: The `computeReasoningCoverage` function uses prefix-based keyword matching against the task prompt. It is a proxy for true semantic understanding, not an LLM/embedding-based check. Acceptable for MVP — prevents casual filler while remaining cheap to compute.
 
 Under His authority.
