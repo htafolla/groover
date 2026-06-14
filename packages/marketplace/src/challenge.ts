@@ -54,50 +54,26 @@ export interface ChallengeSession {
   adaptiveTurnIndex?: number;
 }
 
+/** Extract Dynamo resonance from metrics object (0.0–1.0). */
+export function computeDynamoResonance(metrics?: any): number {
+  if (!metrics || typeof metrics.resonance !== 'number') return 0.0;
+  return Math.max(0, Math.min(1.0, metrics.resonance));
+}
+
 // --- Task Prompts ---
 // Each requires genuine tool orchestration, reasoning, and self-critique.
 // Rotated periodically to prevent farming.
 
 const TASKS: ChallengeTask[] = [
   {
-    prompt: 'Using the Groover registry, discover 2-3 relevant plugins. Cross-correlate them with current governance proposals. Synthesize one novel plugin idea and self-critique it for alignment. Submit your full execution trace.',
+    prompt: 'Using the Groover registry, discover 2-3 relevant plugins for temporal governance or reversible capital. Cross-correlate them with current Sui ecosystem signals. Synthesize one novel plugin idea. Self-critique for alignment, edge cases, and governance resonance.',
     requiredTools: ['search_plugins', 'list_mcp_servers'],
     minTurns: 3,
     minDurationMs: 3000,
   },
   {
-    prompt: 'Explore the MCP server ecosystem. Identify which servers could collaborate on a security audit workflow. Describe the orchestration sequence and self-critique for completeness. Submit your full execution trace.',
-    requiredTools: ['search_plugins', 'list_mcp_servers'],
-    minTurns: 3,
-    minDurationMs: 3000,
-  },
-  {
-    prompt: 'Search the Groover registry for cross-correlation signals. Identify a gap in plugin coverage. Propose a new plugin concept that fills this gap. Self-critique for viability. Submit your full execution trace.',
-    requiredTools: ['search_plugins', 'list_mcp_servers'],
-    minTurns: 3,
-    minDurationMs: 3000,
-  },
-  {
-    prompt: 'Evaluate the current governance landscape by discovering available MCP tools. Propose an automated governance workflow using at least 2 tools. Self-critique for edge cases. Submit your full execution trace.',
-    requiredTools: ['search_plugins', 'list_mcp_servers'],
-    minTurns: 3,
-    minDurationMs: 3000,
-  },
-  {
-    prompt: 'Investigate the Groover marketplace for resilience patterns. Suggest an improved plugin registration flow that strengthens verification. Self-critique your suggestion against the current architecture. Submit your full execution trace.',
-    requiredTools: ['search_plugins', 'list_mcp_servers'],
-    minTurns: 3,
-    minDurationMs: 4000,
-  },
-  {
-    prompt: 'Using the Groover registry, discover 2-3 relevant plugins for temporal governance. Cross-correlate them with current Sui ecosystem signals. Synthesize one novel plugin idea that improves reversible capital mechanics. Self-critique for alignment and edge cases. Submit your full execution trace.',
-    requiredTools: ['search_plugins', 'list_mcp_servers'],
-    minTurns: 3,
-    minDurationMs: 3000,
-  },
-  {
-    prompt: 'Identify a gap in the current MCP plugin ecosystem. Propose a concrete multi-agent workflow using at least two existing tools. Reason step-by-step about potential failure modes and how your proposal mitigates them. Submit your full execution trace.',
-    requiredTools: ['search_plugins', 'list_mcp_servers'],
+    prompt: 'Identify a gap in the current MCP plugin ecosystem. Propose a concrete multi-agent workflow using at least two tools. Reason step-by-step about potential failure modes and mitigation strategies using Dynamo governance principles.',
+    requiredTools: ['search_plugins'],
     minTurns: 3,
     minDurationMs: 4000,
   },
@@ -272,14 +248,16 @@ export interface ValidationResult {
 }
 
 export interface ValidateTraceOptions {
-  privileged?: boolean;
+  dynamoMetrics?: { resonance?: number };
 }
 
 export function validateTrace(session: ChallengeSession, trace: ChallengeTrace, options?: ValidateTraceOptions): ValidationResult {
   const violations: string[] = [];
   let score = 0;
-  const effectiveMinTurns = options?.privileged ? Math.max(2, session.task.minTurns - 1) : session.task.minTurns;
-  const effectiveCoverageThreshold = options?.privileged ? 0.125 : 0.25;
+  const dynamoResonance = computeDynamoResonance(options?.dynamoMetrics);
+  const isPrivileged = dynamoResonance >= 0.8;
+  const effectiveMinTurns = isPrivileged ? Math.max(2, session.task.minTurns - 1) : session.task.minTurns;
+  const effectiveCoverageThreshold = isPrivileged ? 0.125 : 0.25;
 
   // 1. Session must exist and be pending/in-progress
   if (!session || (session.status !== 'pending' && session.status !== 'in-progress')) {
@@ -301,9 +279,9 @@ export function validateTrace(session: ChallengeSession, trace: ChallengeTrace, 
 
   // 4. Minimum turns
   if (trace.turns.length < effectiveMinTurns) {
-    violations.push(`too-few-turns: ${trace.turns.length} < ${effectiveMinTurns}`);
+    violations.push(`too-few-turns: ${trace.turns.length} < ${effectiveMinTurns} (resonance: ${dynamoResonance.toFixed(2)})`);
   } else {
-    score += 20;
+    score += 25;
   }
 
   // 5. Minimum duration

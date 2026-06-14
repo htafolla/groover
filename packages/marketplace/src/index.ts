@@ -157,7 +157,7 @@ export async function registerPlugin(params: {
   frameworkLogger.log('marketplace', 'pop-verified', 'success', { did });
 
   // 1b. Check Dynamo resonance for privileged path (before challenge validation)
-  let privileged = false;
+  let dynamoMetrics: { resonance?: number } | undefined;
   try {
     const resonanceCheck = await xrayBridge.govern({
       id: `resonance-${Date.now()}`,
@@ -168,9 +168,14 @@ export async function registerPlugin(params: {
       evidence: ['prior-governance-interactions', 'resonance-check'],
       submitter: 'groover-marketplace',
     }) as { decision?: string; resonance?: number };
-    privileged = resonanceCheck?.decision === 'approved' || (resonanceCheck?.resonance ?? 0) >= 0.8;
-    if (privileged) {
-      frameworkLogger.log('marketplace', 'privileged-path', 'info', { did });
+    if (resonanceCheck && resonanceCheck.resonance !== undefined) {
+      dynamoMetrics = { resonance: resonanceCheck.resonance };
+    }
+    if (resonanceCheck) {
+      frameworkLogger.log('marketplace', 'resonance-check', 'info', { did, resonance: resonanceCheck?.resonance ?? 0, decision: resonanceCheck?.decision ?? 'unknown' });
+    }
+    if ((resonanceCheck?.decision === 'approved' || (resonanceCheck?.resonance ?? 0) >= 0.8)) {
+      frameworkLogger.log('marketplace', 'privileged-path', 'info', { did, resonance: resonanceCheck?.resonance ?? 0 });
     }
   } catch {
     // Graceful degradation — no privileged path when MCP unavailable
@@ -187,7 +192,7 @@ export async function registerPlugin(params: {
     return { status: 'gray', cooldown: 300_000 };
   }
   const validateOptions: ValidateTraceOptions = {};
-  if (privileged) validateOptions.privileged = true;
+  if (dynamoMetrics) validateOptions.dynamoMetrics = dynamoMetrics;
   const validation = validateTrace(session, params.challengeTrace, validateOptions);
   frameworkLogger.log('marketplace', 'challenge-validation', 'info', {
     valid: validation.valid,
