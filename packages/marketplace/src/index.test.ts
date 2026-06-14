@@ -29,7 +29,7 @@ function buildValidTrace(sessionId: string) {
   turns.push({ ...buildTurn(prevHash, 'list_mcp_servers', '{}', '["Dynamo","xray-enforcer","xray-governance"]', 'Identified available MCP servers for orchestration workflow.'), timestamp: baseTime + 1500 });
   turns[1].hash = computeTurnHash(prevHash, turns[1]);
   prevHash = turns[1].hash;
-  turns.push({ ...buildTurn(prevHash, 'synthesize', 'correlation + MCP ecosystem', 'novel-plugin-concept', 'Synthesized a novel plugin concept combining cross-correlation with MCP orchestration. This improves automated governance resilience.'), timestamp: baseTime + 3500 });
+  turns.push({ ...buildTurn(prevHash, 'synthesize', 'correlation + MCP ecosystem', 'novel-plugin-concept', 'Synthesized a novel plugin concept combining cross-correlation with MCP orchestration. This improves automated governance resilience.'), timestamp: baseTime + 4500 });
   turns[2].hash = computeTurnHash(prevHash, turns[2]);
   return buildTraceFromTurns(sessionId, turns);
 }
