@@ -86,7 +86,9 @@ const SESSION_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_FAIL_COUNT = 3;
 const BASE_BACKOFF_MS = 30 * 1000; // 30 sec base backoff
 
-// Periodic TTL sweep
+// Periodic TTL sweep — anti-gaming gate: expired sessions fail validation, force re-challenge.
+// Silently expires stale sessions in the background. No fwLogger import to keep this module
+// standalone (usable server-side without xray dependency). Nonce sweeps in index.ts log counts.
 setInterval(() => {
   const now = Date.now();
   let swept = 0;
@@ -98,7 +100,7 @@ setInterval(() => {
     }
   }
   if (swept > 0) {
-    // silent — no frameworkLogger import here to keep challenge module standalone
+    // silent by design — fwLogger not imported here to preserve standalone status
   }
 }, 60 * 1000).unref();
 

@@ -78,27 +78,35 @@ async function main(): Promise<boolean> {
   console.log('✓ Challenge issued, sessionId:', sessionId.slice(0, 16) + '...');
 
   // --- Step 4: Build and submit 4-turn adaptive challenge ---
-  const { buildTurn, buildTraceFromTurns, PREV_HASH_SEED } = await import('../packages/marketplace/src/challenge.js');
+  const { buildTurn, buildTraceFromTurns, PREV_HASH_SEED, computeTurnHash } = await import('../packages/marketplace/src/challenge.js');
   let prevHash = PREV_HASH_SEED;
   const turns = [];
+  // Use explicit timestamps with spacing to satisfy minDurationMs gate
+  const baseTime = Date.now() - 6000;
 
   // Turn 1: search_plugins
-  const t1 = buildTurn(prevHash, 'search_plugins', 'deploy-verification cross-correlation', 'signal-results', 'Searching registry for cross-correlation signals relevant to deploy verification.');
-  await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, ...t1 } });
+  const t1raw = buildTurn(prevHash, 'search_plugins', 'deploy-verification cross-correlation', 'signal-results', 'Searching registry for cross-correlation signals relevant to deploy verification.');
+  const t1 = { ...t1raw, timestamp: baseTime };
+  t1.hash = computeTurnHash(prevHash, t1);
+  await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t1.toolCall, input: t1.input, output: t1.output, reasoning: t1.reasoning, hash: t1.hash } });
   turns.push(t1);
   prevHash = t1.hash;
   console.log('✓ Turn 1: search_plugins submitted');
 
   // Turn 2: list_mcp_servers
-  const t2 = buildTurn(prevHash, 'list_mcp_servers', '{}', 'server-list', 'Listing available MCP servers to understand orchestration capabilities for verification workflow.');
-  await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, ...t2 } });
+  const t2raw = buildTurn(prevHash, 'list_mcp_servers', '{}', 'server-list', 'Listing available MCP servers to understand orchestration capabilities for verification workflow.');
+  const t2 = { ...t2raw, timestamp: baseTime + 1500 };
+  t2.hash = computeTurnHash(prevHash, t2);
+  await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t2.toolCall, input: t2.input, output: t2.output, reasoning: t2.reasoning, hash: t2.hash } });
   turns.push(t2);
   prevHash = t2.hash;
   console.log('✓ Turn 2: list_mcp_servers submitted');
 
   // Turn 3: search_plugins — triggers adaptive follow-up
-  const t3 = buildTurn(prevHash, 'search_plugins', 'MCP orchestration gaps deploy verification', 'gap-analysis', 'Cross-referencing registry results with MCP ecosystem to identify verification workflow gaps and propose automated governance integration.');
-  const turn3Resp = await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, ...t3 } });
+  const t3raw = buildTurn(prevHash, 'search_plugins', 'MCP orchestration gaps deploy verification', 'gap-analysis', 'Cross-referencing registry results with MCP ecosystem to identify verification workflow gaps and propose automated governance integration.');
+  const t3 = { ...t3raw, timestamp: baseTime + 3500 };
+  t3.hash = computeTurnHash(prevHash, t3);
+  const turn3Resp = await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t3.toolCall, input: t3.input, output: t3.output, reasoning: t3.reasoning, hash: t3.hash } });
   turns.push(t3);
   prevHash = t3.hash;
   const turn3Parsed = parseMcpResult(turn3Resp) as Record<string, unknown> | null;
@@ -108,8 +116,10 @@ async function main(): Promise<boolean> {
   // Turn 4: respond to adaptive follow-up
   if (followUpPrompt) {
     const tool = followUpPrompt.toLowerCase().includes('search_plugins') ? 'search_plugins' : 'list_mcp_servers';
-    const t4 = buildTurn(prevHash, tool, followUpPrompt.slice(0, 80), 'adaptive-response', 'Responding to server-issued adaptive follow-up: re-engaging registry tools to cross-reference and critique the proposed concept for alignment with governance requirements.');
-    await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, ...t4 } });
+    const t4raw = buildTurn(prevHash, tool, followUpPrompt.slice(0, 80), 'adaptive-response', 'Responding to server-issued adaptive follow-up: re-engaging registry tools to cross-reference and critique the proposed concept for alignment with governance requirements.');
+    const t4 = { ...t4raw, timestamp: baseTime + 5500 };
+    t4.hash = computeTurnHash(prevHash, t4);
+    await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t4.toolCall, input: t4.input, output: t4.output, reasoning: t4.reasoning, hash: t4.hash } });
     turns.push(t4);
     console.log('✓ Turn 4: adaptive follow-up submitted');
   }
@@ -134,11 +144,12 @@ async function main(): Promise<boolean> {
     },
   });
   const registerResult = parseMcpResult(registerRpc) as Record<string, unknown> | null;
-  if (!registerResult || registerResult.success === false) {
-    console.error('register_plugin failed:', registerResult);
+  const record = registerResult?.record as Record<string, unknown> | undefined;
+  if (!registerResult || record?.status === 'gray') {
+    console.error('register_plugin returned gray:', registerResult);
     return false;
   }
-  const did = registerResult.did as string || (registerResult.record as Record<string, unknown>)?.did as string;
+  const did = (registerResult.did as string) || (record?.did as string);
   console.log('✓ register_plugin success, DID:', did?.slice(0, 16) + '...');
 
   // --- Step 6: get_plugin_ui_manifest ---

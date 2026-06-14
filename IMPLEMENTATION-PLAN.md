@@ -1,8 +1,8 @@
 # Groover MVP Implementation Plan
 
-**Status**: Narrow registry MVP complete. Adaptive multi-turn challenge engine, DID + API key issuance, Railway-deployed MCP server with 6 tools (including `get_registration_challenge` and `submit_challenge_turn`). 34/34 vitest, clean `tsc -b`. Full anti-gaming stack: crypto PoP, hash chain + Merkle + attestation, adaptive follow-up, xray reasoning evaluation (keyword fallback), Dynamo privileged path, exponential backoff.
+**Status**: Narrow registry MVP complete. Adaptive multi-turn challenge engine, DID + API key issuance, Railway-deployed MCP server with 6 tools (including `get_registration_challenge` and `submit_challenge_turn`). 38/38 vitest, clean `tsc -b`. Full anti-gaming stack: crypto PoP, hash chain + Merkle + attestation, adaptive follow-up, xray reasoning evaluation (keyword fallback), Dynamo privileged path, exponential backoff.
 
-**Live endpoint**: `POST https://registry-production-e2c4.up.railway.app/mcp`
+**Live endpoint**: `POST https://registry-production-e2c4.up.railway.app/mcp` (verified: 4-turn adaptive flow issues `did:groover:37cd...`, 38/38 tests, clean `tsc -b`)
 
 **Scope delivered**: HTTP JSON-RPC MCP registry for AI agent self-verification. The Proof of Autonomy challenge (12 stacked gates) is the standout — real ed25519 PoP, stateful multi-turn sessions, server-generated adaptive follow-up, xrayBridge evaluation with graceful degradation.
 

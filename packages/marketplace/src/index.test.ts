@@ -16,7 +16,7 @@ vi.mock('../../xray/src/index.js', async (importOriginal) => {
 import { registerPlugin, searchPlugins, getRegistrySnapshot, getPluginUiManifest, getRegistrationChallenge } from './index.js';
 import { buildTurn, buildTraceFromTurns, validateTrace, computeTurnHash, PREV_HASH_SEED, createChallengeSession, getSession } from './challenge.js';
 import { listMcpServers, frameworkLogger } from '../../xray/src/index.js';
-import { handleMcpToolCall } from './mcp-server.js';
+import { handleMcpToolCall, handleMCPMessage, mcpResult, mcpError } from './mcp-server.js';
 import { generateKeyPair, signPayload } from '../../identity/src/index.js';
 
 function buildValidTrace(sessionId: string) {
@@ -35,6 +35,40 @@ function buildValidTrace(sessionId: string) {
 }
 
 describe('@groover/marketplace', () => {
+  it('registerPlugin with valid PoP + valid challenge trace + uiManifest roundtrips', async () => {
+    const keys = generateKeyPair();
+    const challenge = getRegistrationChallenge(keys.publicKey);
+    challenge.session.followUpCompleted = true;
+    const trace = buildValidTrace(challenge.session.sessionId);
+    const payload = 'pop-ui-' + Date.now();
+    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
+    const uiManifest = {
+      version: '1' as const,
+      displayMode: 'form' as const,
+      primaryTool: 'search_plugins',
+      fields: [
+        { id: 'q', label: 'Query', fieldType: 'text' as const },
+      ],
+      exampleQueries: ['governance resonance'],
+    };
+
+    const result = await registerPlugin({
+      pubkey: keys.publicKey,
+      payload,
+      signature: sig,
+      challengeNonce: challenge.nonce,
+      challengeTrace: trace,
+      metadata: { name: 'ui-manifest-test' },
+      uiManifest,
+    });
+    expect('did' in result).toBe(true);
+    const did = (result as any).did;
+    expect(did).toMatch(/^did:groover:/);
+
+    const stored = getPluginUiManifest(did as string);
+    expect(stored).toEqual(uiManifest);
+  });
+
   it('registerPlugin with valid PoP + valid challenge trace succeeds', async () => {
     const keys = generateKeyPair();
     const challenge = getRegistrationChallenge(keys.publicKey);
@@ -195,6 +229,30 @@ describe('Challenge trace validation', () => {
     expect(validation.score).toBeGreaterThanOrEqual(70);
   });
 
+  it('resonance boundary: 0.79 does NOT relax, 0.80 DOES relax', () => {
+    const session = createChallengeSession('test-pubkey-boundary');
+    const baseTime = Date.now() - 5000;
+    let prevHash = PREV_HASH_SEED;
+    const turns = [];
+    const t0 = { ...buildTurn(prevHash, 'search_plugins', 'governance query', '[result]', 'Discovered registration signals for temporal governance alignment. Autonomous execution trace for verification workflow ecosystem.'), timestamp: baseTime };
+    t0.hash = computeTurnHash(prevHash, t0);
+    prevHash = t0.hash;
+    turns.push(t0);
+    const t1 = { ...buildTurn(prevHash, 'list_mcp_servers', '{}', '["Dynamo","xray-governance"]', 'Identified MCP servers for orchestration workflow and security audit. Self-critique for resilience patterns in governance landscape.'), timestamp: baseTime + 5000 };
+    t1.hash = computeTurnHash(prevHash, t1);
+    turns.push(t1);
+    const trace = buildTraceFromTurns(session.sessionId, turns);
+
+    const belowThreshold = validateTrace(session, trace, { dynamoMetrics: { resonance: 0.79 } });
+    expect(belowThreshold.valid).toBe(false);
+    expect(belowThreshold.violations.some(v => v.includes('too-few-turns'))).toBe(true);
+
+    const atThreshold = validateTrace(session, trace, { dynamoMetrics: { resonance: 0.80 } });
+    expect(atThreshold.valid).toBe(true);
+    expect(atThreshold.score).toBeGreaterThanOrEqual(70);
+    expect(atThreshold.violations.some(v => v.includes('too-few-turns'))).toBe(false);
+  });
+
   it('privileged resonance >= 0.8 relaxes minTurns and coverage threshold', () => {
     const session = createChallengeSession('test-pubkey-privileged');
     const baseTime = Date.now() - 5000;
@@ -337,5 +395,80 @@ describe('MCP handler (local)', () => {
     }) as any;
     expect(result.did).toMatch(/^did:groover:/);
     expect((result as any).apiKey).toMatch(/^groover_/);
+  });
+});
+
+describe('Session-based MCP message handler', () => {
+  it('initialize returns server info', async () => {
+    const result = await handleMCPMessage('test-session', { jsonrpc: '2.0', id: 1, method: 'initialize' });
+    expect(result).toMatchObject({
+      jsonrpc: '2.0',
+      id: 1,
+      result: {
+        protocolVersion: '2024-11-05',
+        capabilities: { tools: {} },
+        serverInfo: { name: 'groover-registry', version: '0.2-mvp' },
+      },
+    });
+  });
+
+  it('ping returns empty result', async () => {
+    const result = await handleMCPMessage('test-session', { jsonrpc: '2.0', id: 2, method: 'ping' });
+    expect(result).toMatchObject({ jsonrpc: '2.0', id: 2, result: {} });
+  });
+
+  it('tools/list returns tool definitions', async () => {
+    const result = await handleMCPMessage('test-session', { jsonrpc: '2.0', id: 3, method: 'tools/list' });
+    expect(result.result.tools.length).toBeGreaterThanOrEqual(6);
+    const names = result.result.tools.map((t: any) => t.name);
+    expect(names).toContain('register_plugin');
+    expect(names).toContain('get_registration_challenge');
+    expect(names).toContain('search_plugins');
+    expect(names).toContain('list_mcp_servers');
+  });
+
+  it('tools/call with valid tool returns result', async () => {
+    const result = await handleMCPMessage('test-session', {
+      jsonrpc: '2.0', id: 4,
+      method: 'tools/call',
+      params: { name: 'list_mcp_servers', arguments: {} },
+    });
+    expect(result.result.content[0].type).toBe('text');
+    const parsed = JSON.parse(result.result.content[0].text);
+    expect(parsed.success).toBe(true);
+    expect(parsed.count).toBeGreaterThanOrEqual(4);
+  });
+
+  it('tools/call with unknown tool returns error', async () => {
+    const result = await handleMCPMessage('test-session', {
+      jsonrpc: '2.0', id: 5,
+      method: 'tools/call',
+      params: { name: 'nonexistent_tool', arguments: {} },
+    });
+    expect(result.error.code).toBe(-32601);
+    expect(result.error.message).toContain('Unknown tool');
+  });
+
+  it('unknown method returns error', async () => {
+    const result = await handleMCPMessage('test-session', {
+      jsonrpc: '2.0', id: 6,
+      method: 'bogus_method',
+    });
+    expect(result.error.code).toBe(-32601);
+  });
+
+  it('notifications (no id) are silently ignored', async () => {
+    const result = await handleMCPMessage('test-session', { jsonrpc: '2.0', method: 'ping' });
+    expect(result).toBeNull();
+  });
+
+  it('missing tool name returns error', async () => {
+    const result = await handleMCPMessage('test-session', {
+      jsonrpc: '2.0', id: 7,
+      method: 'tools/call',
+      params: { arguments: {} },
+    });
+    expect(result.error.code).toBe(-32602);
+    expect(result.error.message).toBe('Missing tool name');
   });
 });

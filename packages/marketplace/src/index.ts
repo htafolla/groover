@@ -52,8 +52,17 @@ function loadRegistry(): Map<string, PluginRecord> {
   return new Map();
 }
 
+const REGISTRY_MAX_ENTRIES = 10_000;
+
 function saveRegistry(): void {
   try {
+    if (registry.size > REGISTRY_MAX_ENTRIES) {
+      const entries = Array.from(registry.entries());
+      const trimmed = entries.slice(entries.length - REGISTRY_MAX_ENTRIES);
+      registry.clear();
+      for (const [k, v] of trimmed) registry.set(k, v);
+      frameworkLogger.log('marketplace', 'registry-trimmed', 'warning', { count: registry.size });
+    }
     const dir = path.dirname(REGISTRY_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     const tmp = REGISTRY_PATH + '.tmp';

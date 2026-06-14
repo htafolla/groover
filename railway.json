@@ -1,7 +1,7 @@
 {
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npx tsc -b"
+    "buildCommand": "npx tsc -b --clean && npx tsc -b"
   },
   "deploy": {
     "startCommand": "npx tsx packages/marketplace/src/mcp-server.ts",
