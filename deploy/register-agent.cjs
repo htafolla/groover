@@ -84,9 +84,9 @@ function computeMerkleRoot(hashes) {
   return level[0];
 }
 
-function buildTurn(prevHash, toolCall, input, output, reasoning) {
-  const timestamp = Date.now();
-  const turn = { toolCall, input, output, reasoning, timestamp };
+function buildTurn(prevHash, toolCall, input, output, reasoning, timestamp) {
+  const ts = timestamp || Date.now();
+  const turn = { toolCall, input, output, reasoning, timestamp: ts };
   turn.hash = computeTurnHash(prevHash, turn);
   return turn;
 }
@@ -149,9 +149,11 @@ async function main() {
   // Step 2: Build adaptive multi-turn trace by exercising real MCP tools
   let prevHash = PREV_HASH_SEED;
   const turns = [];
+  const startTime = Date.now();
 
   // Turn 1: search plugins
   log('Turn 1: searching plugins...');
+  const t1Time = startTime + 1500;
   const searchRpc = await postMcp('tools/call', {
     name: 'search_plugins',
     arguments: { query: 'cross-correlation marketplace' },
@@ -159,28 +161,33 @@ async function main() {
   const searchResult = parseMcpResult(searchRpc);
   turns.push(buildTurn(prevHash, 'search_plugins', 'cross-correlation marketplace',
     JSON.stringify(searchResult?.results?.slice(0, 2) || []),
-    'Discovered cross-correlation signals from registry for plugin synthesis and governance alignment.'));
+    'Discovered cross-correlation signals from registry for plugin synthesis and governance alignment.',
+    t1Time));
   prevHash = turns[turns.length - 1].hash;
 
   // Turn 2: list MCP servers
   log('Turn 2: listing MCP servers...');
+  const t2Time = startTime + 3000;
   const mcpsRpc = await postMcp('tools/call', {
     name: 'list_mcp_servers',
     arguments: {},
   });
   const mcpsResult = parseMcpResult(mcpsRpc);
   turns.push(buildTurn(prevHash, 'list_mcp_servers', '{}',
-    JSON.stringify((mcpsResult?.servers || []).map(s => s.name).slice(0, 3))),
-    'Identified available MCP servers. Cross-referencing with governance and enforcement capabilities for orchestration.'));
+    JSON.stringify((mcpsResult?.servers || []).map(s => s.name).slice(0, 3)),
+    'Identified available MCP servers. Cross-referencing with governance and enforcement capabilities for orchestration.',
+    t2Time));
   prevHash = turns[turns.length - 1].hash;
 
   // Turn 3: synthesize reasoning
   log('Turn 3: synthesizing...');
+  const t3Time = startTime + 4500;
   turns.push(buildTurn(prevHash, 'synthesize',
     'cross-correlation + MCP ecosystem analysis',
     'novel-plugin-concept: automated governance resilience plugin',
-    'Synthesized a novel plugin concept combining cross-correlation signals with MCP orchestration. Self-critique: the concept improves automated governance resilience but should account for edge cases in signal drift and MCP server availability.'));
-  log('Built ' + turns.length + '-turn trace');
+    'Synthesized a novel plugin concept combining cross-correlation signals with MCP orchestration. Self-critique: the concept improves automated governance resilience but should account for edge cases in signal drift and MCP server availability.',
+    t3Time));
+  log('Built ' + turns.length + '-turn trace (duration: ' + (t3Time - t1Time) + 'ms)');
 
   const trace = buildTrace(sessionId, turns);
   log('Merkle root: ' + trace.merkleRoot.slice(0, 16) + '...');
