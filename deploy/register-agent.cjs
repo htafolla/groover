@@ -2,22 +2,25 @@
 /**
  * register-agent.cjs — Register an AI agent with the Groover marketplace.
  *
- * Usage (legacy HMAC — no crypto proof):
- *   node deploy/register-agent.cjs \
- *     --pubkey <hex> --payload <str> --metadata '{"name":"my-agent"}'
+ * Uses ed25519 Proof-of-Possession: agent signs a server-issued nonce to prove
+ * it controls the private key corresponding to its public key.
  *
- * Usage (Proof-of-Possession — recommended, uses ed25519):
+ * Usage:
  *   node deploy/register-agent.cjs \
- *     --pubkey "<pem>" --payload <str> --metadata '{"name":"my-agent"}' \
- *     --secret-key "<pem>"   # ed25519 private key (PKCS#8 PEM) to sign PoP challenge
+ *     --pubkey "<pem>" --payload <str> --secret-key "<pem>" \
+ *     --metadata '{"name":"my-agent"}'
  *
  * Generate a keypair:
- *   npx tsx -e "import{g from'./packages/identity/src/index.ts'};const k=g.generateKeyPair();console.log(JSON.stringify(k))"
+ *   npx tsx -e "
+ *     import {generateKeyPair} from './packages/identity/src/index.ts';
+ *     const k = generateKeyPair();
+ *     console.log(JSON.stringify(k));
+ *   "
  *
- * Environment variables:
- *   REGISTRY_URL   — MCP endpoint (default: from Railway live deploy)
+ * Environment:
+ *   REGISTRY_URL — MCP endpoint (default: Railway live deploy)
  *
- * Output: JSON with { success, did, apiKey, pop }
+ * Output: JSON with { success, did, apiKey }
  */
 
 const https = require('https');
@@ -54,80 +57,58 @@ function parseMcpResult(rpc) {
   } catch { return null; }
 }
 
-function isHex(s) {
-  return /^[0-9a-fA-F]+$/.test(s);
+function loadPrivateKey(keyStr) {
+  if (keyStr.includes('PRIVATE KEY')) {
+    return crypto.createPrivateKey(keyStr);
+  }
+  const raw = Buffer.from(keyStr, 'hex');
+  if (raw.length === 32) {
+    const prefix = Buffer.from('302e020100300506032b657004220420', 'hex');
+    return crypto.createPrivateKey({ key: Buffer.concat([prefix, raw]), format: 'der', type: 'pkcs8' });
+  }
+  return crypto.createPrivateKey({ key: keyStr, format: 'der', type: 'pkcs8' });
 }
 
 async function main() {
   const args = {};
   for (let i = 2; i < process.argv.length; i += 2) {
-    const key = process.argv[i].replace(/^--/, '');
-    args[key] = process.argv[i + 1];
+    args[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
   }
 
-  if (!args.pubkey || !args.payload) {
-    console.error('Usage: node deploy/register-agent.cjs --pubkey <hex|pem> --payload <str> [--metadata <json>] [--secret-key <pem>]');
+  if (!args.pubkey || !args.payload || !args['secret-key']) {
+    console.error('Usage: node deploy/register-agent.cjs --pubkey "<pem>" --payload <str> --secret-key "<pem>" [--metadata <json>]');
     process.exit(1);
   }
 
   let metadata = {};
   try { metadata = args.metadata ? JSON.parse(args.metadata) : {}; } catch { metadata = { name: args.metadata }; }
 
-  let signature = undefined;
-  let challengeNonce = undefined;
-
-  if (args['secret-key']) {
-    // Step 1: Get challenge nonce from server
-    const chalRpc = await postMcp('tools/call', {
-      name: 'get_registration_challenge',
-      arguments: { pubkey: args.pubkey },
-    });
-    const chal = parseMcpResult(chalRpc);
-    if (!chal || !chal.success) {
-      throw new Error('Failed to get registration challenge: ' + JSON.stringify(chal));
-    }
-    challengeNonce = chal.nonce;
-    console.error('[register-agent] Got challenge nonce:', challengeNonce.slice(0, 16) + '...');
-
-    // Step 2: Sign { nonce + payload } with agent's ed25519 private key
-    // Accept PKCS#8 PEM string or raw 32-byte hex seed
-    const msg = Buffer.from(challengeNonce + args.payload, 'utf-8');
-    let privateKey;
-    if (args['secret-key'].includes('PRIVATE KEY')) {
-      privateKey = crypto.createPrivateKey(args['secret-key']);
-    } else {
-      const raw = Buffer.from(args['secret-key'], 'hex');
-      if (raw.length === 32) {
-        // Wrap raw 32-byte seed into PKCS#8 DER for crypto.sign
-        const prefix = Buffer.from('302e020100300506032b657004220420', 'hex');
-        privateKey = crypto.createPrivateKey({ key: Buffer.concat([prefix, raw]), format: 'der', type: 'pkcs8' });
-      } else {
-        privateKey = crypto.createPrivateKey({ key: args['secret-key'], format: 'der', type: 'pkcs8' });
-      }
-    }
-    const sig = crypto.sign(null, msg, privateKey);
-    signature = sig.toString('hex');
-    console.error('[register-agent] Generated PoP signature:', signature.slice(0, 16) + '...');
+  // Step 1: Get challenge nonce from server
+  const chalRpc = await postMcp('tools/call', {
+    name: 'get_registration_challenge',
+    arguments: { pubkey: args.pubkey },
+  });
+  const chal = parseMcpResult(chalRpc);
+  if (!chal || !chal.success) {
+    throw new Error('Failed to get registration challenge: ' + JSON.stringify(chal));
   }
+  const challengeNonce = chal.nonce;
+  console.error('[register-agent] Got challenge nonce:', challengeNonce.slice(0, 16) + '...');
 
-  // Step 3: Register plugin
+  // Step 2: Sign { nonce + payload } with ed25519 private key
+  const msg = Buffer.from(challengeNonce + args.payload, 'utf-8');
+  const privateKey = loadPrivateKey(args['secret-key']);
+  const signature = crypto.sign(null, msg, privateKey).toString('hex');
+  console.error('[register-agent] Generated PoP signature:', signature.slice(0, 16) + '...');
+
+  // Step 3: Register
   const regRpc = await postMcp('tools/call', {
     name: 'register_plugin',
-    arguments: {
-      pubkey: args.pubkey,
-      payload: args.payload,
-      metadata,
-      signature,
-      challengeNonce,
-    },
+    arguments: { pubkey: args.pubkey, payload: args.payload, metadata, signature, challengeNonce },
   });
   const result = parseMcpResult(regRpc);
-  if (!result) {
-    console.error('Unexpected MCP response:', JSON.stringify(regRpc, null, 2));
-    process.exit(1);
-  }
-  if (!result.success) {
-    console.error('Registration failed:', JSON.stringify(result, null, 2));
+  if (!result || !result.success) {
+    console.error('Registration failed:', JSON.stringify(result || regRpc, null, 2));
     process.exit(1);
   }
 
@@ -136,7 +117,6 @@ async function main() {
     did: result.did || result.record?.did,
     apiKey: result.record?.apiKey,
     pubkey: args.pubkey,
-    pop: !!signature,
   }, null, 2));
 }
 
