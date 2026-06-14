@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as crypto from 'crypto';
-import { registerPlugin, searchPlugins, getRegistrySnapshot, getPluginUiManifest } from './index.js';
+import { registerPlugin, searchPlugins, getRegistrySnapshot, getPluginUiManifest, getRegistrationChallenge } from './index.js';
 import { listMcpServers, frameworkLogger } from '../../xray/src/index.js';
 import { handleMcpToolCall } from './mcp-server.js';
+import { generateKeyPair, signPayload } from '../../identity/src/index.js';
 
 const pubkey = crypto.randomBytes(32).toString('hex');
 const payload = 'test-payload-' + Date.now();
@@ -23,6 +24,67 @@ describe('@groover/marketplace', () => {
     expect((result as any).did).toMatch(/^did:groover:/);
     expect((result as any).apiKey).toMatch(/^groover_/);
     registeredDid = (result as any).did;
+  });
+
+  it('Proof-of-Possession flow with valid ed25519 signature succeeds', async () => {
+    const keys = generateKeyPair();
+    const challenge = getRegistrationChallenge(keys.publicKey);
+    expect(challenge.nonce).toBeTruthy();
+    expect(challenge.ttl).toBeGreaterThan(0);
+
+    const popPayload = 'pop-registration-' + Date.now();
+    const sig = signPayload(keys.privateKey, challenge.nonce + popPayload);
+
+    const result = await registerPlugin({
+      pubkey: keys.publicKey,
+      payload: popPayload,
+      signature: sig,
+      challengeNonce: challenge.nonce,
+      metadata: { name: 'pop-test-agent' },
+    });
+    expect('did' in result).toBe(true);
+    expect((result as any).did).toMatch(/^did:groover:/);
+    expect((result as any).apiKey).toMatch(/^groover_/);
+  });
+
+  it('Proof-of-Possession with wrong signature throws', async () => {
+    const keys = generateKeyPair();
+    const challenge = getRegistrationChallenge(keys.publicKey);
+    const wrongSig = crypto.randomBytes(64).toString('hex');
+    const popPayload = 'pop-wrong-' + Date.now();
+
+    await expect(registerPlugin({
+      pubkey: keys.publicKey,
+      payload: popPayload,
+      signature: wrongSig,
+      challengeNonce: challenge.nonce,
+      metadata: { name: 'pop-wrong-agent' },
+    })).rejects.toThrow('Proof-of-possession failed');
+  });
+
+  it('Proof-of-Possession with reused nonce throws', async () => {
+    const keys = generateKeyPair();
+    const challenge = getRegistrationChallenge(keys.publicKey);
+    const popPayload = 'pop-reuse-' + Date.now();
+    const sig = signPayload(keys.privateKey, challenge.nonce + popPayload);
+
+    // First use succeeds
+    await registerPlugin({
+      pubkey: keys.publicKey,
+      payload: popPayload,
+      signature: sig,
+      challengeNonce: challenge.nonce,
+      metadata: { name: 'pop-reuse-first' },
+    });
+
+    // Second use with same nonce fails
+    await expect(registerPlugin({
+      pubkey: keys.publicKey,
+      payload: popPayload + '-second',
+      signature: sig,
+      challengeNonce: challenge.nonce,
+      metadata: { name: 'pop-reuse-second' },
+    })).rejects.toThrow('already-used challenge nonce');
   });
 
   it('getRegistrySnapshot returns non-empty after registration', () => {

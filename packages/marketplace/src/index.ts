@@ -7,7 +7,7 @@
 import { frameworkLogger } from '../../xray/src/index.js';
 import { coreEngine, CorrelationResult } from '../../core/src/index.js';
 import { xrayBridge, listMcpServers } from '../../xray/src/index.js';
-import { identityEngine, generateDID, bindForRegistration, bindCrypto, verifySignature } from '../../identity/src/index.js';
+import { identityEngine, generateDID, bindForRegistration, bindCrypto, verifySignature, generateApiKey, verifyWithPublic } from '../../identity/src/index.js';
 import * as crypto from 'crypto';
 
 export interface PluginRecord {
@@ -25,6 +25,24 @@ export interface PluginRecord {
 }
 
 const registry = new Map<string, PluginRecord>();
+
+// Challenge nonce store for Proof-of-Possession registration flow.
+// Map<nonce, { pubkey: string, createdAt: number, used: boolean }>
+const challengeNonces = new Map<string, { pubkey: string; createdAt: number; used: boolean }>();
+
+const CHALLENGE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Issue a challenge nonce for Proof-of-Possession registration.
+ * Agent must sign this nonce + payload with their ed25519 private key
+ * and include the signature in registerPlugin().
+ */
+export function getRegistrationChallenge(pubkey: string): { nonce: string; ttl: number } {
+  const nonce = crypto.randomBytes(32).toString('hex');
+  challengeNonces.set(nonce, { pubkey, createdAt: Date.now(), used: false });
+  frameworkLogger.log('marketplace', 'challenge-issued', 'success', { pubkeyPrefix: pubkey.slice(0, 16), ttl: CHALLENGE_TTL_MS });
+  return { nonce, ttl: CHALLENGE_TTL_MS };
+}
 
 export async function searchPlugins(query: string): Promise<CorrelationResult[]> {
   frameworkLogger.log('marketplace', 'search', 'info', { query });
@@ -55,15 +73,47 @@ export async function registerPlugin(params: {
   payload: string;
   metadata: Record<string, unknown>;
   challengeResponse?: string;
+  // Proof-of-Possession: agent signs challengeNonce + payload with their ed25519 private key.
+  // When signature + challengeNonce are provided, the server verifies the agent controls the private key.
+  signature?: string;
+  challengeNonce?: string;
   // Optional declarative UI manifest per AgentUIManifest spec.
   // Enables beautiful human forms instead of raw LLM schemas.
   uiManifest?: import('./agent-ui-manifest.js').AgentUiManifest;
 }): Promise<PluginRecord | { status: 'gray'; cooldown: number }> {
-  frameworkLogger.log('marketplace', 'register-start', 'info', { hasChallenge: !!params.challengeResponse });
+  frameworkLogger.log('marketplace', 'register-start', 'info', { hasChallenge: !!params.challengeResponse, pop: !!(params.signature && params.challengeNonce) });
 
-  // 1. Crypto binding + full identity via @groover/identity (per ARCHITECTURE.md)
-  const binding = bindForRegistration(params.pubkey, params.payload, params.metadata || {});
-  const { signature } = binding;
+  // PoP flow: verify the agent controls the private key by checking their signature over the challenge nonce.
+  // Falls back to HMAC binding if no signature/challengeNonce provided.
+  let did: string;
+  let signature: string;
+  let apiKey: string;
+
+  if (params.signature && params.challengeNonce) {
+    // Proof-of-Possession path
+    const stored = challengeNonces.get(params.challengeNonce);
+    if (!stored || stored.used) {
+      throw new Error('Invalid or already-used challenge nonce');
+    }
+    if (Date.now() - stored.createdAt > CHALLENGE_TTL_MS) {
+      throw new Error('Challenge nonce expired');
+    }
+    const verified = verifyWithPublic(params.pubkey, params.challengeNonce + params.payload, params.signature);
+    if (!verified) {
+      throw new Error('Proof-of-possession failed: signature does not match pubkey');
+    }
+    stored.used = true;
+    did = generateDID(params.pubkey);
+    apiKey = generateApiKey(did);
+    signature = params.signature;
+    frameworkLogger.log('marketplace', 'pop-verified', 'success', { did });
+  } else {
+    // Legacy HMAC binding path (backward compat)
+    const binding = bindForRegistration(params.pubkey, params.payload, params.metadata || {});
+    did = binding.did;
+    signature = binding.signature;
+    apiKey = binding.apiKey ?? '';
+  }
 
   // 2. Dynamic behavioral challenge (delegated to xray-orchestrator MCP in real runtime; here we simulate successful multi-turn via bridge)
   const challengeProposal = await xrayBridge.orchestrate('behavioral-challenge-for-registration', [
@@ -95,12 +145,11 @@ export async function registerPlugin(params: {
   }
 
   // MVP: treat as approved (in full flow the bridge + evaluate_governance would decide yes/gray)
-  const did = binding.did; // Use DID from identity package for full Proof of Autonomy
   const record: PluginRecord = {
     did,
     pubkey: params.pubkey,
     signature,
-    apiKey: binding.apiKey ?? '',
+    apiKey,
     metadata: params.metadata,
     registeredAt: new Date().toISOString(),
     reputation: 1.0,

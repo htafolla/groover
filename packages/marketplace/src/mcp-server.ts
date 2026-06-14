@@ -8,7 +8,7 @@
 
 import * as http from 'http';
 import { frameworkLogger } from '../../xray/src/index.js';
-import { registerPlugin, searchPlugins, getPluginUiManifest } from './index.js';
+import { registerPlugin, searchPlugins, getPluginUiManifest, getRegistrationChallenge } from './index.js';
 import { listMcpServers } from '../../xray/src/index.js';
 
 interface McpToolRequest {
@@ -26,9 +26,17 @@ async function handleMcpToolCall(request: McpToolRequest): Promise<unknown> {
         pubkey: params.pubkey,
         payload: params.payload,
         metadata: params.metadata || {},
+        signature: params.signature,
+        challengeNonce: params.challengeNonce,
         uiManifest: params.uiManifest,
       });
       return { success: true, did: (result as any).did || (result as any).status, record: result };
+    }
+    case 'get_registration_challenge': {
+      const pubkey = (request.arguments.pubkey as string) || '';
+      if (!pubkey) throw new Error('pubkey is required for challenge');
+      const challenge = getRegistrationChallenge(pubkey);
+      return { success: true, nonce: challenge.nonce, ttl: challenge.ttl };
     }
     case 'search_plugins': {
       const query = (request.arguments.query as string) || 'cross-correlation';
@@ -73,6 +81,7 @@ const server = http.createServer(async (req: any, res: any) => {
           resp.result = {
             tools: [
               { name: 'register_plugin', description: 'Register agent with full Proof of Autonomy', inputSchema: { type: 'object' } },
+              { name: 'get_registration_challenge', description: 'Get a nonce challenge for Proof-of-Possession registration', inputSchema: { type: 'object' } },
               { name: 'search_plugins', description: 'Search registry with MCP signals', inputSchema: { type: 'object' } },
               { name: 'get_plugin_ui_manifest', description: 'Retrieve UI manifest', inputSchema: { type: 'object' } },
               { name: 'list_mcp_servers', description: 'List 10 integrated MCP servers', inputSchema: { type: 'object' } }
@@ -104,7 +113,7 @@ const server = http.createServer(async (req: any, res: any) => {
 
 async function runMcpServer() {
   frameworkLogger.log('marketplace-mcp', 'server-start', 'success', {
-    exposedTools: ['register_plugin', 'search_plugins', 'get_plugin_ui_manifest', 'list_mcp_servers'],
+    exposedTools: ['get_registration_challenge', 'register_plugin', 'search_plugins', 'get_plugin_ui_manifest', 'list_mcp_servers'],
     purpose: 'registry for ai agents to self verify',
     note: 'Railway hosted per gov-024. Real HTTP MCP. Internal xray/Dynamo consumption.'
   });
