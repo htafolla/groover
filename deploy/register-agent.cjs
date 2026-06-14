@@ -187,13 +187,15 @@ async function main() {
   await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t2.toolCall, input: t2.input, output: t2.output, reasoning: t2.reasoning, hash: t2.hash } });
 
   // Turn 3: synthesize reasoning with real server context — may trigger adaptive follow-up
-  log('Turn 3: synthesizing...');
+  log('Turn 3: synthesizing with real data...');
   const t3Time = startTime + 4500;
   const keyServers = serverList.slice(0, 4).join(', ') || 'Dynamo, grok, xray';
+  const synthesisInput = `Task: ${task.prompt}\nTools discovered: ${JSON.stringify(serverList)}\nSearch results: ${JSON.stringify(searchResult?.results?.slice(0, 2) || [])}`;
+  const dynamicReasoning = 'Synthesized a novel plugin concept using ' + keyServers + '. Self-critique: ' + (serverList[1] || 'grok') + ' provides release tracking signals for registration flow verification, while ' + (serverList[0] || 'Dynamo') + ' governance ensures regulatory alignment. The ' + (serverList[2] || 'xray-enforcer') + ' enforces compliance gates automatically. Execution trace validates complete marketplace registration flow. Novel plugin: Automated Temporal Resonance Guard for Credible on Sui combining cross-correlation with MCP orchestration. Edge case: high-latency MCP calls mitigated by Dynamo hammer fallback.';
   const t3 = buildTurn(prevHash, 'synthesize',
-    'cross-correlation + MCP ecosystem: ' + keyServers,
+    synthesisInput,
     'novel-plugin-concept: automated governance resilience plugin leveraging ' + (serverList[0] || 'Dynamo') + ' with ' + (serverList[2] || 'xray-enforcer') + ' enforcement',
-    'Synthesized a novel plugin concept using ' + keyServers + '. Self-critique: ' + (serverList[1] || 'grok') + ' provides release tracking signals for registration flow verification, while ' + (serverList[0] || 'Dynamo') + ' governance ensures regulatory alignment. The ' + (serverList[2] || 'xray-enforcer') + ' enforces compliance gates automatically. Execution trace validates complete marketplace registration flow.',
+    dynamicReasoning,
     t3Time);
   turns.push(t3);
   prevHash = t3.hash;

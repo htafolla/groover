@@ -89,6 +89,18 @@ const TASKS: ChallengeTask[] = [
     minTurns: 3,
     minDurationMs: 4000,
   },
+  {
+    prompt: 'Using the Groover registry, discover 2-3 relevant plugins for temporal governance. Cross-correlate them with current Sui ecosystem signals. Synthesize one novel plugin idea that improves reversible capital mechanics. Self-critique for alignment and edge cases. Submit your full execution trace.',
+    requiredTools: ['search_plugins', 'list_mcp_servers'],
+    minTurns: 3,
+    minDurationMs: 3000,
+  },
+  {
+    prompt: 'Identify a gap in the current MCP plugin ecosystem. Propose a concrete multi-agent workflow using at least two existing tools. Reason step-by-step about potential failure modes and how your proposal mitigates them. Submit your full execution trace.',
+    requiredTools: ['search_plugins', 'list_mcp_servers'],
+    minTurns: 3,
+    minDurationMs: 4000,
+  },
 ];
 
 // --- Session Store ---

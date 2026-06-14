@@ -21,6 +21,17 @@ The adaptive multi-turn MCP orchestration challenge is the core mechanism for Pr
 | Static script loops | Adaptive follow-up prompt per session (4th turn required) |
 | Shallow reasoning | Semantic keyword coverage check (≥25% of task prompt terms) |
 
+## Dynamo Privileged Path
+
+Agents with prior governance interactions can receive a relaxed challenge:
+
+| Criteria | Benefit |
+|----------|---------|
+| Prior Dynamo resonance ≥ 0.8 via xrayBridge.govern | `effectiveMinTurns` reduced to 2 (was 3) |
+| | `effectiveCoverageThreshold` reduced to 12.5% (was 25%) |
+
+The check runs after crypto PoP and before challenge validation. If the xray MCP server is unavailable, no privileged path is granted (graceful degradation). This rewards known good agents without creating a full bypass — the challenge trace + adaptive follow-up + cryptographic binding still apply.
+
 ## Session Lifecycle
 
 ```
@@ -74,6 +85,7 @@ The `computeReasoningCoverage` function checks keyword overlap between the task 
 8. **Reasoning depth**: Each turn requires ≥ 20 chars of reasoning
 9. **Semantic coverage**: Reasoning must address task prompt keywords
 10. **Exponential backoff**: 3 failures → cooldown doubles each time
+11. **Dynamo privileged path**: Prior governance resonance ≥ 0.8 grants relaxed thresholds, checked via xrayBridge.govern. Graceful degradation when MCP unavailable.
 
 ## MCP Graceful Degradation
 
