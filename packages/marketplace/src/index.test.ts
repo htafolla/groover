@@ -1,5 +1,19 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import * as crypto from 'crypto';
+
+// Mock xrayBridge so orchestrate/govern/enforce resolve instead of hitting real MCP servers
+vi.mock('../../xray/src/index.js', async (importOriginal) => {
+  const actual = await importOriginal() as any;
+  return {
+    ...actual,
+    xrayBridge: {
+      orchestrate: vi.fn().mockResolvedValue({ status: 'delegated' }),
+      govern: vi.fn().mockResolvedValue({ decision: 'delegated-to-mcp' }),
+      enforce: vi.fn().mockResolvedValue({ score: 100, violations: [] }),
+    },
+  };
+});
+
 import { registerPlugin, searchPlugins, getRegistrySnapshot, getPluginUiManifest, getRegistrationChallenge } from './index.js';
 import { listMcpServers, frameworkLogger } from '../../xray/src/index.js';
 import { handleMcpToolCall } from './mcp-server.js';
