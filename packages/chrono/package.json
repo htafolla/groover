@@ -10,7 +10,5 @@
     "dev": "tsx watch src/index.ts",
     "test": "tsx src/index.test.ts"
   },
-  "dependencies": {
-    "@groover/xray": "file:../xray"
-  }
+  "dependencies": {}
 }

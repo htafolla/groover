@@ -8,8 +8,8 @@
  * Fully prod-ready, strict TS, references live MCP exercises during finalization (orchestrate-task, govern_with_solar,
  * triangulate_signals, cross_correlate, emit, skill-code-review, enforcers). Governance 003 approved.
  */
-import { frameworkLogger } from '@groover/xray';
-import { registerPlugin, searchPlugins, bindCrypto } from '@groover/marketplace';
+import { frameworkLogger } from '../../packages/xray/src/index.js';
+import { registerPlugin, searchPlugins } from '../../packages/marketplace/src/index.js';
 import * as crypto from 'crypto';
 
 async function main() {

@@ -128,4 +128,4 @@ if (isMain) {
   runMcpServer().catch((e) => frameworkLogger.log('marketplace-mcp', 'fatal', 'error', { error: String(e) }));
 }
 
-export { runMcpServer, handleMcpToolCall, server };
+export { runMcpServer, handleMcpToolCall };

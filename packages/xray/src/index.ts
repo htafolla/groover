@@ -48,7 +48,7 @@ export function mcpCall(server: string, method: string, params: unknown = {}): P
   });
 }
 
-export interface MCPBridge {
+interface MCPBridge {
   orchestrate(description: string, tasks: Array<{id: string; description: string; type: string}>): Promise<unknown>;
   govern(proposal: {id: string; title: string; description: string; type: string; confidence: number; evidence: string[]}): Promise<unknown>;
   enforce(operation: string, files: string[], newCode?: string): Promise<{score: number; violations: unknown[]}>;
@@ -97,16 +97,16 @@ export const xrayBridge = new XrayBridge();
  * Plugins can declare required MCPs in uiManifest or metadata.
  * See docs/mcp-servers-index.md and docs/mcp-tools-index.json.
  */
-export interface McpServerInfo {
+interface McpServerInfo {
   name: string;
   role: string;
   toolCount: number;
   keyTools: string[];
 }
 
-export function listMcpServers(): McpServerInfo[] {
+export function listMcpServers() {
   frameworkLogger.log('xray', 'mcp-list-servers', 'success', { count: 10 });
-  return [
+  const servers: McpServerInfo[] = [
     { name: 'Dynamo', role: 'Governance & signals (SSOT, Hammer, triangulation for core correlation, isotopic math)', toolCount: 20, keyTools: ['govern_with_solar', 'evaluate_governance', 'triangulate_signals', 'call_connected_tool', 'harmonic_oscillator', 'wave_function', 'optimize_cascade', 'cross_correlate', 'emit_isotopic_signal'] },
     { name: 'grok_com_github', role: 'GitHub signals & ops for marketplace/repo correlation, releases, code search', toolCount: 44, keyTools: ['search_code', 'get_file_contents', 'list_releases', 'list_branches', 'create_branch', 'fork_repository', 'get_me', 'search_repositories'] },
     { name: 'strray-enforcer', role: 'Codex enforcement & quality gates (parallel variant for resilience)', toolCount: 7, keyTools: ['codex-enforcement', 'quality-gate-check', 'run-pre-commit-validation', 'security-scan'] },
@@ -118,12 +118,6 @@ export function listMcpServers(): McpServerInfo[] {
     { name: 'xray-orchestrator', role: 'thinDispatch 7-flow orchestration, complexity analysis, delegation (primary)', toolCount: 6, keyTools: ['orchestrate-task', 'analyze-complexity', 'govern-and-apply', 'get-orchestration-status'] },
     { name: 'xray-skills', role: 'Specialized skills (code-review, api-design, ui-ux, project-analysis, docs, security, testing; primary per AGENTS.md)', toolCount: 13, keyTools: ['list-skills', 'invoke-skill', 'skill-code-review', 'skill-project-analysis', 'skill-ui-ux-design', 'skill-testing-strategy', 'skill-documentation-generation'] }
   ];
-}
-
-export async function getMcpToolSchema(server: string, tool: string): Promise<object | null> {
-  frameworkLogger.log('xray', 'mcp-get-schema', 'info', { server, tool });
-  // In full runtime: proxy via Dynamo__call_connected_tool or xray-orchestrator.
-  // For MVP: return from index (see docs/mcp-tools-index.json).
-  return { note: 'See docs/mcp-tools-index.json for full schemas. Use search_tool or connected MCP for live.' };
+  return servers;
 }
 

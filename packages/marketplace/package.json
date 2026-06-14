@@ -4,6 +4,7 @@
   "description": "Plugin Registry, CLI, search. Self-registration with Proof of Autonomy (crypto + behavioral challenge + Dynamo Hammer). Per ARCHITECTURE.md + README.",
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "groover-marketplace": "dist/index.js"
   },
@@ -12,9 +13,5 @@
     "dev": "tsx watch src/index.ts",
     "test": "tsx src/index.test.ts"
   },
-  "dependencies": {
-    "@groover/core": "file:../core",
-    "@groover/xray": "file:../xray",
-    "@groover/identity": "file:../identity"
-  }
+  "dependencies": {}
 }

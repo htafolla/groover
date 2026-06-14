@@ -5,7 +5,7 @@
 groover/
 ├── packages/
 │   ├── core/                    # Cross-Correlation + Diffuser Engine (from zigzag)
-│   ├── registry/                # Agent registry, CLI, search
+│   ├── marketplace/             # Plugin registry, CLI, search
 │   ├── chrono/                  # Temporal Resonance + versioning (from chrono-warp-drive)
 │   ├── identity/                # Agent Identity + DID + API key credential issuance
 │   └── xray/                    # 0xRay MCP execution & orchestration
