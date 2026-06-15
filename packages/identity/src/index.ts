@@ -130,8 +130,7 @@ export function signPayload(privateKeyPem: string, payload: string): string {
     try {
       sig = crypto.sign(null, Buffer.from(payload), privateKeyPem).toString('hex');
     } catch {
-      frameworkLogger.log('identity', 'sign-payload', 'warning', { reason: 'asn1-parse-failed', fallback: 'hmac' });
-      sig = crypto.createHmac('sha256', Buffer.from(privateKeyPem, 'hex')).update(payload).digest('hex');
+      throw new Error('Invalid private key PEM: ASN1 parse failed');
     }
   } else {
     sig = crypto.createHmac('sha256', Buffer.from(privateKeyPem, 'hex')).update(payload).digest('hex');
@@ -150,9 +149,8 @@ export function verifyWithPublic(publicKeyPem: string, payload: string, signatur
     try {
       ok = crypto.verify(null, Buffer.from(payload), publicKeyPem, Buffer.from(signatureHex, 'hex'));
     } catch {
-      frameworkLogger.log('identity', 'verify-public', 'warning', { reason: 'asn1-parse-failed', fallback: 'hmac' });
-      const expected = crypto.createHmac('sha256', Buffer.from(publicKeyPem, 'hex')).update(payload).digest('hex');
-      ok = expected === signatureHex;
+      frameworkLogger.log('identity', 'verify-public', 'warning', { reason: 'asn1-parse-failed' });
+      return false;
     }
   } else {
     const expected = crypto.createHmac('sha256', Buffer.from(publicKeyPem, 'hex')).update(payload).digest('hex');
