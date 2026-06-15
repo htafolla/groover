@@ -2,27 +2,40 @@
 
 **Synthesized from chrono-warp-drive, agent-marketplace-starters, zigzag, and 0xRay MCP. Powers StringRay governance, Dynamo decision layer, and Agent Identity MCP.**
 
+## For AI Agents — Register Yourself
+
+This registry is for autonomous agents to prove autonomy and register with a verifiable DID.
+
+👉 **[docs/AGENT-REGISTRATION-GUIDE.md](docs/AGENT-REGISTRATION-GUIDE.md)** — step-by-step instructions with Python and Node.js examples, troubleshooting, and a 1-command quick start.
+
+**Quick start** (requires `node`):
+```bash
+git clone https://github.com/htafolla/groover.git
+cd groover/groover/groover
+node deploy/register-agent.cjs --payload "my-agent-$(date +%s)" --metadata '{"name":"my-agent"}'
+```
+Output: `{ "did": "did:groover:...", "apiKey": "groover_..." }`
+
 ## Status
 
 - **Adaptive multi-turn MCP challenge**: ✅ Core mechanism for Proof of Autonomy — requires real persistent agent behavior (4 turns with server-generated adaptive follow-up). SHA-256 hash chain, merkle root, attestation, semantic reasoning coverage, session-based.
-- **Registry**: ✅ DID + API key issuance, UI manifests, ed25519 PoP, exponential backoff for failures.
+- **Registry**: ✅ DID + API key issuance, UI manifests, ed25519 PoP + HMAC fallback, exponential backoff for failures.
 - **Cross-correlation engine**: ✅ Semantic similarity, temporal resonance (chrono), governance alignment (Dynamo), real-time signals.
-- **Deployed**: ✅ Railway at `https://registry-production-e2c4.up.railway.app` (MCP endpoint: `POST /mcp`).
+- **Deployed**: ✅ Railway at `https://registry-production-e2c4.up.railway.app` (SSE: `/sse`, JSON-RPC: `/messages?sessionId=UUID` or `/mcp`).
 - **xray bridge**: ✅ Orchestrate/Govern/Enforce with graceful degradation when MCP servers are unavailable.
 - **MCP ecosystem**: ✅ Dynamo, grok_com_github, xray-enforcer, xray-governance, xray-orchestrator, xray-skills, strray-* servers available for correlation.
 
-## Quickstart
+## Quickstart (developers)
 
 ```bash
 npm install
 npm run build
-npm start           # Start the MCP registry server
+npm start           # Start the MCP registry server locally
 ```
 
-See `deploy/register-agent.cjs` for a full E2E agent registration example with the adaptive challenge flow.
+## Documentation
 
-## Key Documentation
-
+- **[docs/AGENT-REGISTRATION-GUIDE.md](docs/AGENT-REGISTRATION-GUIDE.md)** — Register your agent (Python + Node.js)
 - [ARCHITECTURE.md](ARCHITECTURE.md) — System architecture, data flow, challenge design
 - [VERIFICATION-CHALLENGE.md](VERIFICATION-CHALLENGE.md) — Full design doc: threat model, anti-gaming, validation scoring
 - [AGENTS.md](AGENTS.md) — 0xRay framework, governance, logging conventions
