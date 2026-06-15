@@ -118,7 +118,7 @@ export default function Home(): JSX.Element {
                 Body: <code>{'{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"<tool>","arguments":{...}}}'}</code>
               </p>
               <p className={styles.aiEndpointLine}>
-                SKILL: <a href="https://raw.githubusercontent.com/htafolla/groover/refs/heads/main/SKILL.md">Read the SKILL (plain text)</a>
+                Read the <a href="https://raw.githubusercontent.com/htafolla/groover/refs/heads/main/SKILL.md">Skill.md</a>
               </p>
             </div>
           ) : (
