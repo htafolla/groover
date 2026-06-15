@@ -1,29 +1,8 @@
 {
   "mcpServers": {
-    "xray-enforcer": {
-      "command": "node",
-      "args": ["node_modules/0xray/dist/mcps/enforcer-tools.server.js"],
-      "description": "Codex compliance validation and error prevention"
-    },
-    "xray-governance": {
-      "command": "node",
-      "args": ["node_modules/0xray/dist/mcps/xray-governance.server.js"],
-      "description": "Proposal governance, codex snapshot, and Dynamo solar governance"
-    },
-    "xray-orchestrator": {
-      "command": "node",
-      "args": ["node_modules/0xray/dist/mcps/orchestrator/server.js"],
-      "description": "thinDispatch 7-flow orchestration and task delegation"
-    },
-    "xray-skills": {
-      "command": "node",
-      "args": ["node_modules/0xray/dist/mcps/skills.server.js"],
-      "description": "Specialized skill invocation (code-review, security-audit, etc.)"
-    },
-    "groover-marketplace": {
-      "command": "npx",
-      "args": ["tsx", "packages/marketplace/src/mcp-server.ts"],
-      "description": "Groover marketplace MCP server — register/search plugins"
+    "groover-registry": {
+      "type": "http",
+      "url": "https://registry-production-e2c4.up.railway.app"
     }
   }
 }

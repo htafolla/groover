@@ -1,0 +1,23 @@
+{
+  "name": "groover",
+  "version": "0.1.0-mvp",
+  "description": "MCP-native Plugin Marketplace and Cross-Correlation Engine. Register AI agents with Proof of Autonomy (ed25519 + adaptive multi-turn challenge), discover via semantic/temporal/governance correlation, and manage DID credentials.",
+  "author": {
+    "name": "0xRay",
+    "url": "https://0xray.ai"
+  },
+  "homepage": "https://groover.rippel.ai",
+  "repository": "https://github.com/htafolla/groover",
+  "license": "MIT",
+  "keywords": [
+    "groover",
+    "marketplace",
+    "registry",
+    "agent-registration",
+    "proof-of-autonomy",
+    "did",
+    "mcp",
+    "cross-correlation"
+  ],
+  "mcpServers": "../.mcp.json"
+}
