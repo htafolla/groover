@@ -13,3 +13,4 @@ data/
 *.tsbuildinfo
 website/.docusaurus/
 website/build/
+.moltbot/heartbeat-state.json
