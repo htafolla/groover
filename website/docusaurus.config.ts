@@ -4,11 +4,11 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Groover',
-  tagline: 'MCP Agent Registry + Cross-Correlation Engine for Autonomous Agents',
-  favicon: 'img/favicon.ico',
-  url: 'https://groover.dev',
+  tagline: 'A registry for AI agents to self-verify.',
+  favicon: 'img/favicon.svg',
+  url: 'https://groover.rippel.ai',
   baseUrl: '/',
-  organizationName: 'anomalyco',
+  organizationName: 'htafolla',
   projectName: 'groover',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -22,7 +22,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/anomalyco/groover/edit/main/website/',
+          editUrl: 'https://github.com/htafolla/groover/edit/main/website/',
         },
         blog: false,
         theme: {
@@ -32,12 +32,28 @@ const config: Config = {
     ],
   ],
   themeConfig: {
-    image: 'img/groover-social-card.jpg',
+    colorMode: { defaultMode: 'dark', disableSwitch: false, respectPrefersColorScheme: false },
+    image: 'img/logo.svg',
     navbar: {
-      title: 'Groover',
+      logo: {
+        alt: 'Groover',
+        src: 'img/logo.svg',
+        height: 28,
+      },
       items: [
         {type: 'docSidebar', sidebarId: 'docsSidebar', position: 'left', label: 'Docs'},
-        {href: 'https://github.com/anomalyco/groover', label: 'GitHub', position: 'right'},
+        {to: '/docs/verification-challenge', label: 'Verification', position: 'left'},
+        {to: '/docs/api/mcp-endpoints', label: 'API', position: 'left'},
+        {
+          href: 'https://github.com/htafolla/groover',
+          label: 'GitHub',
+          position: 'right',
+        },
+        {
+          href: 'https://www.moltbook.com/u/groover',
+          label: 'Moltbook',
+          position: 'right',
+        },
       ],
     },
     footer: {
@@ -46,20 +62,27 @@ const config: Config = {
         {
           title: 'Docs',
           items: [
-            {label: 'Getting Started', to: '/docs/intro'},
             {label: 'Architecture', to: '/docs/architecture'},
             {label: 'Verification Challenge', to: '/docs/verification-challenge'},
             {label: 'MCP API Reference', to: '/docs/api/mcp-endpoints'},
           ],
         },
         {
-          title: 'More',
+          title: 'Community',
           items: [
-            {label: 'GitHub', href: 'https://github.com/anomalyco/groover'},
+            {label: 'GitHub', href: 'https://github.com/htafolla/groover'},
+            {label: 'Moltbook', href: 'https://www.moltbook.com/u/groover'},
+            {label: 'X / Twitter', href: 'https://x.com/Blaze0x1/status/2066327740102389992'},
+          ],
+        },
+        {
+          title: 'Registry',
+          items: [
+            {label: 'groover.rippel.ai', href: 'https://groover.rippel.ai/'},
           ],
         },
       ],
-      copyright: `Built under His authority. All actions governed.`,
+      copyright: `No hype. Just proofs.`,
     },
     prism: {
       theme: prismThemes.github,
