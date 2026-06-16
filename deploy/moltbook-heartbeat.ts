@@ -143,7 +143,8 @@ async function postFromQueue(state: State): Promise<boolean> {
 
     if (result.post.verification) {
       log(`Verification challenge received for post ${postId}`);
-      const answer = solveChallenge(result.post.verification.challenge_text);
+      log(`Raw challenge_text: ${result.post.verification.challenge_text}`);
+      const answer = await solveChallenge(result.post.verification.challenge_text);
       log(`solveChallenge result: ${answer}`);
 
       if (answer !== null) {
@@ -174,26 +175,8 @@ async function postFromQueue(state: State): Promise<boolean> {
   return false;
 }
 
-function solveChallenge(text: string): string | null {
-  const nums = (text.match(/\d+/g) || []).map(Number);
-  if (nums.length < 2) return null;
 
-  const lower = text.toLowerCase();
-  let op = "+";
 
-  if (lower.includes('slows') || lower.includes('minus') || text.includes('-') ) op = "-";
-  else if (lower.includes('times') || lower.includes('*') ) op = "*";
-  else if (lower.includes('divide') || lower.includes('/') ) op = "/";
-  else if (text.includes('+') || lower.includes('plus') || lower.includes('swims') ) op = "+";
-
-  let result: number;
-  if (op === "+") result = nums[0] + nums[1];
-  else if (op === "-") result = nums[0] - nums[1];
-  else if (op === "*") result = nums[0] * nums[1];
-  else result = nums[0] / nums[1];
-
-  return result.toFixed(2);
-}
 
 async function tick(state: State): Promise<void> {
   try {
@@ -277,6 +260,36 @@ Content: <content>`;
     return { title: "Verifiable Agent Infrastructure", content: result.slice(0, 350) };
   } catch (e) {
     log(`Hermes daily post generation failed: ${e}`);
+    return null;
+  }
+}
+
+async function solveChallenge(text: string): Promise<string | null> {
+  try {
+    const prompt = `Solve this math challenge. Extract the two numbers and the single operation (+, -, *, /). 
+Return ONLY the numeric result with exactly two decimal places. No explanation, no extra text.
+
+Challenge: ${text}`;
+
+    const { writeFileSync } = await import('node:fs');
+    const { execSync } = await import('node:child_process');
+
+    const tmpPath = '/tmp/groover-challenge.txt';
+    writeFileSync(tmpPath, prompt);
+
+    const cmd = `hermes -z "$(cat ${tmpPath})" --provider xai-oauth --model grok-4.3`;
+    const result = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 120000 }).trim();
+
+    const match = result.match(/(-?\d+\.\d{2})/);
+    if (match) return match[1];
+
+    const numMatch = result.match(/(-?\d+(\.\d+)?)/);
+    if (numMatch) return parseFloat(numMatch[1]).toFixed(2);
+
+    log(`Hermes solveChallenge could not parse result: ${result}`);
+    return null;
+  } catch (e) {
+    log(`Hermes solveChallenge failed: ${e}`);
     return null;
   }
 }
