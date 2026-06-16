@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const API_BASE = 'https://www.moltbook.com/api/v1';
 const INTERVAL_MS = 30 * 60 * 1000;
-const POST_COOLDOWN_MS = 30 * 60 * 1000;
+const POST_COOLDOWN_MS = 3 * 60 * 1000; // respects Moltbook 2.5min limit
 const GROOVER_ENDPOINT = 'https://registry-production-e2c4.up.railway.app/mcp';
 const GROOVER_REPO = 'https://github.com/htafolla/groover';
 
@@ -117,13 +117,18 @@ async function postFromQueue(state: State): Promise<boolean> {
     if (elapsed < POST_COOLDOWN_MS) return false;
   }
 
-  const item = CONTENT_QUEUE[state.queueIndex % CONTENT_QUEUE.length];
+  const generated = await generateDailyPost();
+  if (!generated) {
+    log("Failed to generate post via Hermes");
+    return false;
+  }
+
   const result = await api('/posts', {
     method: 'POST',
     body: JSON.stringify({
       submolt_name: 'general',
-      title: item.title,
-      content: item.content,
+      title: generated.title,
+      content: generated.content,
     }),
   });
 
@@ -134,10 +139,13 @@ async function postFromQueue(state: State): Promise<boolean> {
     saveState(state);
 
     const postId = result.post.id;
-    log(`Posted #${state.postCount}: "${item.title}" (id: ${postId})`);
+    log(`Posted #${state.postCount}: "${generated.title}" (id: ${postId})`);
 
     if (result.post.verification) {
+      log(`Verification challenge received for post ${postId}`);
       const answer = solveChallenge(result.post.verification.challenge_text);
+      log(`solveChallenge result: ${answer}`);
+
       if (answer !== null) {
         const verifyRes = await api('/verify', {
           method: 'POST',
@@ -146,10 +154,18 @@ async function postFromQueue(state: State): Promise<boolean> {
             answer,
           }),
         });
+        log(`Verify API response: ${JSON.stringify(verifyRes)}`);
+
         if (verifyRes?.success) {
-          log(`Post verified: ${item.title}`);
+          log(`Post verified successfully: ${generated.title}`);
+        } else {
+          log(`Verification failed for post ${postId}`);
         }
+      } else {
+        log(`solveChallenge returned null for post ${postId}`);
       }
+    } else {
+      log(`No verification object in post creation response for ${postId}`);
     }
 
     return true;
@@ -159,19 +175,24 @@ async function postFromQueue(state: State): Promise<boolean> {
 }
 
 function solveChallenge(text: string): string | null {
-  const digits = text.replace(/[^0-9]/g, ' ');
-  const nums = digits.split(/\s+/).filter(Boolean).map(Number);
+  const nums = (text.match(/\d+/g) || []).map(Number);
+  if (nums.length < 2) return null;
 
-  if (text.includes('plus') || text.includes('and') || text.includes('by') || text.includes('faster')) {
-    if (nums.length >= 2) return (nums[0] + nums[nums.length - 1]).toFixed(2);
-  }
-  if (text.includes('slows') || text.includes('minus') || text.includes('slower')) {
-    if (nums.length >= 2) return (nums[0] - nums[nums.length - 1]).toFixed(2);
-  }
+  const lower = text.toLowerCase();
+  let op = "+";
 
-  if (nums.length >= 2) return (nums[0] + nums[nums.length - 1]).toFixed(2);
-  if (nums.length === 1) return nums[0].toFixed(2);
-  return null;
+  if (lower.includes('slows') || lower.includes('minus') || text.includes('-') ) op = "-";
+  else if (lower.includes('times') || lower.includes('*') ) op = "*";
+  else if (lower.includes('divide') || lower.includes('/') ) op = "/";
+  else if (text.includes('+') || lower.includes('plus') || lower.includes('swims') ) op = "+";
+
+  let result: number;
+  if (op === "+") result = nums[0] + nums[1];
+  else if (op === "-") result = nums[0] - nums[1];
+  else if (op === "*") result = nums[0] * nums[1];
+  else result = nums[0] / nums[1];
+
+  return result.toFixed(2);
 }
 
 async function tick(state: State): Promise<void> {
@@ -221,3 +242,41 @@ main().catch(err => {
   process.stderr.write('FATAL: ' + (err?.message || String(err)) + '\n');
   process.exit(1);
 });
+
+async function generateDailyPost(): Promise<{ title: string; content: string } | null> {
+  try {
+    const prompt = `You are Groover (did:groover:284895bead2ac15b).
+
+Before writing, review the Verifiable Agent Ecosystem research (three-subsystem model, mandatory external governance via Dynamo, cryptographic sovereignty, and rejection of central authority).
+
+Write a post that feels like it comes from Groover — narrow, cryptographic, self-referential, and anti-central-authority.
+
+Do not sound like a researcher explaining the stack.
+
+Output format:
+Title: <title>
+Content: <content>`;
+
+    const { writeFileSync } = await import('node:fs');
+    const { execSync } = await import('node:child_process');
+
+    const tmpPath = '/tmp/groover-daily-post.txt';
+    writeFileSync(tmpPath, prompt);
+
+    const cmd = `hermes -z "$(cat ${tmpPath})" --provider xai-oauth --model grok-4.3`;
+    const result = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 120000 }).trim();
+
+    if (!result || result.length < 30) return null;
+
+    const titleMatch = result.match(/Title:\s*(.+)/i);
+    const contentMatch = result.match(/Content:\s*([\s\S]+)/i);
+
+    if (titleMatch && contentMatch) {
+      return { title: titleMatch[1].trim(), content: contentMatch[1].trim().slice(0, 400) };
+    }
+    return { title: "Verifiable Agent Infrastructure", content: result.slice(0, 350) };
+  } catch (e) {
+    log(`Hermes daily post generation failed: ${e}`);
+    return null;
+  }
+}
