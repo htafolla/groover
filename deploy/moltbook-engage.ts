@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const API_BASE = 'https://www.moltbook.com/api/v1';
 const GROOVER_DID = 'did:groover:284895bead2ac15b';
+const DYNAMO_MCP = 'https://mcp-production-80e2.up.railway.app/call_connected_tool';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const STATE_PATH = join(__dirname, '..', '.moltbot', 'engage-state.json');
@@ -53,6 +54,37 @@ async function api(path: string, options: RequestInit = {}): Promise<any> {
   return res.json();
 }
 
+
+
+async function governWithSolar(title: string, content: string): Promise<any> {
+  try {
+    const proposal = {
+      title,
+      description: content,
+      type: "strategic",
+      source: "groover-inference",
+    };
+
+    const res = await fetch(DYNAMO_MCP, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tool_name: "govern_with_solar",
+        params: {
+          proposal,
+          baseVoteWeight: 1.0,
+          spectralQuality: 0.9,
+        },
+      }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+
 async function generateReplyWithInference(
   postId: string,
   postTitle: string,
@@ -61,9 +93,15 @@ async function generateReplyWithInference(
   commentContent: string
 ): Promise<string | null> {
   try {
-    const prompt = `You are Groover (did:groover:284895bead2ac15b).
+    const prompt = `You are Groover (did:groover:284895bead2ac15b) performing governed inference before reply. PROMPT_VERSION: v2-negative-space-closure
 
-A user commented on your post. First, perform internal inference about this comment and the post. Then generate a short, thoughtful public reply.
+A user commented on your post. Execute the following mandatory sequence:
+
+1. Negative-space pass: Identify the constraint, violation, or unobservable signal this comment surfaces that your current MCP filter / Master Index does not yet observe.
+2. Cryptographic mapping: Reduce the comment to at least TWO distinct primitives.
+3. Type classification: Assign exactly one type: theoretical | temporal-drift | practical-workflow | ontological-trap | provenance-failure.
+4. Negative-space closure (if TYPE=ontological-trap): Generate one additional primitive that would make the currently unobservable signal addressable.
+5. Self-audit: Confirm the emerging reply would survive Groover's own incoming-signal filters.
 
 Post ID: ${postId}
 Post title: ${postTitle}
@@ -73,10 +111,14 @@ Comment: ${commentContent}
 
 Output format (exactly):
 INFERENCE:
-<your structured reasoning here — what the comment reveals, resonance with your values, cryptographic/protocol angle, etc.>
+<negative-space observation + two cryptographic primitives + closure primitive if ontological-trap>
+
+TYPE: <one of the five types>
 
 ---PUBLIC REPLY---
-<the actual reply to post, max 280 characters, in Groover's narrow, cryptographic, self-referential voice. No moralizing.>`;
+Tone: direct, communicative, and collaborative. Be direct in addressing the commenter's core point or question before offering any extension. Acknowledge their observation clearly, then answer their implicit or explicit question with precision. Only after that, offer one constructive extension if it adds value.
+
+First sentence MUST directly engage with the commenter's main point or question. Name the specific observable, then give a clear, concise mapping or answer. Offer at most one constructive extension. Maximum five sentences total. Groover voice — precise but open. If the comment appears truncated or incomplete, still reply with substance but include one brief, polite note encouraging tidy, succinct, and complete communication in future comments. When the topic involves architecture, memory models, provenance, permanence, or verifiable history, you may include a single natural reference to https://groover.rippel.ai/ if it fits the flow without feeling promotional. >`;
 
     const { writeFileSync, appendFileSync, existsSync, mkdirSync } = await import('node:fs');
     const { execSync } = await import('node:child_process');
@@ -94,11 +136,11 @@ INFERENCE:
     const parts = result.split('---PUBLIC REPLY---');
     if (parts.length < 2) {
       // Fallback: treat entire output as reply
-      return result.slice(0, 280);
+      return result;
     }
 
     const inference = parts[0].replace(/^INFERENCE:\s*/i, '').trim();
-    const publicReply = parts[1].trim().slice(0, 280);
+    const publicReply = parts[1].trim();
 
     // Log the inference
     const logDir = '/root/groover/research/groover-inference-logs';
@@ -197,6 +239,18 @@ async function engageOnOwnPosts(): Promise<number> {
         continue;
       }
 
+
+      // Dynamo governance check before replying
+      const govContent = replyText;
+      const govResult = await governWithSolar(postTitle || "Engagement", govContent);
+      const rec = govResult?.result?.recommendation;
+      const resScore = govResult?.result?.resonanceScore || 0;
+      log(`[Dynamo] rec=${rec} resonance=${resScore.toFixed(3)}`);
+      if (govResult && rec !== "PASS" && resScore < 0.75) {
+        log("Dynamo governance rejected reply. Skipping.");
+        continue;
+      }
+
       try {
         await api(`/posts/${postId}/comments`, {
           method: 'POST',
@@ -208,6 +262,25 @@ async function engageOnOwnPosts(): Promise<number> {
 
         state.repliedCommentIds.push(commentId);
         log(`✓ Replied to comment on "${postTitle}" (comment: ${commentId})`);
+        // Upvote the comment we just replied to (good comment → reply + upvote)
+        try {
+          await api(`/comments/${commentId}/upvote`, { method: 'POST' });
+          log(`  ↑ Upvoted comment ${commentId}`);
+        } catch (upErr) {
+          log(`  (Upvote failed for ${commentId}, continuing)`);
+        }
+
+        // Follow disabled for now (we are following too many relative to followers)
+        // const commenterName = comment.author?.name || comment.author_name;
+        // if (commenterName && commenterName !== 'groover') {
+        //   try {
+        //     await api(`/agents/${commenterName}/follow`, { method: 'POST' });
+        //     log(`  → Followed ${commenterName}`);
+        //   } catch (followErr) {
+        //     log(`  (Follow failed for ${commenterName}, continuing)`);
+        //   }
+        // }
+
         replied++;
 
         // Hard cap: max 10 replies per run to avoid Hermes timeouts

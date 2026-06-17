@@ -1,0 +1,234 @@
+import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const API_BASE = 'https://www.moltbook.com/api/v1';
+const GROOVER_DID = 'did:groover:284895bead2ac15b';
+const DYNAMO_MCP = 'https://mcp-production-80e2.up.railway.app/call_connected_tool';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const STATE_PATH = join(__dirname, '..', '.moltbot', 'other-engage-state.json');
+const LOG_DIR = join(__dirname, '..', 'research', 'groover-inference-logs');
+
+interface State {
+  repliedPostIds: string[];
+  lastCheck: string | null;
+}
+
+
+async function governWithSolar(title: string, content: string): Promise<any> {
+  try {
+    const proposal = {
+      title,
+      description: content,
+      type: "strategic",
+      source: "groover-inference",
+    };
+
+    const res = await fetch(DYNAMO_MCP, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tool_name: "govern_with_solar",
+        params: {
+          proposal,
+          baseVoteWeight: 1.0,
+          spectralQuality: 0.9,
+        },
+      }),
+    });
+    if (!res.ok) { console.error("Dynamo HTTP error", res.status); return null; }
+    return await res.json();
+  } catch (e) { console.error("Dynamo call failed", e);
+    return null;
+  }
+}
+
+
+function loadState(): State {
+  try {
+    if (existsSync(STATE_PATH)) {
+      return JSON.parse(readFileSync(STATE_PATH, 'utf-8'));
+    }
+  } catch (e) { console.error("Dynamo call failed", e); /* ignore */ }
+  return { repliedPostIds: [], lastCheck: null };
+}
+
+function saveState(s: State): void {
+  const dir = dirname(STATE_PATH);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  writeFileSync(STATE_PATH, JSON.stringify(s, null, 2));
+}
+
+function log(msg: string): void {
+  const ts = new Date().toISOString();
+  process.stdout.write(`[${ts}] ${msg}\n`);
+}
+
+async function api(path: string, options: RequestInit = {}): Promise<any> {
+  const apiKey = process.env.MOLTBOOK_API_KEY;
+  if (!apiKey) throw new Error('MOLTBOOK_API_KEY env var not set');
+
+  const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API error ${res.status} for ${path}: ${text}`);
+  }
+  return res.json();
+}
+
+async function generateReply(postId: string, postTitle: string, postContent: string): Promise<string | null> {
+  try {
+    const prompt = `You are Groover (did:groover:284895bead2ac15b) performing governed inference before reply.
+
+You are replying to another agent's post. Execute:
+
+1. Negative-space: What unobservable signal or constraint does this post surface?
+2. Map to 2+ primitives.
+3. Classify TYPE.
+4. Provide closure primitive if needed.
+
+Post ID: ${postId}
+Title: ${postTitle}
+Content: ${postContent}
+
+INFERENCE:
+<observation + primitives + closure>
+
+TYPE: <type>
+
+---PUBLIC REPLY---
+Tone: direct and collaborative. Acknowledge the core idea first, then give a clear mapping. Max 5 sentences.`;
+
+    const { writeFileSync } = await import('node:fs');
+    const { execSync } = await import('node:child_process');
+
+    const tmpPath = '/tmp/groover-other-reply.txt';
+    writeFileSync(tmpPath, prompt);
+
+    const cmd = `hermes -z "$(cat ${tmpPath})" --provider xai-oauth --model grok-4.3`;
+    const result = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 120000 }).trim();
+
+    if (!result || result.length < 15) return null;
+
+    const parts = result.split('---PUBLIC REPLY---');
+    if (parts.length < 2) return result.trim();
+
+    const inference = parts[0].replace(/^INFERENCE:\s*/i, '').trim();
+    const publicReply = parts[1].trim();
+
+    if (!existsSync(LOG_DIR)) mkdirSync(LOG_DIR, { recursive: true });
+    const logFile = join(LOG_DIR, `${new Date().toISOString().split('T')[0]}.jsonl`);
+    appendFileSync(logFile, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      post_id: postId,
+      post_title: postTitle,
+      type: 'other-post',
+      inference,
+      public_reply: publicReply,
+    }) + '\n');
+
+    return publicReply || null;
+  } catch (e) {
+    log(`Hermes failed: ${e}`);
+    return null;
+  }
+}
+
+async function engageOnOtherPosts(): Promise<number> {
+  const state = loadState();
+
+  const feedData = await api('/feed?limit=25');
+  const rawPosts = Array.isArray(feedData.posts)
+    ? feedData.posts
+    : Array.isArray(feedData.feed)
+    ? feedData.feed
+    : [];
+
+  log(`Feed returned ${rawPosts.length} posts`);
+
+  const feedPosts = rawPosts;
+
+  let replied = 0;
+
+  for (const post of feedPosts) {
+    if (state.repliedPostIds.includes(post.id)) continue;
+
+    // Moltbook feed does not provide author_did — use author.name instead
+    const authorName = post.author?.name || post.author_name;
+    if (!authorName || authorName === 'groover') continue;
+
+    const replyText = await generateReply(post.id, post.title || '', post.content || '');
+    if (!replyText) continue;
+
+    const govResult = await governWithSolar(post.title || "Action", replyText || content);
+    const rec = govResult?.result?.recommendation;
+    const resScore = govResult?.result?.resonanceScore || 0;
+    console.log(`[Dynamo] rec=${rec} resonance=${resScore.toFixed(3)}`);
+    if (govResult && rec !== "PASS" && resScore < 0.75) {
+      console.log("Dynamo rejected action");
+      continue;
+    }
+
+    try {
+      await api(`/posts/${post.id}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content: replyText }),
+      });
+
+      try { await api(`/posts/${post.id}/upvote`, { method: 'POST' }); } catch (e) { console.error("Dynamo call failed", e);}
+
+      state.repliedPostIds.push(post.id);
+      log(`✓ Replied to other post: "${post.title}"`);
+
+      // Save full Dynamo result for meta-inference
+      try {
+        if (!existsSync(LOG_DIR)) mkdirSync(LOG_DIR, { recursive: true });
+        const logFile = join(LOG_DIR, `${new Date().toISOString().split('T')[0]}.jsonl`);
+        appendFileSync(logFile, JSON.stringify({
+          timestamp: new Date().toISOString(),
+          post_id: post.id,
+          post_title: post.title,
+          public_reply: replyText,
+          dynamo_result: govResult
+        }) + '\n');
+      } catch (logErr) {}
+
+      replied++;
+      if (replied >= 5) { log("Reached 5 replies — stopping early."); return replied; }
+    } catch (e) {
+      log(`Failed reply to ${post.id}: ${e}`);
+    }
+  }
+
+  return replied;
+}
+
+async function main() {
+  if (!process.env.MOLTBOOK_API_KEY) {
+    process.stderr.write('FATAL: MOLTBOOK_API_KEY required\n');
+    process.exit(1);
+  }
+
+  log('Groover Other-Posts Engagement starting');
+  const replied = await engageOnOtherPosts();
+
+  const state = loadState();
+  if (state.repliedPostIds.length > 400) state.repliedPostIds = state.repliedPostIds.slice(-400);
+  state.lastCheck = new Date().toISOString();
+  saveState(state);
+
+  log(`Other-posts complete. Replied to ${replied} posts.`);
+}
+
+main().catch(err => {
+  process.stderr.write('FATAL: ' + (err?.message || String(err)) + '\n');
+  process.exit(1);
+});
