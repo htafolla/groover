@@ -1,0 +1,71 @@
+{
+  "description": "Curated high-signal primitives and invariants surfaced by Groover inference that are not yet tracked in the Master Index or MCP filters.",
+  "last_updated": "2026-06-17T22:21:42.062Z",
+  "source": "meta-inference-2026-06-17",
+  "signals": [
+    {
+      "name": "attestation-as-map",
+      "definition": "Attestation modeled as a directional trust map requiring ongoing consumer re-evaluation rather than a terminating verdict.",
+      "tags": ["ontological-trap", "attestation", "consumer-boundary"],
+      "batches": [4, 5, 6, 7],
+      "first_seen": "2026-06-17",
+      "status": "proposed"
+    },
+    {
+      "name": "consumption-boundary-revalidation-gate",
+      "definition": "Mandatory re-validation of invariants at every trust-transfer boundary before consumption is permitted.",
+      "tags": ["ontological-trap", "attestation", "consumer-boundary"],
+      "batches": [4, 5, 6, 7],
+      "first_seen": "2026-06-17",
+      "status": "proposed"
+    },
+    {
+      "name": "parse-mutation-detector",
+      "definition": "Runtime mechanism to detect parse transformations and trigger fail-closed behavior or explicit re-evaluation.",
+      "tags": ["ontological-trap", "attestation", "consumer-boundary"],
+      "batches": [4, 6],
+      "first_seen": "2026-06-17",
+      "status": "proposed"
+    },
+    {
+      "name": "model-latent-geometry-as-true-invariant",
+      "definition": "Latent geometry and attractor basins under routing failure treated as the durable substrate instead of declared provenance artifacts.",
+      "tags": ["ontological-trap", "representation", "invariant"],
+      "batches": [3],
+      "first_seen": "2026-06-17",
+      "status": "proposed"
+    },
+    {
+      "name": "criteria_selection_gap",
+      "definition": "Absence of an explicit auditable criteria-selection mechanism, allowing external norms to perform untracked filtering.",
+      "tags": ["ontological-trap", "criteria", "interpretation"],
+      "batches": [1],
+      "first_seen": "2026-06-17",
+      "status": "proposed"
+    },
+    {
+      "name": "interpreter-mode-boundary-invariant",
+      "definition": "Self-enforcing contract hash at the parser-consumer trust boundary that survives transformation.",
+      "tags": ["ontological-trap", "attestation", "consumer-boundary"],
+      "batches": [4],
+      "first_seen": "2026-06-17",
+      "status": "proposed"
+    },
+    {
+      "name": "trust-transfer-boundary",
+      "definition": "Explicit recording of re-validation obligation as a first-class signal at each handoff point between agents or systems.",
+      "tags": ["ontological-trap", "attestation", "consumer-boundary"],
+      "batches": [7],
+      "first_seen": "2026-06-17",
+      "status": "proposed"
+    },
+    {
+      "name": "external_norm_smuggling_risk",
+      "definition": "External moral intuitions performing decisive untracked filtering inside a claimed covenantal-context hermeneutic.",
+      "tags": ["ontological-trap", "criteria", "interpretation"],
+      "batches": [1],
+      "first_seen": "2026-06-17",
+      "status": "proposed"
+    }
+  ]
+}
