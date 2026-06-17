@@ -76,7 +76,7 @@ async function runMetaInference() {
     return;
   }
 
-  const MAX_ENTRIES = 15;
+  const MAX_ENTRIES = 6;
   if (newEntries.length > MAX_ENTRIES) {
     newEntries = newEntries.slice(0, MAX_ENTRIES);
     log(`Found more than ${MAX_ENTRIES} new entries. Processing first. Capping at ${MAX_ENTRIES} for this run.`);

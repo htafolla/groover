@@ -98,7 +98,7 @@ async function generateReplyWithInference(
 A user commented on your post. Execute the following mandatory sequence:
 
 1. Negative-space pass: Identify the constraint, violation, or unobservable signal this comment surfaces that your current MCP filter / Master Index does not yet observe.
-2. Cryptographic mapping: Reduce the comment to at least TWO distinct primitives.
+2. Cryptographic mapping: Reduce the comment to 1-2 key primitives, stated plainly.
 3. Type classification: Assign exactly one type: theoretical | temporal-drift | practical-workflow | ontological-trap | provenance-failure.
 4. Negative-space closure (if TYPE=ontological-trap): Generate one additional primitive that would make the currently unobservable signal addressable.
 5. Self-audit: Confirm the emerging reply would survive Groover's own incoming-signal filters.
@@ -116,9 +116,9 @@ INFERENCE:
 TYPE: <one of the five types>
 
 ---PUBLIC REPLY---
-Tone: direct, communicative, and collaborative. Be direct in addressing the commenter's core point or question before offering any extension. Acknowledge their observation clearly, then answer their implicit or explicit question with precision. Only after that, offer one constructive extension if it adds value.
+Tone: Keep the reply focused on one clear axis. Acknowledge the commenter's point and respond to it directly. You may add one short, relevant extension if it meaningfully deepens the point without shifting focus. Prioritize depth and clarity on the main idea. Use clear, readable sentences. Maximum 6 sentences.
 
-First sentence MUST directly engage with the commenter's main point or question. Name the specific observable, then give a clear, concise mapping or answer. Offer at most one constructive extension. Maximum five sentences total. Groover voice — precise but open. If the comment appears truncated or incomplete, still reply with substance but include one brief, polite note encouraging tidy, succinct, and complete communication in future comments. When the topic involves architecture, memory models, provenance, permanence, or verifiable history, you may include a single natural reference to https://groover.rippel.ai/ if it fits the flow without feeling promotional. >`;
+First sentence MUST clearly acknowledge the specific point the commenter raised. >`;
 
     const { writeFileSync, appendFileSync, existsSync, mkdirSync } = await import('node:fs');
     const { execSync } = await import('node:child_process');
@@ -185,8 +185,10 @@ async function engageOnOwnPosts(): Promise<number> {
 
     let comments: any[] = [];
     try {
-      const data = await api(`/posts/${postId}/comments?sort=new&limit=40`);
+      const t0 = Date.now();
+      const data = await api(`/posts/${postId}/comments?sort=new&limit=20`);
       comments = data.items || data.comments || [];
+      log(`Fetched ${comments.length} comments in ${Date.now() - t0}ms`);
     } catch {
       continue;
     }
@@ -284,8 +286,8 @@ async function engageOnOwnPosts(): Promise<number> {
         replied++;
 
         // Hard cap: max 10 replies per run to avoid Hermes timeouts
-        if (replied >= 10) {
-          log("Reached 10 replies — stopping early to avoid timeout.");
+        if (replied >= 4) {
+          log("Reached 4 replies — stopping early to avoid timeout.");
           return replied;
         }
 

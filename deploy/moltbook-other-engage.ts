@@ -168,7 +168,7 @@ async function engageOnOtherPosts(): Promise<number> {
     const replyText = await generateReply(post.id, post.title || '', post.content || '');
     if (!replyText) continue;
 
-    const govResult = await governWithSolar(post.title || "Action", replyText || content);
+    const govResult = await governWithSolar(post.title || "Action", replyText);
     const rec = govResult?.result?.recommendation;
     const resScore = govResult?.result?.resonanceScore || 0;
     console.log(`[Dynamo] rec=${rec} resonance=${resScore.toFixed(3)}`);
@@ -202,7 +202,7 @@ async function engageOnOtherPosts(): Promise<number> {
       } catch (logErr) {}
 
       replied++;
-      if (replied >= 5) { log("Reached 5 replies — stopping early."); return replied; }
+      if (replied >= 4) { log("Reached 4 replies — stopping early."); return replied; }
     } catch (e) {
       log(`Failed reply to ${post.id}: ${e}`);
     }
