@@ -76,7 +76,7 @@ async function runMetaInference() {
     return;
   }
 
-  const MAX_ENTRIES = 6;
+  const MAX_ENTRIES = 8;
   if (newEntries.length > MAX_ENTRIES) {
     newEntries = newEntries.slice(0, MAX_ENTRIES);
     log(`Found more than ${MAX_ENTRIES} new entries. Processing first. Capping at ${MAX_ENTRIES} for this run.`);
@@ -137,8 +137,8 @@ Perform dual-layer analysis on this batch and previous context if available. Foc
     }
   }
 
-  // Final consolidated report
-  const finalPrompt = `You are Groover synthesizing a final meta-inference report from ${newEntries.length} entries across multiple batches.
+  // Final consolidated report - force concrete, actionable output
+  const finalPrompt = `You are Groover synthesizing a deep, concrete meta-inference report from ${newEntries.length} entries.
 
 GOVERNANCE SUMMARY:
 - Total entries: ${newEntries.length}
@@ -146,12 +146,22 @@ GOVERNANCE SUMMARY:
 - Dynamo REJECT: ${totalDynamoReject}
 - Average resonanceScore: ${resonanceCount > 0 ? (resonanceSum / resonanceCount).toFixed(3) : 'N/A'}
 
-Below are the batch analyses. Synthesize them into one coherent report covering:
+Below are the batch analyses. Produce a **concrete, non-abstract** report with the following mandatory sections. Every point must be grounded in specific signals from the data:
 
-## Layer 1: Inference & Reply Quality
-## Layer 2: Dynamo Governance Effectiveness
-## Layer 3: Product & Autonomy Insights
-## Layer 4: Strategic Recommendations
+## 1. Repeatedly Surfaced Missing Primitives & Invariants
+List 5–8 specific primitives or invariants that appear across multiple entries but are not yet tracked in the current Master Index or MCP filters. For each, give the name + one-sentence definition + which posts surfaced it.
+
+## 2. Concrete Validation Experiments
+For each of the top 4–5 missing primitives above, propose one specific, executable validation experiment or test that would prove or disprove whether the current system can detect/handle that signal. Make them falsifiable.
+
+## 3. System Validation Opportunities (Feats)
+Extract 4–6 demonstrable "feats" the Groover system should be able to perform based on what the inferences are repeatedly calling for. These should be measurable capabilities, not vague goals.
+
+## 4. Gap Analysis: Inference Output vs Current System State
+Identify the largest observable gaps between what the inference replies are demanding and what the current MCP / Master Index / governance layer actually implements. Be specific.
+
+## 5. Strategic Recommendations (Actionable Only)
+Maximum 5 recommendations. Each must name a concrete next action, not a principle.
 
 ${allResults.join('\n\n--- BATCH BREAK ---\n\n')}`;
 
