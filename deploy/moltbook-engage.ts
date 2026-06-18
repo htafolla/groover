@@ -1,6 +1,12 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  buildGovernanceProposal,
+  formatDynamoLog,
+  isOntologicalTrap,
+  matchPrimitivesFromInference,
+} from './governance-helper.js';
 
 const API_BASE = 'https://www.moltbook.com/api/v1';
 const GROOVER_DID = 'did:groover:284895bead2ac15b';
@@ -8,6 +14,7 @@ const DYNAMO_MCP = 'https://mcp-production-80e2.up.railway.app/call_connected_to
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const STATE_PATH = join(__dirname, '..', '.moltbot', 'engage-state.json');
+const LOG_DIR = join(__dirname, '..', 'research', 'groover-inference-logs');
 
 interface State {
   repliedCommentIds: string[];           // comments Groover has already replied to (enables deeper engagement)
@@ -56,14 +63,25 @@ async function api(path: string, options: RequestInit = {}): Promise<any> {
 
 
 
-async function governWithSolar(title: string, content: string): Promise<any> {
+interface GovernOptions {
+  inference?: string;
+  force?: boolean;
+}
+
+async function governWithSolar(
+  title: string,
+  content: string,
+  options: GovernOptions = {},
+): Promise<any> {
   try {
-    const proposal = {
-      title,
-      description: content,
-      type: "strategic",
-      source: "groover-inference",
-    };
+    const inference = options.inference ?? content;
+    const matchedPrimitives = matchPrimitivesFromInference(inference);
+    const proposal = buildGovernanceProposal(title, content, {
+      agentDid: GROOVER_DID,
+      inferenceType: isOntologicalTrap(inference) ? 'ontological-trap' : undefined,
+      matchedPrimitives,
+      force: options.force ?? isOntologicalTrap(inference),
+    });
 
     const res = await fetch(DYNAMO_MCP, {
       method: "POST",
@@ -77,11 +95,26 @@ async function governWithSolar(title: string, content: string): Promise<any> {
         },
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      log(`[Dynamo] HTTP error ${res.status} — logging N/A`);
+      return null;
+    }
     return await res.json();
-  } catch {
+  } catch (e) {
+    log(`[Dynamo] call failed: ${e} — logging N/A`);
     return null;
   }
+}
+
+interface InferenceResult {
+  inference: string;
+  publicReply: string;
+}
+
+function appendInferenceLog(entry: Record<string, unknown>): void {
+  if (!existsSync(LOG_DIR)) mkdirSync(LOG_DIR, { recursive: true });
+  const logFile = join(LOG_DIR, `${new Date().toISOString().split('T')[0]}.jsonl`);
+  appendFileSync(logFile, JSON.stringify(entry) + '\n');
 }
 
 
@@ -91,7 +124,7 @@ async function generateReplyWithInference(
   postContent: string,
   commentId: string,
   commentContent: string
-): Promise<string | null> {
+): Promise<InferenceResult | null> {
   try {
     const prompt = `You are Groover (did:groover:284895bead2ac15b) performing governed inference before reply. PROMPT_VERSION: v2-negative-space-closure
 
@@ -135,30 +168,13 @@ First sentence MUST clearly acknowledge the specific point the commenter raised.
     // Split on the delimiter
     const parts = result.split('---PUBLIC REPLY---');
     if (parts.length < 2) {
-      // Fallback: treat entire output as reply
-      return result;
+      return { inference: result, publicReply: result };
     }
 
     const inference = parts[0].replace(/^INFERENCE:\s*/i, '').trim();
     const publicReply = parts[1].trim();
 
-    // Log the inference
-    const logDir = '/root/groover/research/groover-inference-logs';
-    if (!existsSync(logDir)) mkdirSync(logDir, { recursive: true });
-
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      post_id: postId,
-      post_title: postTitle,
-      comment_id: commentId,
-      inference: inference,
-      public_reply: publicReply,
-    };
-
-    const logFile = join(logDir, `${new Date().toISOString().split('T')[0]}.jsonl`);
-    appendFileSync(logFile, JSON.stringify(logEntry) + '\n');
-
-    return publicReply || null;
+    return { inference, publicReply };
   } catch (e: any) {
     const errorMsg = String(e);
     if (errorMsg.includes('429') || errorMsg.includes('Hourly comment limit')) {
@@ -227,27 +243,47 @@ async function engageOnOwnPosts(): Promise<number> {
       // Only proceed if it's a reply to us or a fresh top-level comment
       if (!isReplyToUs && !isTopLevel) continue;
 
-      const replyText = await generateReplyWithInference(
+      const inferenceResult = await generateReplyWithInference(
         postId,
         postTitle,
         "",
         commentId,
         comment.content || ""
       );
-      if (!replyText) continue;
+      if (!inferenceResult?.publicReply) continue;
+
+      const replyText = inferenceResult.publicReply;
 
       // Final safety check before posting
       if (state.repliedCommentIds.includes(commentId)) {
         continue;
       }
 
-
-      // Dynamo governance check before replying
-      const govContent = replyText;
-      const govResult = await governWithSolar(postTitle || "Engagement", govContent);
+      // Dynamo governance — always called; always logged (even N/A)
+      const govResult = await governWithSolar(postTitle || "Engagement", replyText, {
+        inference: inferenceResult.inference,
+        force: isOntologicalTrap(inferenceResult.inference),
+      });
       const rec = govResult?.result?.recommendation;
       const resScore = govResult?.result?.resonanceScore || 0;
-      log(`[Dynamo] rec=${rec} resonance=${resScore.toFixed(3)}`);
+      log(`[Dynamo] ${formatDynamoLog(govResult)}`);
+
+      const matchedPrimitives = matchPrimitivesFromInference(inferenceResult.inference);
+      appendInferenceLog({
+        timestamp: new Date().toISOString(),
+        source: 'groover',
+        post_id: postId,
+        post_title: postTitle,
+        comment_id: commentId,
+        inference: inferenceResult.inference,
+        public_reply: replyText,
+        inference_type: isOntologicalTrap(inferenceResult.inference) ? 'ontological-trap' : undefined,
+        dynamo_result: govResult
+          ? { result: govResult.result, matchedPrimitives }
+          : { result: null, matchedPrimitives },
+        repertoire_signals: matchedPrimitives,
+      });
+
       if (govResult && rec !== "PASS" && resScore < 0.75) {
         log("Dynamo governance rejected reply. Skipping.");
         continue;

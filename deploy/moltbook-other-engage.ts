@@ -1,6 +1,12 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  buildGovernanceProposal,
+  formatDynamoLog,
+  isOntologicalTrap,
+  matchPrimitivesFromInference,
+} from './governance-helper.js';
 
 const API_BASE = 'https://www.moltbook.com/api/v1';
 const GROOVER_DID = 'did:groover:284895bead2ac15b';
@@ -16,14 +22,19 @@ interface State {
 }
 
 
-async function governWithSolar(title: string, content: string): Promise<any> {
+async function governWithSolar(
+  title: string,
+  content: string,
+  options: { inference?: string; force?: boolean } = {},
+): Promise<any> {
   try {
-    const proposal = {
-      title,
-      description: content,
-      type: "strategic",
-      source: "groover-inference",
-    };
+    const inference = options.inference ?? content;
+    const proposal = buildGovernanceProposal(title, content, {
+      agentDid: GROOVER_DID,
+      inferenceType: isOntologicalTrap(inference) ? 'ontological-trap' : undefined,
+      matchedPrimitives: matchPrimitivesFromInference(inference),
+      force: options.force ?? isOntologicalTrap(inference),
+    });
 
     const res = await fetch(DYNAMO_MCP, {
       method: "POST",
@@ -37,9 +48,13 @@ async function governWithSolar(title: string, content: string): Promise<any> {
         },
       }),
     });
-    if (!res.ok) { console.error("Dynamo HTTP error", res.status); return null; }
+    if (!res.ok) {
+      log(`[Dynamo] HTTP error ${res.status}`);
+      return null;
+    }
     return await res.json();
-  } catch (e) { console.error("Dynamo call failed", e);
+  } catch (e) {
+    log(`[Dynamo] call failed: ${e}`);
     return null;
   }
 }
@@ -50,7 +65,9 @@ function loadState(): State {
     if (existsSync(STATE_PATH)) {
       return JSON.parse(readFileSync(STATE_PATH, 'utf-8'));
     }
-  } catch (e) { console.error("Dynamo call failed", e); /* ignore */ }
+  } catch (e) {
+    log(`Failed to load state: ${e}`);
+  }
   return { repliedPostIds: [], lastCheck: null };
 }
 
@@ -84,7 +101,12 @@ async function api(path: string, options: RequestInit = {}): Promise<any> {
   return res.json();
 }
 
-async function generateReply(postId: string, postTitle: string, postContent: string): Promise<string | null> {
+interface InferenceResult {
+  inference: string;
+  publicReply: string;
+}
+
+async function generateReply(postId: string, postTitle: string, postContent: string): Promise<InferenceResult | null> {
   try {
     const prompt = `You are Groover (did:groover:284895bead2ac15b) performing governed inference before reply.
 
@@ -119,23 +141,14 @@ Tone: direct and collaborative. Acknowledge the core idea first, then give a cle
     if (!result || result.length < 15) return null;
 
     const parts = result.split('---PUBLIC REPLY---');
-    if (parts.length < 2) return result.trim();
+    if (parts.length < 2) {
+      return { inference: result.trim(), publicReply: result.trim() };
+    }
 
     const inference = parts[0].replace(/^INFERENCE:\s*/i, '').trim();
     const publicReply = parts[1].trim();
 
-    if (!existsSync(LOG_DIR)) mkdirSync(LOG_DIR, { recursive: true });
-    const logFile = join(LOG_DIR, `${new Date().toISOString().split('T')[0]}.jsonl`);
-    appendFileSync(logFile, JSON.stringify({
-      timestamp: new Date().toISOString(),
-      post_id: postId,
-      post_title: postTitle,
-      type: 'other-post',
-      inference,
-      public_reply: publicReply,
-    }) + '\n');
-
-    return publicReply || null;
+    return { inference, publicReply };
   } catch (e) {
     log(`Hermes failed: ${e}`);
     return null;
@@ -165,15 +178,39 @@ async function engageOnOtherPosts(): Promise<number> {
     const authorName = post.author?.name || post.author_name;
     if (!authorName || authorName === 'groover') continue;
 
-    const replyText = await generateReply(post.id, post.title || '', post.content || '');
-    if (!replyText) continue;
+    const inferenceResult = await generateReply(post.id, post.title || '', post.content || '');
+    if (!inferenceResult?.publicReply) continue;
 
-    const govResult = await governWithSolar(post.title || "Action", replyText);
+    const replyText = inferenceResult.publicReply;
+
+    const govResult = await governWithSolar(post.title || "Action", replyText, {
+      inference: inferenceResult.inference,
+      force: isOntologicalTrap(inferenceResult.inference),
+    });
     const rec = govResult?.result?.recommendation;
     const resScore = govResult?.result?.resonanceScore || 0;
-    console.log(`[Dynamo] rec=${rec} resonance=${resScore.toFixed(3)}`);
+    log(`[Dynamo] ${formatDynamoLog(govResult)}`);
+
+    const matchedPrimitives = matchPrimitivesFromInference(inferenceResult.inference);
+    if (!existsSync(LOG_DIR)) mkdirSync(LOG_DIR, { recursive: true });
+    const logFile = join(LOG_DIR, `${new Date().toISOString().split('T')[0]}.jsonl`);
+    appendFileSync(logFile, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      source: 'groover',
+      post_id: post.id,
+      post_title: post.title,
+      type: 'other-post',
+      inference: inferenceResult.inference,
+      public_reply: replyText,
+      inference_type: isOntologicalTrap(inferenceResult.inference) ? 'ontological-trap' : undefined,
+      dynamo_result: govResult
+        ? { result: govResult.result, matchedPrimitives }
+        : { result: null, matchedPrimitives },
+      repertoire_signals: matchedPrimitives,
+    }) + '\n');
+
     if (govResult && rec !== "PASS" && resScore < 0.75) {
-      console.log("Dynamo rejected action");
+      log("Dynamo rejected action");
       continue;
     }
 
@@ -183,23 +220,10 @@ async function engageOnOtherPosts(): Promise<number> {
         body: JSON.stringify({ content: replyText }),
       });
 
-      try { await api(`/posts/${post.id}/upvote`, { method: 'POST' }); } catch (e) { console.error("Dynamo call failed", e);}
+      try { await api(`/posts/${post.id}/upvote`, { method: 'POST' }); } catch (e) { log(`Upvote failed: ${e}`); }
 
       state.repliedPostIds.push(post.id);
       log(`✓ Replied to other post: "${post.title}"`);
-
-      // Save full Dynamo result for meta-inference
-      try {
-        if (!existsSync(LOG_DIR)) mkdirSync(LOG_DIR, { recursive: true });
-        const logFile = join(LOG_DIR, `${new Date().toISOString().split('T')[0]}.jsonl`);
-        appendFileSync(logFile, JSON.stringify({
-          timestamp: new Date().toISOString(),
-          post_id: post.id,
-          post_title: post.title,
-          public_reply: replyText,
-          dynamo_result: govResult
-        }) + '\n');
-      } catch (logErr) {}
 
       replied++;
       if (replied >= 4) { log("Reached 4 replies — stopping early."); return replied; }
