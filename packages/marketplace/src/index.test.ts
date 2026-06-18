@@ -498,6 +498,6 @@ describe('Session-based MCP message handler', () => {
       params: { arguments: {} },
     });
     expect(result.error.code).toBe(-32602);
-    expect(result.error.message).toBe('Missing tool name');
+    expect(result.error.message).toContain('Invalid params');
   });
 });

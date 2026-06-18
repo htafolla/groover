@@ -118,7 +118,11 @@ export async function searchPlugins(query: string): Promise<CorrelationResult[]>
   const signals = Array.from(registry.values()).map((p, i) => {
     let content = `${p.metadata.name || p.did} ${JSON.stringify(p.metadata)}`;
     if (p.uiManifest) {
-      const labels = (p.uiManifest.fields || []).map(f => `${f.label} ${f.description || ''}`).join(' ');
+      const fields =
+        p.uiManifest.displayMode === 'form' || p.uiManifest.displayMode === 'wizard'
+          ? p.uiManifest.fields || []
+          : [];
+      const labels = fields.map((f) => `${f.label} ${f.description || ''}`).join(' ');
       content += ` ui: ${p.uiManifest.displayMode} ${labels} ${p.uiManifest.exampleQueries?.join(' ') || ''}`;
     }
     const mcpServers = listMcpServers().map(m => m.name).join(' ');
@@ -328,12 +332,15 @@ export async function registerPlugin(params: {
     frameworkLogger.log('marketplace', 'enforcement-warning', 'warning', { score: enforcementScore });
   }
 
-  // Validate manifest if provided
+  // Validate + normalize manifest if provided (SSOT: agentuimanifest Zod)
+  let storedUiManifest = params.uiManifest;
   if (params.uiManifest) {
     const { validateAgentUiManifest } = await import('./agent-ui-manifest.js');
     const manifestValidation = validateAgentUiManifest(params.uiManifest);
     if (!manifestValidation.valid) {
       frameworkLogger.log('marketplace', 'ui-manifest-invalid', 'warning', { errors: manifestValidation.errors });
+    } else if (manifestValidation.manifest) {
+      storedUiManifest = manifestValidation.manifest;
     }
   }
 
@@ -345,7 +352,7 @@ export async function registerPlugin(params: {
     metadata: params.metadata,
     registeredAt: new Date().toISOString(),
     reputation: 1.0,
-    uiManifest: params.uiManifest,
+    uiManifest: storedUiManifest,
   };
   registry.set(did, record);
   saveRegistry();

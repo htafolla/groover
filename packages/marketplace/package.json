@@ -13,5 +13,7 @@
     "dev": "tsx watch src/index.ts",
     "test": "tsx src/index.test.ts"
   },
-  "dependencies": {}
+  "dependencies": {
+    "agentuimanifest": "file:../../../agentuimanifest"
+  }
 }

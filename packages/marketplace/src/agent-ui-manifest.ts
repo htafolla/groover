@@ -1,128 +1,56 @@
 /**
  * AgentUIManifest support for Groover marketplace.
- * Integrated reference: https://github.com/htafolla/agentuimanifest
- * Declarative UI schema so MCP agents/plugins declare human-friendly forms/wizards/etc.
- * instead of raw LLM inputSchema.
- *
- * Per SPEC.md v1.0 (fetched via grok_com_github MCP).
- * Minimal but complete for MVP: core interfaces + validation shape.
- * Full adoption in registration, registry, search, and correlation.
- *
- * Governance note: Aligns with AgentUIManifest CHARTER (open, DCO, maintainer model)
- * and Groover's 0xRay/Dynamo (this integration governed and enforced).
+ * SSOT: agentuimanifest Zod schema (replaces forked hand-rolled validator).
+ * Backward compat: `chat.initialPrompt` → `chat.systemPrompt` at validation boundary.
  */
+import {
+  agentUiManifestSchema,
+  type AgentUiManifest,
+} from 'agentuimanifest';
 import { frameworkLogger } from '../../xray/src/index.js';
 
-export type DisplayMode = 'form' | 'chat' | 'wizard' | 'viewer';
-export type FieldType = 'text' | 'textarea' | 'url' | 'number' | 'select' | 'toggle';
-export type ResultFormat = 'markdown' | 'structured' | 'file';
+export type { AgentUiManifest };
+export { agentUiManifestSchema };
 
-export interface FieldValidation {
-  required?: boolean;
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
-  patternHint?: string;
-  min?: number;
-  max?: number;
-  step?: number;
-  options?: string[];
-}
+export type DisplayMode = AgentUiManifest['displayMode'];
+type FormManifest = Extract<AgentUiManifest, { displayMode: 'form' }>;
+export type FieldType = NonNullable<FormManifest['fields']>[number]['fieldType'];
+export type ResultFormat = FormManifest['resultFormat'];
 
-export interface Field {
-  id: string;
-  label: string;
-  description?: string;
-  fieldType: FieldType;
-  placeholder?: string;
-  defaultValue?: string | number | boolean;
-  validation?: FieldValidation;
-  conditionalOn?: {
-    fieldId: string;
-    operator: 'equals' | 'notEquals' | 'contains' | 'exists' | 'notExists';
-    value?: string | number | boolean;
-  };
-  hidden?: boolean;
-}
+/** Map legacy groover field names to SSOT before Zod validation. */
+export function normalizeAgentUiManifest(manifest: unknown): unknown {
+  if (!manifest || typeof manifest !== 'object') return manifest;
+  const m = manifest as Record<string, unknown>;
+  if (m.displayMode !== 'chat' || !m.chat || typeof m.chat !== 'object') return manifest;
 
-export interface WizardStep {
-  id: string;
-  title: string;
-  description?: string;
-  fieldIds: string[];
-  toolName?: string;
-}
-
-export interface ChatConfig {
-  initialPrompt?: string;
-  maxTurns?: number;
-}
-
-export interface AgentUiManifest {
-  version: '1';
-  displayMode: DisplayMode;
-
-  // form mode
-  primaryTool?: string;
-  fields?: Field[];
-  resultFormat?: ResultFormat;
-
-  // wizard mode
-  wizardSteps?: WizardStep[];
-  finalTool?: string;
-  finalResultFormat?: ResultFormat;
-
-  // chat mode
-  chat?: ChatConfig;
-
-  // viewer mode
-  viewerTool?: string;
-
-  // display hints
-  icon?: string;
-  accentColor?: string;
-  showPoweredBy?: boolean;
-  exampleQueries?: string[];
-}
-
-/**
- * Lightweight runtime validator (surgical, no extra deps like Zod for MVP).
- * Enforces shape per spec. Extend later if needed.
- */
-export function validateAgentUiManifest(manifest: unknown): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
-  if (!manifest || typeof manifest !== 'object') {
-    errors.push('Manifest must be an object');
-    return { valid: false, errors };
+  const chat = { ...(m.chat as Record<string, unknown>) };
+  if ('initialPrompt' in chat && typeof chat.initialPrompt === 'string' && !('systemPrompt' in chat)) {
+    chat.systemPrompt = chat.initialPrompt;
+    delete chat.initialPrompt;
   }
-  const m = manifest as Partial<AgentUiManifest>;
+  return { ...m, chat };
+}
 
-  if (m.version !== '1') errors.push('version must be "1"');
-  if (!m.displayMode || !['form','chat','wizard','viewer'].includes(m.displayMode)) {
-    errors.push('displayMode must be one of form|chat|wizard|viewer');
+export function validateAgentUiManifest(manifest: unknown): {
+  valid: boolean;
+  errors: string[];
+  manifest?: AgentUiManifest;
+} {
+  const normalized = normalizeAgentUiManifest(manifest);
+  const result = agentUiManifestSchema.safeParse(normalized);
+
+  if (result.success) {
+    frameworkLogger.log('marketplace', 'ui-manifest-validated', 'success', {
+      displayMode: result.data.displayMode,
+    });
+    return { valid: true, errors: [], manifest: result.data };
   }
 
-  if (m.fields) {
-    if (!Array.isArray(m.fields)) errors.push('fields must be array');
-    else {
-      m.fields.forEach((f, i) => {
-        if (!f.id || !f.label || !f.fieldType) {
-          errors.push(`field[${i}] missing id/label/fieldType`);
-        }
-        if (f.validation?.pattern && typeof f.validation.pattern !== 'string') {
-          errors.push(`field[${i}] validation.pattern must be string`);
-        }
-      });
-    }
-  }
-
-  if (errors.length > 0) {
-    frameworkLogger.log('marketplace', 'ui-manifest-validation-failed', 'warning', { errors });
-  } else {
-    frameworkLogger.log('marketplace', 'ui-manifest-validated', 'success', { displayMode: m.displayMode });
-  }
-
-  return { valid: errors.length === 0, errors };
+  const errors = result.error.issues.map(
+    (issue) => `${issue.path.join('.') || 'root'}: ${issue.message}`,
+  );
+  frameworkLogger.log('marketplace', 'ui-manifest-validation-failed', 'warning', { errors });
+  return { valid: false, errors };
 }
 
 export function isAgentUiManifest(value: unknown): value is AgentUiManifest {
