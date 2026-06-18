@@ -80,6 +80,7 @@ export async function runPostTickRepertoire(
         dataDir: join(root, 'data'),
         signalsPath: join(root, 'data/curated_signals.json'),
         logDir: join(root, 'logs/groover-inference'),
+        feedbackDir: join(root, 'logs', 'orchestrator-feedback'),
       });
       if (!provider?.ingestFeedback) {
         cachedIngestFeedback = null;
