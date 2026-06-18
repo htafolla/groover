@@ -171,7 +171,19 @@ export function submitTurn(
   const session = sessions.get(sessionId);
   if (!session) throw new Error('Challenge session not found');
 
-  session.turns.push(turn as ChallengeTurn);
+  const prevHash = session.turns.length === 0 ? PREV_HASH_SEED : session.turns[session.turns.length - 1].hash;
+  const expectedHash = computeTurnHash(prevHash, {
+    toolCall: turn.toolCall,
+    input: turn.input,
+    output: turn.output,
+    reasoning: turn.reasoning,
+    timestamp: turn.timestamp,
+  });
+  if (turn.hash !== expectedHash) {
+    throw new Error(`Invalid turn hash at index ${session.turns.length}`);
+  }
+
+  session.turns.push({ ...turn, hash: expectedHash } as ChallengeTurn);
   if (session.status === 'pending') session.status = 'in-progress';
 
   let followUpPrompt: string | null = null;
@@ -239,6 +251,42 @@ export function buildTraceFromTurns(sessionId: string, turns: ChallengeTurn[]): 
   const merkleRoot = computeMerkleRoot(turns.map(t => t.hash));
   const attestation = computeMerkleRoot([merkleRoot, sessionId]);
   return { sessionId, turns, merkleRoot, attestation };
+}
+
+/** Server-side trace is authoritative — client-submitted trace must match if provided. */
+export function resolveAuthoritativeTrace(
+  session: ChallengeSession,
+  clientTrace?: ChallengeTrace
+): { trace: ChallengeTrace | null; violations: string[] } {
+  const violations: string[] = [];
+  if (session.turns.length === 0) {
+    violations.push('no-server-turns');
+    return { trace: null, violations };
+  }
+
+  const trace = buildTraceFromTurns(session.sessionId, session.turns);
+  if (!clientTrace) return { trace, violations };
+
+  if (clientTrace.sessionId !== session.sessionId) {
+    violations.push('client-session-id-mismatch');
+  }
+  if (clientTrace.turns.length !== session.turns.length) {
+    violations.push(`client-turn-count-mismatch: ${clientTrace.turns.length} vs ${session.turns.length}`);
+  }
+  if (clientTrace.merkleRoot !== trace.merkleRoot) {
+    violations.push('client-merkle-mismatch');
+  }
+  if (clientTrace.attestation !== trace.attestation) {
+    violations.push('client-attestation-mismatch');
+  }
+  for (let i = 0; i < session.turns.length; i++) {
+    const server = session.turns[i];
+    const client = clientTrace.turns[i];
+    if (!client || client.hash !== server.hash) {
+      violations.push(`client-turn-hash-mismatch-at-${i}`);
+    }
+  }
+  return { trace, violations };
 }
 
 // --- Validation (server-side) ---

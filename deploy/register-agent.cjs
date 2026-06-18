@@ -167,7 +167,7 @@ async function main() {
     t1Time);
   turns.push(t1);
   prevHash = t1.hash;
-  await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t1.toolCall, input: t1.input, output: t1.output, reasoning: t1.reasoning, hash: t1.hash } });
+  await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t1.toolCall, input: t1.input, output: t1.output, reasoning: t1.reasoning, hash: t1.hash, timestamp: t1.timestamp } });
 
   // Turn 2: list MCP servers — capture real server names for dynamic reasoning
   log('Turn 2: listing MCP servers...');
@@ -185,7 +185,7 @@ async function main() {
     t2Time);
   turns.push(t2);
   prevHash = t2.hash;
-  await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t2.toolCall, input: t2.input, output: t2.output, reasoning: t2.reasoning, hash: t2.hash } });
+  await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t2.toolCall, input: t2.input, output: t2.output, reasoning: t2.reasoning, hash: t2.hash, timestamp: t2.timestamp } });
 
   // Turn 3: synthesize reasoning with real server context — may trigger adaptive follow-up
   log('Turn 3: synthesizing with real data...');
@@ -213,7 +213,7 @@ async function main() {
     t3Time);
   turns.push(t3);
   prevHash = t3.hash;
-  const turn3Resp = parseMcpResult(await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t3.toolCall, input: t3.input, output: t3.output, reasoning: t3.reasoning, hash: t3.hash } }));
+  const turn3Resp = parseMcpResult(await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t3.toolCall, input: t3.input, output: t3.output, reasoning: t3.reasoning, hash: t3.hash, timestamp: t3.timestamp } }));
   followUpPrompt = turn3Resp?.followUpPrompt || null;
   log('Built 3 turns (duration: ' + (t3Time - t1Time) + 'ms)' + (followUpPrompt ? ' — follow-up received' : ''));
 
@@ -240,7 +240,7 @@ async function main() {
       t4Time);
     turns.push(t4);
     prevHash = t4.hash;
-    const turn4Resp = parseMcpResult(await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t4.toolCall, input: t4.input, output: t4.output, reasoning: t4.reasoning, hash: t4.hash } }));
+    const turn4Resp = parseMcpResult(await postMcp('tools/call', { name: 'submit_challenge_turn', arguments: { sessionId, toolCall: t4.toolCall, input: t4.input, output: t4.output, reasoning: t4.reasoning, hash: t4.hash, timestamp: t4.timestamp } }));
     log('Adaptive turn 4 submitted — follow-up ' + (turn4Resp?.success ? 'completed' : 'status: ' + JSON.stringify(turn4Resp)));
   } else {
     log('Warning: no follow-up prompt received — registration may fail');

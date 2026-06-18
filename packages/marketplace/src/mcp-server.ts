@@ -158,12 +158,13 @@ const TOOL_HANDLERS: Record<string, (args: any) => any> = {
     const sessionId = (args.sessionId as string) || ''
     const session = getSession(sessionId)
     if (!session) throw new Error('Challenge session not found')
+    const timestamp = typeof args.timestamp === 'number' ? args.timestamp : Date.now();
     const { followUpPrompt } = submitTurn(sessionId, {
       toolCall: (args.toolCall as string) || '',
       input: (args.input as string) || '',
       output: (args.output as string) || '',
       reasoning: (args.reasoning as string) || '',
-      timestamp: Date.now(),
+      timestamp,
       hash: (args.hash as string) || '',
     })
     if (followUpPrompt) {

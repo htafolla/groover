@@ -14,7 +14,7 @@ import { xrayBridge, listMcpServers } from '../../xray/src/index.js';
 import { generateDID, generateApiKey, verifyWithPublic } from '../../identity/src/index.js';
 import {
   createChallengeSession, getSession, validateTrace,
-  markSessionCompleted, markSessionFailed,
+  markSessionCompleted, markSessionFailed, resolveAuthoritativeTrace,
   ChallengeSession, ChallengeTrace, ValidateTraceOptions,
 } from './challenge.js';
 import * as crypto from 'crypto';
@@ -202,11 +202,26 @@ export async function registerPlugin(params: {
     return { status: 'gray', cooldown: 300_000 };
   }
 
+  const { trace: authoritativeTrace, violations: traceBindingViolations } = resolveAuthoritativeTrace(
+    session,
+    params.challengeTrace
+  );
+  if (!authoritativeTrace || traceBindingViolations.length > 0) {
+    markSessionFailed(session.sessionId);
+    frameworkLogger.log('marketplace', 'trace-binding-rejected', 'warning', {
+      sessionId: session.sessionId.slice(0, 16),
+      did,
+      violations: traceBindingViolations,
+      serverTurns: session.turns.length,
+    });
+    return { status: 'gray', cooldown: 300_000 };
+  }
+
   // 2a. Evaluate reasoning with xray-enforcer (replaces keyword proxy when available)
   let xrayReasoningScore: number | undefined;
   try {
     const reasoningEval = await xrayBridge.enforce('reasoning-evaluation', [`did:${did}`], JSON.stringify({
-      reasoningTrace: params.challengeTrace.turns.map(t => ({
+      reasoningTrace: authoritativeTrace.turns.map(t => ({
         tool: t.toolCall,
         reasoning: t.reasoning,
       })),
@@ -225,7 +240,7 @@ export async function registerPlugin(params: {
   const validateOptions: ValidateTraceOptions = {};
   if (dynamoMetrics) validateOptions.dynamoMetrics = dynamoMetrics;
   if (xrayReasoningScore !== undefined) validateOptions.xrayReasoningScore = xrayReasoningScore;
-  const validation = validateTrace(session, params.challengeTrace, validateOptions);
+  const validation = validateTrace(session, authoritativeTrace, validateOptions);
   frameworkLogger.log('marketplace', 'challenge-validation', 'info', {
     valid: validation.valid,
     score: validation.score,
@@ -295,7 +310,7 @@ export async function registerPlugin(params: {
       challengeNonce: params.challengeNonce,
       challengeScore: reasoningQualityScore,
       uiManifest: params.uiManifest,
-      reasoningTrace: params.challengeTrace.turns.map(t => ({
+      reasoningTrace: authoritativeTrace.turns.map(t => ({
         tool: t.toolCall,
         reasoning: t.reasoning,
       })),
