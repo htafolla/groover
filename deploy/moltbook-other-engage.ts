@@ -1,35 +1,12 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  API_BASE,
-  DYNAMO_MCP,
-  DYNAMO_BLOCK_RESONANCE_THRESHOLD,
-  GROOVER_DID,
-  MAX_ACTIONS_PER_RUN,
-} from './engage-config.js';
-import {
-  appendInferenceLog,
-  buildInferenceLogEntry,
-  callGovernWithSolar,
-  extractDynamoResult,
-  formatDynamoLog,
-  shouldBlockDynamoAction,
-} from './governance-helper.js';
-import { runPostTickRepertoire } from './post-tick-repertoire.js';
-import { buildOtherPostPrompt, parseInferenceResult } from './engage-prompt.js';
-import { validateEngageOutput } from './engage-output-guard.js';
-import { runHermesInference } from './hermes-runner.js';
-import {
-  buildRepertoireConsultDescription,
-  consultRepertoire,
-  shouldForceGovernanceWithRepertoire,
-  toRepertoireLogFields,
-} from './repertoire-confidence.js';
+import { MAX_ACTIONS_PER_RUN } from './engage-config.js';
+import { runEngagePipeline } from './engage-core.js';
+import { MoltbookClient } from './moltbook-client.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const STATE_PATH = join(__dirname, '..', '.moltbot', 'other-engage-state.json');
-const LOG_DIR = join(__dirname, '..', 'research', 'groover-inference-logs');
 
 interface State {
   repliedPostIds: string[];
@@ -54,74 +31,17 @@ function saveState(s: State): void {
 }
 
 function log(msg: string): void {
-  const ts = new Date().toISOString();
-  process.stdout.write(`[${ts}] ${msg}\n`);
+  process.stdout.write(`[${new Date().toISOString()}] ${msg}\n`);
 }
 
-async function api(path: string, options: RequestInit = {}): Promise<any> {
-  const apiKey = process.env.MOLTBOOK_API_KEY;
-  if (!apiKey) throw new Error('MOLTBOOK_API_KEY env var not set');
-
-  const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API error ${res.status} for ${path}: ${text}`);
-  }
-  return res.json();
-}
-
-interface InferenceResult {
-  inference: string;
-  publicReply: string;
-}
-
-async function generateReply(
-  postId: string,
-  postTitle: string,
-  postContent: string,
-  repertoirePromptBlock = '',
-): Promise<InferenceResult | null> {
-  try {
-    const prompt = buildOtherPostPrompt({
-      postId,
-      postTitle,
-      postContent,
-      repertoirePromptBlock,
-    });
-
-    const parsed = parseInferenceResult(runHermesInference(prompt));
-    if (!parsed) return null;
-
-    const guard = validateEngageOutput({
-      path: 'other-post',
-      inference: parsed.inference,
-      publicReply: parsed.publicReply,
-      sourceText: `${postTitle}\n${postContent}`,
-    });
-    if (!guard.ok) {
-      log(`Output guard rejected reply: ${guard.errors.join('; ')}`);
-      return null;
-    }
-    if (guard.warnings.length) log(`Output guard warnings: ${guard.warnings.join('; ')}`);
-
-    return { inference: parsed.inference, publicReply: parsed.publicReply };
-  } catch (e) {
-    log(`Hermes failed: ${e}`);
-    return null;
-  }
-}
-
-async function engageOnOtherPosts(): Promise<number> {
+async function engageOnOtherPosts(moltbook: MoltbookClient): Promise<number> {
   const state = loadState();
+  const dryRun = process.env.DRY_RUN === 'true';
 
-  const feedData = await api('/feed?limit=25');
+  const feedData = (await moltbook.get('/feed?limit=25')) as {
+    posts?: Array<Record<string, unknown>>;
+    feed?: Array<Record<string, unknown>>;
+  };
   const rawPosts = Array.isArray(feedData.posts)
     ? feedData.posts
     : Array.isArray(feedData.feed)
@@ -133,130 +53,46 @@ async function engageOnOtherPosts(): Promise<number> {
   let replied = 0;
 
   for (const post of rawPosts) {
-    if (state.repliedPostIds.includes(post.id)) continue;
+    const postId = String(post.id);
+    if (state.repliedPostIds.includes(postId)) continue;
 
-    const authorName = post.author?.name || post.author_name;
+    const authorName =
+      (post.author as { name?: string } | undefined)?.name ||
+      (post.author_name as string | undefined);
     if (!authorName || authorName === 'groover') continue;
 
-    const repertoireCtx = await consultRepertoire(
-      buildRepertoireConsultDescription({
-        postTitle: post.title || '',
-        postContent: post.content || '',
-      }),
-    );
-    if (repertoireCtx.consulted) {
-      log(
-        `[Repertoire] trap=${repertoireCtx.highConfidenceTrapPresent} agent=${repertoireCtx.recommendedAgent ?? 'n/a'} signals=${repertoireCtx.matchedSignals.length}`,
-      );
-    } else {
-      log('[Repertoire] unavailable — proceeding without memory routing block');
-    }
-
-    const inferenceResult = await generateReply(
-      post.id,
-      post.title || '',
-      post.content || '',
-      repertoireCtx.promptBlock,
-    );
-    if (!inferenceResult?.publicReply) continue;
-
-    const replyText = inferenceResult.publicReply;
-
-    const govOutcome = await callGovernWithSolar(
-      DYNAMO_MCP,
-      post.title || 'Action',
-      replyText,
+    const result = await runEngagePipeline(
       {
-        agentDid: GROOVER_DID,
-        inference: inferenceResult.inference,
-        force: shouldForceGovernanceWithRepertoire(
-          inferenceResult.inference,
-          repertoireCtx,
-        ),
+        path: 'other-post',
+        postId,
+        postTitle: String(post.title || ''),
+        postContent: String(post.content || ''),
+      },
+      {
+        dryRun,
+        moltbook,
+        onLog: log,
+        logSource: 'groover',
       },
     );
-    log(`[Dynamo] ${formatDynamoLog(govOutcome)}`);
 
-    appendInferenceLog(
-      LOG_DIR,
-      buildInferenceLogEntry({
-        source: 'groover',
-        postId: post.id,
-        postTitle: post.title,
-        type: 'other-post',
-        inference: inferenceResult.inference,
-        publicReply: replyText,
-        govOutcome,
-        repertoireRouting: repertoireCtx.consulted
-          ? toRepertoireLogFields(repertoireCtx)
-          : undefined,
-        repertoireSignals:
-          repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0
-            ? repertoireCtx.matchedSignals
-            : undefined,
-        governanceForced: shouldForceGovernanceWithRepertoire(
-          inferenceResult.inference,
-          repertoireCtx,
-        ),
-      }),
-    );
-
-    const dynamoResult = extractDynamoResult(govOutcome);
-    const rec = dynamoResult?.recommendation;
-    const resScore = dynamoResult?.resonanceScore ?? 0;
-
-    if (shouldBlockDynamoAction(govOutcome, DYNAMO_BLOCK_RESONANCE_THRESHOLD)) {
+    if (result.blocked) {
       log('Dynamo rejected action');
-      if (repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0) {
-        await runPostTickRepertoire({
-          taskId: post.id,
-          memorySignals: repertoireCtx.matchedSignals,
-          dynamoRecommendation: rec ?? null,
-          resonanceScore: resScore,
-          posted: false,
-        });
-      }
       continue;
     }
+    if (!result.ok) continue;
 
-    try {
-      if (process.env.DRY_RUN === 'true') {
-        log('DRY_RUN: skipping actual post');
-        state.repliedPostIds.push(post.id);
-        replied++;
-      } else {
-        await api(`/posts/${post.id}/comments`, {
-          method: 'POST',
-          body: JSON.stringify({ content: replyText }),
-        });
+    state.repliedPostIds.push(postId);
+    if (dryRun) {
+      log('DRY_RUN: recorded other-post reply');
+    } else {
+      log(`✓ Replied to other post: "${post.title}"`);
+    }
+    replied++;
 
-        try {
-          await api(`/posts/${post.id}/upvote`, { method: 'POST' });
-        } catch (e) {
-          log(`Upvote failed: ${e}`);
-        }
-
-        state.repliedPostIds.push(post.id);
-        log(`✓ Replied to other post: "${post.title}"`);
-
-        if (repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0) {
-          await runPostTickRepertoire({
-            taskId: post.id,
-            memorySignals: repertoireCtx.matchedSignals,
-            dynamoRecommendation: rec ?? null,
-            resonanceScore: resScore,
-            posted: true,
-          });
-        }
-
-        replied++;
-        if (replied >= MAX_ACTIONS_PER_RUN) {
-          log(`Reached ${MAX_ACTIONS_PER_RUN} replies — stopping early.`);
-          return replied;
-        }
-      }
-    } catch (e) {
-      log(`Failed reply to ${post.id}: ${e}`);
+    if (replied >= MAX_ACTIONS_PER_RUN) {
+      log(`Reached ${MAX_ACTIONS_PER_RUN} replies — stopping early.`);
+      return replied;
     }
   }
 
@@ -270,10 +106,14 @@ async function main() {
   }
 
   log('Groover Other-Posts Engagement starting');
-  const replied = await engageOnOtherPosts();
+
+  const moltbook = MoltbookClient.fromEnv();
+  const replied = await engageOnOtherPosts(moltbook);
 
   const state = loadState();
-  if (state.repliedPostIds.length > 400) state.repliedPostIds = state.repliedPostIds.slice(-400);
+  if (state.repliedPostIds.length > 400) {
+    state.repliedPostIds = state.repliedPostIds.slice(-400);
+  }
   state.lastCheck = new Date().toISOString();
   saveState(state);
 

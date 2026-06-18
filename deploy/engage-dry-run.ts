@@ -12,48 +12,12 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  DYNAMO_MCP,
-  DYNAMO_BLOCK_RESONANCE_THRESHOLD,
-  GROOVER_DID,
-  API_BASE,
-} from './engage-config.js';
-import {
-  buildInferenceLogEntry,
-  callGovernWithSolar,
-  extractDynamoResult,
-  formatDynamoLog,
-  shouldBlockDynamoAction,
-} from './governance-helper.js';
-import {
-  buildOtherPostPrompt,
-  buildOwnPostPrompt,
-  parseInferenceResult,
-} from './engage-prompt.js';
-import { validateEngageOutput } from './engage-output-guard.js';
-import { runHermesInference } from './hermes-runner.js';
-import {
-  buildRepertoireConsultDescription,
-  consultRepertoire,
-  resetRepertoireConfidenceCache,
-  shouldForceGovernanceWithRepertoire,
-  toRepertoireLogFields,
-} from './repertoire-confidence.js';
+import { runEngagePipeline, type EngageCase } from './engage-core.js';
+import { MoltbookClient } from './moltbook-client.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const GROOVER_ROOT = join(__dirname, '..');
 const DRY_LOG_DIR = join(GROOVER_ROOT, 'research', 'dry-run-results');
-
-
-export interface EngageFixture {
-  id: string;
-  path: 'own-post' | 'other-post';
-  postId: string;
-  postTitle: string;
-  postContent: string;
-  commentId?: string;
-  commentContent?: string;
-}
 
 interface DryRunCaseResult {
   fixtureId: string;
@@ -91,7 +55,7 @@ function parseArgs(): {
   };
 }
 
-function builtinFixtures(): EngageFixture[] {
+function builtinFixtures(): Array<EngageCase & { id: string }> {
   return [
     {
       id: 'trap-own-attestation',
@@ -130,11 +94,11 @@ function builtinFixtures(): EngageFixture[] {
   ];
 }
 
-function fixturesFromJsonl(max: number): EngageFixture[] {
+function fixturesFromJsonl(max: number): EngageCase[] {
   const logDir = join(GROOVER_ROOT, 'research', 'groover-inference-logs');
   if (!existsSync(logDir)) return [];
 
-  const fixtures: EngageFixture[] = [];
+  const fixtures: EngageCase[] = [];
   const files = readdirSync(logDir).filter((f) => f.endsWith('.jsonl')).sort().reverse();
 
   for (const file of files) {
@@ -151,7 +115,6 @@ function fixturesFromJsonl(max: number): EngageFixture[] {
               ? ''
               : '';
         fixtures.push({
-          id: `jsonl-${String(entry.post_id).slice(0, 8)}`,
           path,
           postId: String(entry.post_id ?? 'unknown'),
           postTitle: String(entry.post_title ?? 'Untitled'),
@@ -175,32 +138,25 @@ function fixturesFromJsonl(max: number): EngageFixture[] {
   return fixtures;
 }
 
-async function moltbookGet(path: string): Promise<unknown> {
-  const apiKey = process.env.MOLTBOOK_API_KEY;
-  if (!apiKey) throw new Error('MOLTBOOK_API_KEY required for --live-read');
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
-  if (!res.ok) throw new Error(`Moltbook GET ${path} failed: ${res.status}`);
-  return res.json();
-}
-
-async function liveReadFixtures(max: number): Promise<EngageFixture[]> {
-  const fixtures: EngageFixture[] = [];
+async function liveReadFixtures(max: number): Promise<EngageCase[]> {
+  const moltbook = MoltbookClient.fromEnv();
+  const fixtures: EngageCase[] = [];
 
   try {
-    const home = (await moltbookGet('/home')) as {
+    const home = (await moltbook.get('/home')) as {
       activity_on_your_posts?: Array<{ post_id: string; post_title?: string }>;
     };
     for (const item of home.activity_on_your_posts ?? []) {
       if (fixtures.length >= max) break;
-      const comments = (await moltbookGet(
+      const comments = (await moltbook.get(
         `/posts/${item.post_id}/comments?sort=new&limit=3`,
-      )) as { items?: Array<{ id: string; content?: string }>; comments?: Array<{ id: string; content?: string }> };
+      )) as {
+        items?: Array<{ id: string; content?: string }>;
+        comments?: Array<{ id: string; content?: string }>;
+      };
       const list = comments.items ?? comments.comments ?? [];
       for (const comment of list.slice(0, 1)) {
         fixtures.push({
-          id: `live-own-${comment.id.slice(0, 8)}`,
           path: 'own-post',
           postId: item.post_id,
           postTitle: item.post_title ?? '',
@@ -215,7 +171,7 @@ async function liveReadFixtures(max: number): Promise<EngageFixture[]> {
   }
 
   try {
-    const feed = (await moltbookGet('/feed?limit=10')) as {
+    const feed = (await moltbook.get('/feed?limit=10')) as {
       posts?: Array<{ id: string; title?: string; content?: string; author?: { name?: string } }>;
       feed?: Array<{ id: string; title?: string; content?: string; author?: { name?: string } }>;
     };
@@ -224,7 +180,6 @@ async function liveReadFixtures(max: number): Promise<EngageFixture[]> {
       if (fixtures.length >= max) break;
       if (post.author?.name === 'groover') continue;
       fixtures.push({
-        id: `live-other-${post.id.slice(0, 8)}`,
         path: 'other-post',
         postId: post.id,
         postTitle: post.title ?? '',
@@ -243,118 +198,19 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function runCase(
-  fixture: EngageFixture,
+  fixture: EngageCase & { id?: string },
   recentHashes: Set<string>,
 ): Promise<DryRunCaseResult> {
-  resetRepertoireConfidenceCache();
+  const fixtureId = fixture.id ?? `${fixture.path}-${fixture.postId}`;
 
-  const consultDescription =
-    fixture.path === 'own-post'
-      ? buildRepertoireConsultDescription({
-          postTitle: fixture.postTitle,
-          commentContent: fixture.commentContent ?? '',
-        })
-      : buildRepertoireConsultDescription({
-          postTitle: fixture.postTitle,
-          postContent: fixture.postContent,
-        });
-
-  const repertoireCtx = await consultRepertoire(consultDescription);
-
-  const sourceText =
-    fixture.path === 'own-post'
-      ? `${fixture.postTitle}\n${fixture.commentContent ?? ''}`
-      : `${fixture.postTitle}\n${fixture.postContent}`;
-
-  let inference = '';
-  let publicReply = '';
-
-  if (process.env.SKIP_HERMES === '1') {
-    inference = `TYPE: theoretical\nDry-run without Hermes (${fixture.id}).`;
-    publicReply = `Acknowledged your point on ${fixture.postTitle.slice(0, 48)} (${fixture.id}). Dry-run placeholder reply.`;
-  } else {
-    const prompt =
-      fixture.path === 'own-post'
-        ? buildOwnPostPrompt({
-            postId: fixture.postId,
-            postTitle: fixture.postTitle,
-            postContent: fixture.postContent,
-            commentId: fixture.commentId ?? 'dry-comment',
-            commentContent: fixture.commentContent ?? '',
-            repertoirePromptBlock: repertoireCtx.promptBlock,
-          })
-        : buildOtherPostPrompt({
-            postId: fixture.postId,
-            postTitle: fixture.postTitle,
-            postContent: fixture.postContent,
-            repertoirePromptBlock: repertoireCtx.promptBlock,
-          });
-
-    const raw = runHermesInference(prompt);
-    const parsed = parseInferenceResult(raw);
-    if (!parsed) {
-      return {
-        fixtureId: fixture.id,
-        path: fixture.path,
-        ok: false,
-        errors: ['hermes returned unparseable output'],
-        warnings: [],
-        repertoireTrap: repertoireCtx.highConfidenceTrapPresent,
-        repertoireSignals: repertoireCtx.matchedSignals.length,
-        governanceForced: false,
-        dynamoRecommendation: null,
-        publicReplyPreview: raw.slice(0, 160),
-      };
-    }
-    inference = parsed.inference;
-    publicReply = parsed.publicReply;
-  }
-
-  const guard = validateEngageOutput({
-    path: fixture.path,
-    inference,
-    publicReply,
-    sourceText,
+  const result = await runEngagePipeline(fixture, {
+    skipHermes: process.env.SKIP_HERMES === '1',
+    skipGovernance: process.env.SKIP_GOVERNANCE === '1',
+    skipPost: true,
+    dryRun: true,
     recentReplyHashes: recentHashes,
-  });
-
-  const governanceForced = shouldForceGovernanceWithRepertoire(inference, repertoireCtx);
-
-  let dynamoRecommendation: string | null = null;
-  if (process.env.SKIP_GOVERNANCE !== '1') {
-    const govOutcome = await callGovernWithSolar(
-      DYNAMO_MCP,
-      fixture.postTitle || 'Dry-run',
-      publicReply,
-      {
-        agentDid: GROOVER_DID,
-        inference,
-        force: governanceForced,
-      },
-    );
-    log(`[Dynamo] ${formatDynamoLog(govOutcome)}`);
-    dynamoRecommendation = extractDynamoResult(govOutcome)?.recommendation ?? null;
-    if (shouldBlockDynamoAction(govOutcome, DYNAMO_BLOCK_RESONANCE_THRESHOLD)) {
-      guard.errors.push(`dynamo blocked: ${dynamoRecommendation ?? 'non-PASS'} (resonance below ${DYNAMO_BLOCK_RESONANCE_THRESHOLD})`);
-      guard.ok = false;
-    }
-  }
-
-  const logEntry = buildInferenceLogEntry({
-    source: 'groover-dry-run',
-    postId: fixture.postId,
-    postTitle: fixture.postTitle,
-    commentId: fixture.commentId,
-    type: fixture.path === 'other-post' ? 'other-post' : undefined,
-    inference,
-    publicReply,
-    govOutcome: null,
-    repertoireRouting: repertoireCtx.consulted ? toRepertoireLogFields(repertoireCtx) : undefined,
-    repertoireSignals:
-      repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0
-        ? repertoireCtx.matchedSignals
-        : undefined,
-    governanceForced,
+    logSource: 'groover-dry-run',
+    onLog: log,
   });
 
   if (!existsSync(DRY_LOG_DIR)) mkdirSync(DRY_LOG_DIR, { recursive: true });
@@ -362,29 +218,33 @@ async function runCase(
   appendFileSync(
     outFile,
     `${JSON.stringify({
-      fixture_id: fixture.id,
+      fixture_id: fixtureId,
       path: fixture.path,
-      guard_ok: guard.ok,
-      guard_errors: guard.errors,
-      guard_warnings: guard.warnings,
-      dynamo_recommendation: dynamoRecommendation,
-      ...logEntry,
+      guard_ok: result.ok,
+      guard_errors: result.errors,
+      guard_warnings: result.warnings,
+      dynamo_recommendation: result.dynamoRecommendation,
+      blocked: result.blocked,
+      repertoire_trap: result.repertoireTrap,
+      repertoire_signals: result.repertoireSignals,
     })}\n`,
   );
 
-  recentHashes.add(publicReply.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 240));
+  if (result.publicReply) {
+    recentHashes.add(result.publicReply.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 240));
+  }
 
   return {
-    fixtureId: fixture.id,
+    fixtureId,
     path: fixture.path,
-    ok: guard.ok,
-    errors: guard.errors,
-    warnings: guard.warnings,
-    repertoireTrap: repertoireCtx.highConfidenceTrapPresent,
-    repertoireSignals: repertoireCtx.matchedSignals.length,
-    governanceForced,
-    dynamoRecommendation,
-    publicReplyPreview: publicReply.slice(0, 160),
+    ok: result.ok,
+    errors: result.errors,
+    warnings: result.warnings,
+    repertoireTrap: result.repertoireTrap,
+    repertoireSignals: result.repertoireSignals,
+    governanceForced: result.governanceForced,
+    dynamoRecommendation: result.dynamoRecommendation,
+    publicReplyPreview: result.publicReply.slice(0, 160),
   };
 }
 
@@ -395,21 +255,27 @@ async function runLoop(): Promise<number> {
   for (let loop = 1; loop <= loops; loop += 1) {
     log(`=== Dry-run loop ${loop}/${loops} ===`);
 
-    let fixtures = builtinFixtures();
+    let fixtures: Array<EngageCase & { id?: string }> = builtinFixtures();
+
     if (liveRead) {
       const live = await liveReadFixtures(maxCases);
-      fixtures = [...live, ...fixtures];
+      fixtures = [...live.map((f) => ({ ...f, id: `live-${f.postId.slice(0, 8)}` })), ...fixtures];
     } else {
-      fixtures = [...fixturesFromJsonl(2), ...fixtures];
+      fixtures = [
+        ...fixturesFromJsonl(2).map((f) => ({ ...f, id: `jsonl-${f.postId.slice(0, 8)}` })),
+        ...fixtures,
+      ];
     }
 
     const seen = new Set<string>();
-    fixtures = fixtures.filter((f) => {
-      const key = `${f.path}:${f.id}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }).slice(0, maxCases);
+    fixtures = fixtures
+      .filter((f) => {
+        const key = `${f.path}:${f.id ?? f.postId}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, maxCases);
 
     const recentHashes = new Set<string>();
 
@@ -418,7 +284,9 @@ async function runLoop(): Promise<number> {
       try {
         const result = await runCase(fixture, recentHashes);
         if (result.ok) {
-          log(`  PASS trap=${result.repertoireTrap} signals=${result.repertoireSignals} preview="${result.publicReplyPreview}"`);
+          log(
+            `  PASS trap=${result.repertoireTrap} signals=${result.repertoireSignals} preview="${result.publicReplyPreview}"`,
+          );
         } else {
           totalFail += 1;
           log(`  FAIL ${result.errors.join('; ')}`);

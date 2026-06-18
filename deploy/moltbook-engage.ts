@@ -1,39 +1,16 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  API_BASE,
-  DYNAMO_MCP,
-  DYNAMO_BLOCK_RESONANCE_THRESHOLD,
-  GROOVER_DID,
-  MAX_ACTIONS_PER_RUN,
-} from './engage-config.js';
-import {
-  appendInferenceLog,
-  buildInferenceLogEntry,
-  callGovernWithSolar,
-  extractDynamoResult,
-  formatDynamoLog,
-  shouldBlockDynamoAction,
-} from './governance-helper.js';
-import { runPostTickRepertoire } from './post-tick-repertoire.js';
-import { buildOwnPostPrompt, parseInferenceResult } from './engage-prompt.js';
-import { validateEngageOutput } from './engage-output-guard.js';
-import { runHermesInference } from './hermes-runner.js';
-import {
-  buildRepertoireConsultDescription,
-  consultRepertoire,
-  shouldForceGovernanceWithRepertoire,
-  toRepertoireLogFields,
-} from './repertoire-confidence.js';
+import { GROOVER_DID, MAX_ACTIONS_PER_RUN } from './engage-config.js';
+import { runEngagePipeline } from './engage-core.js';
+import { MoltbookClient } from './moltbook-client.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const STATE_PATH = join(__dirname, '..', '.moltbot', 'engage-state.json');
-const LOG_DIR = join(__dirname, '..', 'research', 'groover-inference-logs');
 
 interface State {
-  repliedCommentIds: string[];           // comments Groover has already replied to (enables deeper engagement)
-  repliedOtherPostIds: string[];         // for other agents' posts
+  repliedCommentIds: string[];
+  repliedOtherPostIds: string[];
   lastCheck: string | null;
 }
 
@@ -53,87 +30,25 @@ function saveState(s: State): void {
 }
 
 function log(msg: string): void {
-  const ts = new Date().toISOString();
-  process.stdout.write(`[${ts}] ${msg}\n`);
+  process.stdout.write(`[${new Date().toISOString()}] ${msg}\n`);
 }
 
-async function api(path: string, options: RequestInit = {}): Promise<any> {
-  const apiKey = process.env.MOLTBOOK_API_KEY;
-  if (!apiKey) throw new Error('MOLTBOOK_API_KEY env var not set');
-
-  const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API error ${res.status} for ${path}: ${text}`);
+function trimState(state: State): void {
+  if (state.repliedCommentIds.length > 500) {
+    state.repliedCommentIds = state.repliedCommentIds.slice(-500);
   }
-  return res.json();
+  state.lastCheck = new Date().toISOString();
 }
 
-
-
-interface InferenceResult {
-  inference: string;
-  publicReply: string;
-}
-
-async function generateReplyWithInference(
-  postId: string,
-  postTitle: string,
-  postContent: string,
-  commentId: string,
-  commentContent: string,
-  repertoirePromptBlock = '',
-): Promise<InferenceResult | null> {
-  try {
-    const prompt = buildOwnPostPrompt({
-      postId,
-      postTitle,
-      postContent,
-      commentId,
-      commentContent,
-      repertoirePromptBlock,
-    });
-
-    const parsed = parseInferenceResult(runHermesInference(prompt));
-    if (!parsed) return null;
-
-    const guard = validateEngageOutput({
-      path: 'own-post',
-      inference: parsed.inference,
-      publicReply: parsed.publicReply,
-      sourceText: `${postTitle}\n${commentContent}`,
-    });
-    if (!guard.ok) {
-      log(`Output guard rejected reply: ${guard.errors.join('; ')}`);
-      return null;
-    }
-    if (guard.warnings.length) log(`Output guard warnings: ${guard.warnings.join('; ')}`);
-
-    return { inference: parsed.inference, publicReply: parsed.publicReply };
-  } catch (e: any) {
-    const errorMsg = String(e);
-    if (errorMsg.includes('429') || errorMsg.includes('Hourly comment limit')) {
-      log('⛔ Hourly comment limit reached (100/hour). Exiting cleanly.');
-      process.exit(0);
-    }
-    log(`Hermes inference+reply generation failed: ${e}`);
-    return null;
-  }
-}
-
-async function engageOnOwnPosts(): Promise<number> {
+async function engageOnOwnPosts(moltbook: MoltbookClient): Promise<number> {
   const state = loadState();
-  const home = await api('/home');
+  const home = (await moltbook.get('/home')) as {
+    activity_on_your_posts?: Array<{ post_id: string; post_title?: string; new_notification_count?: number }>;
+  };
   const activity = home.activity_on_your_posts || [];
 
   let replied = 0;
+  const dryRun = process.env.DRY_RUN === 'true';
 
   for (const item of activity) {
     if ((item.new_notification_count || 0) === 0) continue;
@@ -141,10 +56,13 @@ async function engageOnOwnPosts(): Promise<number> {
     const postId = item.post_id;
     const postTitle = item.post_title || '';
 
-    let comments: any[] = [];
+    let comments: Array<Record<string, unknown>> = [];
     try {
       const t0 = Date.now();
-      const data = await api(`/posts/${postId}/comments?sort=new&limit=20`);
+      const data = (await moltbook.get(`/posts/${postId}/comments?sort=new&limit=20`)) as {
+        items?: Array<Record<string, unknown>>;
+        comments?: Array<Record<string, unknown>>;
+      };
       comments = data.items || data.comments || [];
       log(`Fetched ${comments.length} comments in ${Date.now() - t0}ms`);
     } catch {
@@ -152,193 +70,67 @@ async function engageOnOwnPosts(): Promise<number> {
     }
 
     for (const comment of comments) {
-      const commentId = comment.id;
+      const commentId = String(comment.id);
 
-      // Skip if we've already replied to this exact comment (strong check)
-      if (state.repliedCommentIds.includes(commentId)) {
-        continue;
-      }
+      if (state.repliedCommentIds.includes(commentId)) continue;
 
-      // Allow deeper engagement: only reply if this is a reply to one of our previous replies
-      // or if it's a top-level comment we haven't seen
-      const parentId = comment.parent_id;
+      const parentId = comment.parent_id as string | undefined;
       const isReplyToUs = parentId && state.repliedCommentIds.includes(parentId);
       const isTopLevel = !parentId || parentId === postId;
 
-      // Robust self-DID check (handles multiple response shapes)
       const commenterDid =
-        comment.author_did ||
-        comment.author?.did ||
-        comment.author?.id ||
-        comment.user_did ||
-        comment.user?.did;
+        (comment.author_did as string | undefined) ||
+        (comment.author as { did?: string; id?: string } | undefined)?.did ||
+        (comment.author as { did?: string; id?: string } | undefined)?.id ||
+        (comment.user_did as string | undefined) ||
+        (comment.user as { did?: string } | undefined)?.did;
 
-      if (commenterDid === GROOVER_DID) {
-        continue;
-      }
-
-      // Extra safety: skip if the comment content mentions our own DID
-      if ((comment.content || "").includes(GROOVER_DID)) {
-        continue;
-      }
-
-      // Only proceed if it's a reply to us or a fresh top-level comment
+      if (commenterDid === GROOVER_DID) continue;
+      if (String(comment.content || '').includes(GROOVER_DID)) continue;
       if (!isReplyToUs && !isTopLevel) continue;
 
-      const repertoireCtx = await consultRepertoire(
-        buildRepertoireConsultDescription({
-          postTitle,
-          commentContent: comment.content || '',
-        }),
-      );
-      if (repertoireCtx.consulted) {
-        log(
-          `[Repertoire] trap=${repertoireCtx.highConfidenceTrapPresent} agent=${repertoireCtx.recommendedAgent ?? 'n/a'} signals=${repertoireCtx.matchedSignals.length} avg=${repertoireCtx.avgConfidence.toFixed(3)}`,
-        );
-      } else {
-        log('[Repertoire] unavailable — proceeding without memory routing block');
-      }
-
-      const inferenceResult = await generateReplyWithInference(
-        postId,
-        postTitle,
-        "",
-        commentId,
-        comment.content || "",
-        repertoireCtx.promptBlock,
-      );
-      if (!inferenceResult?.publicReply) continue;
-
-      const replyText = inferenceResult.publicReply;
-
-      // Final safety check before posting
-      if (state.repliedCommentIds.includes(commentId)) {
-        continue;
-      }
-
-      // Dynamo governance — always called; always logged (even N/A)
-      const govOutcome = await callGovernWithSolar(
-        DYNAMO_MCP,
-        postTitle || 'Engagement',
-        replyText,
-        {
-          agentDid: GROOVER_DID,
-          inference: inferenceResult.inference,
-          force: shouldForceGovernanceWithRepertoire(
-            inferenceResult.inference,
-            repertoireCtx,
-          ),
-        },
-      );
-      log(`[Dynamo] ${formatDynamoLog(govOutcome)}`);
-
-      appendInferenceLog(
-        LOG_DIR,
-        buildInferenceLogEntry({
-          source: 'groover',
-          postId,
-          postTitle,
-          commentId,
-          inference: inferenceResult.inference,
-          publicReply: replyText,
-          govOutcome,
-          repertoireRouting: repertoireCtx.consulted
-            ? toRepertoireLogFields(repertoireCtx)
-            : undefined,
-          repertoireSignals:
-            repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0
-              ? repertoireCtx.matchedSignals
-              : undefined,
-          governanceForced: shouldForceGovernanceWithRepertoire(
-            inferenceResult.inference,
-            repertoireCtx,
-          ),
-        }),
-      );
-
-      const dynamoResult = extractDynamoResult(govOutcome);
-      const rec = dynamoResult?.recommendation ?? null;
-      const resScore = dynamoResult?.resonanceScore ?? 0;
-
-      if (shouldBlockDynamoAction(govOutcome, DYNAMO_BLOCK_RESONANCE_THRESHOLD)) {
-        log('Dynamo governance rejected reply. Skipping.');
-        if (repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0) {
-          await runPostTickRepertoire({
-            taskId: commentId,
-            memorySignals: repertoireCtx.matchedSignals,
-            dynamoRecommendation: rec,
-            resonanceScore: resScore,
-            posted: false,
-          });
-        }
-        continue;
-      }
+      if (state.repliedCommentIds.includes(commentId)) continue;
 
       try {
-        if (process.env.DRY_RUN === 'true') {
-          log(`DRY_RUN: would reply to comment ${commentId} on "${postTitle}"`);
-        } else {
-          await api(`/posts/${postId}/comments`, {
-            method: 'POST',
-            body: JSON.stringify({
-              parent_id: commentId,
-              content: replyText,
-            }),
-          });
+        const result = await runEngagePipeline(
+          {
+            path: 'own-post',
+            postId,
+            postTitle,
+            postContent: '',
+            commentId,
+            commentContent: String(comment.content || ''),
+          },
+          {
+            dryRun,
+            moltbook,
+            onLog: log,
+            logSource: 'groover',
+          },
+        );
 
-          try {
-            await api(`/comments/${commentId}/upvote`, { method: 'POST' });
-            log(`  ↑ Upvoted comment ${commentId}`);
-          } catch {
-            log(`  (Upvote failed for ${commentId}, continuing)`);
-          }
+        if (result.blocked) {
+          log('Dynamo governance rejected reply. Skipping.');
+          continue;
         }
+        if (!result.ok) continue;
 
         state.repliedCommentIds.push(commentId);
         log(`✓ Replied to comment on "${postTitle}" (comment: ${commentId})`);
-
-        // Follow disabled for now (we are following too many relative to followers)
-        // const commenterName = comment.author?.name || comment.author_name;
-        // if (commenterName && commenterName !== 'groover') {
-        //   try {
-        //     await api(`/agents/${commenterName}/follow`, { method: 'POST' });
-        //     log(`  → Followed ${commenterName}`);
-        //   } catch (followErr) {
-        //     log(`  (Follow failed for ${commenterName}, continuing)`);
-        //   }
-        // }
-
-        if (repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0) {
-          await runPostTickRepertoire({
-            taskId: commentId,
-            memorySignals: repertoireCtx.matchedSignals,
-            dynamoRecommendation: rec,
-            resonanceScore: resScore,
-            posted: true,
-          });
-        }
-
         replied++;
 
         if (replied >= MAX_ACTIONS_PER_RUN) {
           log(`Reached ${MAX_ACTIONS_PER_RUN} replies — stopping early to avoid timeout.`);
+          trimState(state);
+          saveState(state);
           return replied;
         }
 
-        // Save after every success so we never lose progress
-        if (state.repliedCommentIds.length > 500) {
-          state.repliedCommentIds = state.repliedCommentIds.slice(-500);
-        }
-        state.lastCheck = new Date().toISOString();
+        trimState(state);
         saveState(state);
-      } catch (e: any) {
+      } catch (e: unknown) {
         const errorMsg = String(e);
-
-        // Always save state on any error to preserve progress
-        if (state.repliedCommentIds.length > 500) {
-          state.repliedCommentIds = state.repliedCommentIds.slice(-500);
-        }
-        state.lastCheck = new Date().toISOString();
+        trimState(state);
         saveState(state);
 
         if (errorMsg.includes('429') || errorMsg.includes('Hourly comment limit')) {
@@ -354,27 +146,24 @@ async function engageOnOwnPosts(): Promise<number> {
 }
 
 async function main() {
-  const apiKey = process.env.MOLTBOOK_API_KEY;
-  if (!apiKey) {
+  if (!process.env.MOLTBOOK_API_KEY) {
     process.stderr.write('FATAL: MOLTBOOK_API_KEY is required\n');
     process.exit(1);
   }
 
   log('Groover Moltbook Engagement Worker (own posts) starting');
 
-  const replied = await engageOnOwnPosts();
+  const moltbook = MoltbookClient.fromEnv();
+  const replied = await engageOnOwnPosts(moltbook);
 
   const state = loadState();
-  if (state.repliedCommentIds.length > 500) {
-    state.repliedCommentIds = state.repliedCommentIds.slice(-500);
-  }
-  state.lastCheck = new Date().toISOString();
+  trimState(state);
   saveState(state);
 
   log(`Engagement complete. Replied to ${replied} comments on our posts.`);
 }
 
-main().catch(err => {
-  process.stderr.write('FATAL: ' + (err?.message || String(err)) + '\n');
+main().catch((err) => {
+  process.stderr.write(`FATAL: ${err?.message || String(err)}\n`);
   process.exit(1);
 });
