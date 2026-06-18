@@ -53,22 +53,47 @@ function unavailableResult(): RepertoireConsultResult {
   };
 }
 
+/** Build the text Repertoire matches against (post + comment), not the Hermes output. */
+export function buildRepertoireConsultDescription(input: {
+  postTitle?: string;
+  postContent?: string;
+  commentContent?: string;
+}): string {
+  return [
+    input.postTitle?.trim() && `Post title: ${input.postTitle.trim()}`,
+    input.postContent?.trim() && `Post content: ${input.postContent.trim()}`,
+    input.commentContent?.trim() && `Comment: ${input.commentContent.trim()}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 function buildPromptBlock(snapshot: RepertoireRoutingSnapshot): string {
   if (!snapshot.consulted || !snapshot.providerAvailable) return '';
+  if (!snapshot.highConfidenceTrapPresent && snapshot.matchedSignals.length === 0) {
+    return '';
+  }
 
   const lines = [
-    'MEMORY_ROUTING (Repertoire — consult before inference):',
+    'MEMORY_ROUTING (Repertoire pre-inference — apply to classification and primitives; do not echo in PUBLIC REPLY):',
     `- highConfidenceTrapPresent: ${snapshot.highConfidenceTrapPresent}`,
     `- recommendedAgent: ${snapshot.recommendedAgent ?? 'none'}`,
     `- matchedSignals: ${snapshot.matchedSignals.join(', ') || 'none'}`,
     `- avgConfidence: ${snapshot.avgConfidence.toFixed(3)}`,
   ];
 
+  if (snapshot.complexityBoost > 0) {
+    lines.push(`- complexityBoost: ${snapshot.complexityBoost}`);
+  }
+
   if (snapshot.highConfidenceTrapPresent) {
     lines.push(
-      '- If TYPE is ontological-trap or signals align, prefer closure primitives from matchedSignals.',
+      '- Prefer matchedSignals when mapping cryptographic primitives in INFERENCE.',
+      '- If signals align, classify TYPE as ontological-trap and add a closure primitive.',
       '- Treat consumer-boundary and attestation-map semantics as first-class in the reply.',
     );
+  } else if (snapshot.matchedSignals.length > 0) {
+    lines.push('- Weight matchedSignals when mapping primitives; TYPE may still be non-trap.');
   }
 
   return `\n${lines.join('\n')}\n`;

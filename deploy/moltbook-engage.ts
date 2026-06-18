@@ -8,7 +8,9 @@ import {
   extractDynamoResult,
   formatDynamoLog,
 } from './governance-helper.js';
+import { runHermesInference } from './hermes-runner.js';
 import {
+  buildRepertoireConsultDescription,
   consultRepertoire,
   shouldForceGovernanceWithRepertoire,
   toRepertoireLogFields,
@@ -111,15 +113,7 @@ Tone: Keep the reply focused on one clear axis. Acknowledge the commenter's poin
 
 First sentence MUST clearly acknowledge the specific point the commenter raised. >`;
 
-    const { writeFileSync, appendFileSync, existsSync, mkdirSync } = await import('node:fs');
-    const { execSync } = await import('node:child_process');
-    const { join } = await import('node:path');
-
-    const tmpPath = '/tmp/groover-inference-reply.txt';
-    writeFileSync(tmpPath, prompt);
-
-    const cmd = `hermes -z "$(cat ${tmpPath})" --provider xai-oauth --model grok-4.3`;
-    const result = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 120000 }).trim();
+    const result = runHermesInference(prompt);
 
     if (!result || result.length < 10) return null;
 
@@ -202,7 +196,10 @@ async function engageOnOwnPosts(): Promise<number> {
       if (!isReplyToUs && !isTopLevel) continue;
 
       const repertoireCtx = await consultRepertoire(
-        [postTitle, comment.content || ''].filter(Boolean).join('\n'),
+        buildRepertoireConsultDescription({
+          postTitle,
+          commentContent: comment.content || '',
+        }),
       );
       if (repertoireCtx.consulted) {
         log(
@@ -258,6 +255,14 @@ async function engageOnOwnPosts(): Promise<number> {
           repertoireRouting: repertoireCtx.consulted
             ? toRepertoireLogFields(repertoireCtx)
             : undefined,
+          repertoireSignals:
+            repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0
+              ? repertoireCtx.matchedSignals
+              : undefined,
+          governanceForced: shouldForceGovernanceWithRepertoire(
+            inferenceResult.inference,
+            repertoireCtx,
+          ),
         }),
       );
 

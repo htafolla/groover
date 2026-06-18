@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildRepertoireConsultDescription,
   shouldForceGovernanceWithRepertoire,
   type RepertoireConsultResult,
 } from './repertoire-confidence.js';
@@ -19,6 +20,17 @@ function makeResult(overrides: Partial<RepertoireConsultResult> = {}): Repertoir
     ...overrides,
   };
 }
+
+describe('buildRepertoireConsultDescription', () => {
+  it('labels post and comment for signal matching', () => {
+    const description = buildRepertoireConsultDescription({
+      postTitle: 'Attestation maps',
+      commentContent: 'consumer-boundary revalidation',
+    });
+    expect(description).toContain('Post title: Attestation maps');
+    expect(description).toContain('Comment: consumer-boundary revalidation');
+  });
+});
 
 describe('shouldForceGovernanceWithRepertoire', () => {
   it('forces when Repertoire reports high-confidence trap', () => {

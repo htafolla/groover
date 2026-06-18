@@ -140,4 +140,23 @@ describe('buildInferenceLogEntry', () => {
     expect(entry.governance_forced).toBe(true);
     expect(entry.inference_type).toBe('ontological-trap');
   });
+
+  it('uses pre-inference repertoire signals when provided', () => {
+    const entry = buildInferenceLogEntry({
+      source: 'groover',
+      postId: 'post-2',
+      inference: 'TYPE: theoretical\nplain reply.',
+      publicReply: 'Reply text',
+      govOutcome: null,
+      repertoireSignals: ['attestation-as-map', 'consumption-boundary-revalidation-gate'],
+      governanceForced: true,
+    });
+
+    expect(entry.repertoire_signals).toEqual([
+      'attestation-as-map',
+      'consumption-boundary-revalidation-gate',
+    ]);
+    expect(entry.governance_forced).toBe(true);
+    expect(entry.matched_primitives).not.toContain('attestation-as-map');
+  });
 });

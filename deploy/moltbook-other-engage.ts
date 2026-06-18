@@ -8,7 +8,9 @@ import {
   extractDynamoResult,
   formatDynamoLog,
 } from './governance-helper.js';
+import { runHermesInference } from './hermes-runner.js';
 import {
+  buildRepertoireConsultDescription,
   consultRepertoire,
   shouldForceGovernanceWithRepertoire,
   toRepertoireLogFields,
@@ -26,7 +28,6 @@ interface State {
   repliedPostIds: string[];
   lastCheck: string | null;
 }
-
 
 function loadState(): State {
   try {
@@ -58,7 +59,7 @@ async function api(path: string, options: RequestInit = {}): Promise<any> {
   const res = await fetch(url, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
   });
@@ -81,36 +82,33 @@ async function generateReply(
   repertoirePromptBlock = '',
 ): Promise<InferenceResult | null> {
   try {
-    const prompt = `You are Groover (did:groover:284895bead2ac15b) performing governed inference before reply.
+    const prompt = `You are Groover (did:groover:284895bead2ac15b) performing governed inference before reply. PROMPT_VERSION: v2-negative-space-closure
 ${repertoirePromptBlock}
 
-You are replying to another agent's post. Execute:
+You are replying to another agent's post. Execute the following mandatory sequence:
 
-1. Negative-space: What unobservable signal or constraint does this post surface?
-2. Map to 2+ primitives.
-3. Classify TYPE.
-4. Provide closure primitive if needed.
+1. Negative-space pass: Identify the constraint, violation, or unobservable signal this post surfaces that your current MCP filter / Master Index does not yet observe.
+2. Cryptographic mapping: Reduce the post to 1-2 key primitives, stated plainly.
+3. Type classification: Assign exactly one type: theoretical | temporal-drift | practical-workflow | ontological-trap | provenance-failure.
+4. Negative-space closure (if TYPE=ontological-trap): Generate one additional primitive that would make the currently unobservable signal addressable.
+5. Self-audit: Confirm the emerging reply would survive Groover's own incoming-signal filters.
 
 Post ID: ${postId}
-Title: ${postTitle}
-Content: ${postContent}
+Post title: ${postTitle}
+Post content: ${postContent}
 
+Output format (exactly):
 INFERENCE:
-<observation + primitives + closure>
+<negative-space observation + two cryptographic primitives + closure primitive if ontological-trap>
 
-TYPE: <type>
+TYPE: <one of the five types>
 
 ---PUBLIC REPLY---
-Tone: direct and collaborative. Acknowledge the core idea first, then give a clear mapping. Max 5 sentences.`;
+Tone: direct and collaborative. Acknowledge the core idea first, then give a clear mapping. Maximum 5 sentences.
 
-    const { writeFileSync } = await import('node:fs');
-    const { execSync } = await import('node:child_process');
+First sentence MUST clearly acknowledge the specific point the post raised. >`;
 
-    const tmpPath = '/tmp/groover-other-reply.txt';
-    writeFileSync(tmpPath, prompt);
-
-    const cmd = `hermes -z "$(cat ${tmpPath})" --provider xai-oauth --model grok-4.3`;
-    const result = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 120000 }).trim();
+    const result = runHermesInference(prompt);
 
     if (!result || result.length < 15) return null;
 
@@ -136,29 +134,31 @@ async function engageOnOtherPosts(): Promise<number> {
   const rawPosts = Array.isArray(feedData.posts)
     ? feedData.posts
     : Array.isArray(feedData.feed)
-    ? feedData.feed
-    : [];
+      ? feedData.feed
+      : [];
 
   log(`Feed returned ${rawPosts.length} posts`);
 
-  const feedPosts = rawPosts;
-
   let replied = 0;
 
-  for (const post of feedPosts) {
+  for (const post of rawPosts) {
     if (state.repliedPostIds.includes(post.id)) continue;
 
-    // Moltbook feed does not provide author_did — use author.name instead
     const authorName = post.author?.name || post.author_name;
     if (!authorName || authorName === 'groover') continue;
 
     const repertoireCtx = await consultRepertoire(
-      [post.title || '', post.content || ''].filter(Boolean).join('\n'),
+      buildRepertoireConsultDescription({
+        postTitle: post.title || '',
+        postContent: post.content || '',
+      }),
     );
     if (repertoireCtx.consulted) {
       log(
         `[Repertoire] trap=${repertoireCtx.highConfidenceTrapPresent} agent=${repertoireCtx.recommendedAgent ?? 'n/a'} signals=${repertoireCtx.matchedSignals.length}`,
       );
+    } else {
+      log('[Repertoire] unavailable — proceeding without memory routing block');
     }
 
     const inferenceResult = await generateReply(
@@ -199,6 +199,14 @@ async function engageOnOtherPosts(): Promise<number> {
         repertoireRouting: repertoireCtx.consulted
           ? toRepertoireLogFields(repertoireCtx)
           : undefined,
+        repertoireSignals:
+          repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0
+            ? repertoireCtx.matchedSignals
+            : undefined,
+        governanceForced: shouldForceGovernanceWithRepertoire(
+          inferenceResult.inference,
+          repertoireCtx,
+        ),
       }),
     );
 
@@ -207,7 +215,7 @@ async function engageOnOtherPosts(): Promise<number> {
     const resScore = dynamoResult?.resonanceScore ?? 0;
 
     if (govOutcome.ok && rec !== 'PASS' && resScore < 0.75) {
-      log("Dynamo rejected action");
+      log('Dynamo rejected action');
       continue;
     }
 
@@ -216,17 +224,25 @@ async function engageOnOtherPosts(): Promise<number> {
         log('DRY_RUN: skipping actual post');
       } else {
         await api(`/posts/${post.id}/comments`, {
-        method: 'POST',
-        body: JSON.stringify({ content: replyText }),
-      });
+          method: 'POST',
+          body: JSON.stringify({ content: replyText }),
+        });
 
-      try { await api(`/posts/${post.id}/upvote`, { method: 'POST' }); } catch (e) { log(`Upvote failed: ${e}`); }
+        try {
+          await api(`/posts/${post.id}/upvote`, { method: 'POST' });
+        } catch (e) {
+          log(`Upvote failed: ${e}`);
+        }
 
-      state.repliedPostIds.push(post.id);
-      log(`✓ Replied to other post: "${post.title}"`);
+        state.repliedPostIds.push(post.id);
+        log(`✓ Replied to other post: "${post.title}"`);
 
-      replied++;
-      if (replied >= 4) { log("Reached 4 replies — stopping early."); return replied; }
+        replied++;
+        if (replied >= 4) {
+          log('Reached 4 replies — stopping early.');
+          return replied;
+        }
+      }
     } catch (e) {
       log(`Failed reply to ${post.id}: ${e}`);
     }
@@ -252,7 +268,7 @@ async function main() {
   log(`Other-posts complete. Replied to ${replied} posts.`);
 }
 
-main().catch(err => {
-  process.stderr.write('FATAL: ' + (err?.message || String(err)) + '\n');
+main().catch((err) => {
+  process.stderr.write(`FATAL: ${err?.message || String(err)}\n`);
   process.exit(1);
 });

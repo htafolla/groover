@@ -340,13 +340,21 @@ export function buildInferenceLogEntry(params: {
   publicReply: string;
   govOutcome: GovernanceCallOutcome | null;
   repertoireRouting?: RepertoireRoutingLogFields;
+  /** Pre-inference signals from Repertoire consult (distinct from post-inference text match). */
+  repertoireSignals?: string[];
+  /** Override governance_forced when Repertoire trap detected before inference. */
+  governanceForced?: boolean;
 }): InferenceLogEntry {
   const primitiveMatches = matchPrimitivesFromInference(params.inference);
   const matchedPrimitives = primitiveMatches.map((match) => match.name);
   const matchConfidence = Object.fromEntries(
     primitiveMatches.map((match) => [match.name, match.confidence]),
   );
-  const forced = shouldForceGovernance(params.inference);
+  const forced = params.governanceForced ?? shouldForceGovernance(params.inference);
+  const repertoireSignals =
+    params.repertoireSignals ??
+    params.repertoireRouting?.matchedSignals ??
+    matchedPrimitives;
 
   let dynamoResult: InferenceLogEntry['dynamo_result'];
   if (!params.govOutcome) {
@@ -373,7 +381,7 @@ export function buildInferenceLogEntry(params: {
     public_reply: params.publicReply,
     matched_primitives: matchedPrimitives,
     match_confidence: matchConfidence,
-    repertoire_signals: matchedPrimitives,
+    repertoire_signals: repertoireSignals,
     governance_forced: forced,
     dynamo_result: dynamoResult,
   };
