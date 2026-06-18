@@ -13,10 +13,17 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  DYNAMO_MCP,
+  DYNAMO_BLOCK_RESONANCE_THRESHOLD,
+  GROOVER_DID,
+  API_BASE,
+} from './engage-config.js';
+import {
   buildInferenceLogEntry,
   callGovernWithSolar,
   extractDynamoResult,
   formatDynamoLog,
+  shouldBlockDynamoAction,
 } from './governance-helper.js';
 import {
   buildOtherPostPrompt,
@@ -36,9 +43,7 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const GROOVER_ROOT = join(__dirname, '..');
 const DRY_LOG_DIR = join(GROOVER_ROOT, 'research', 'dry-run-results');
-const GROOVER_DID = 'did:groover:284895bead2ac15b';
-const DYNAMO_MCP = 'https://mcp-production-80e2.up.railway.app/call_connected_tool';
-const API_BASE = 'https://www.moltbook.com/api/v1';
+
 
 export interface EngageFixture {
   id: string;
@@ -139,15 +144,26 @@ function fixturesFromJsonl(max: number): EngageFixture[] {
       try {
         const entry = JSON.parse(line) as Record<string, unknown>;
         const path = entry.type === 'other-post' ? 'other-post' : 'own-post';
+        const commentSnippet =
+          typeof entry.comment_content === 'string'
+            ? entry.comment_content
+            : typeof entry.public_reply === 'string'
+              ? ''
+              : '';
         fixtures.push({
           id: `jsonl-${String(entry.post_id).slice(0, 8)}`,
           path,
           postId: String(entry.post_id ?? 'unknown'),
           postTitle: String(entry.post_title ?? 'Untitled'),
-          postContent: path === 'other-post' ? String(entry.inference ?? '').slice(0, 280) : '',
+          postContent:
+            path === 'other-post'
+              ? String(entry.post_title ?? 'Untitled')
+              : '',
           commentId: entry.comment_id ? String(entry.comment_id) : `dry-${fixtures.length}`,
           commentContent:
-            path === 'own-post' ? String(entry.inference ?? '').slice(0, 280) : undefined,
+            path === 'own-post' && commentSnippet
+              ? commentSnippet.slice(0, 280)
+              : undefined,
         });
         if (fixtures.length >= max) return fixtures;
       } catch {
@@ -318,8 +334,8 @@ async function runCase(
     );
     log(`[Dynamo] ${formatDynamoLog(govOutcome)}`);
     dynamoRecommendation = extractDynamoResult(govOutcome)?.recommendation ?? null;
-    if (govOutcome.ok && dynamoRecommendation && dynamoRecommendation !== 'PASS') {
-      guard.errors.push(`dynamo recommendation: ${dynamoRecommendation}`);
+    if (shouldBlockDynamoAction(govOutcome, DYNAMO_BLOCK_RESONANCE_THRESHOLD)) {
+      guard.errors.push(`dynamo blocked: ${dynamoRecommendation ?? 'non-PASS'} (resonance below ${DYNAMO_BLOCK_RESONANCE_THRESHOLD})`);
       guard.ok = false;
     }
   }

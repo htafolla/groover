@@ -272,6 +272,22 @@ export function extractDynamoResult(
   return outcome.data.result ?? null;
 }
 
+/**
+ * Unified Dynamo gate for live + dry-run: block only when governance succeeded,
+ * recommendation is not PASS, and resonance is below threshold.
+ */
+export function shouldBlockDynamoAction(
+  outcome: GovernanceCallOutcome | null | undefined,
+  threshold = 0.75,
+): boolean {
+  if (!outcome?.ok) return false;
+  const result = outcome.data.result;
+  const rec = result?.recommendation;
+  const resonance = result?.resonanceScore ?? 0;
+  if (rec === 'PASS') return false;
+  return resonance < threshold;
+}
+
 export async function callGovernWithSolar(
   mcpUrl: string,
   title: string,

@@ -1,8 +1,18 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-const API_BASE = 'https://www.moltbook.com/api/v1';
+import {
+  API_BASE,
+  DYNAMO_MCP,
+  DYNAMO_BLOCK_RESONANCE_THRESHOLD,
+  GROOVER_DID,
+} from './engage-config.js';
+import {
+  callGovernWithSolar,
+  extractDynamoResult,
+  formatDynamoLog,
+  shouldBlockDynamoAction,
+} from './governance-helper.js';
 const POST_COOLDOWN_MS = 3 * 60 * 1000;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -136,35 +146,6 @@ Content: <content>`;
 
 
 
-async function governWithSolar(title: string, content: string): Promise<any> {
-  try {
-    const proposal = {
-      title,
-      description: content,
-      type: "strategic",
-      source: "groover-inference",
-    };
-
-    const res = await fetch(DYNAMO_MCP, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tool_name: "govern_with_solar",
-        params: {
-          proposal,
-          baseVoteWeight: 1.0,
-          spectralQuality: 0.9,
-        },
-      }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
-
-
 async function solveChallenge(text: string): Promise<string | null> {
   try {
     const prompt = `Solve this math challenge. Extract the two numbers and the single operation (+, -, *, /). 
@@ -213,13 +194,16 @@ async function postDaily(): Promise<boolean> {
   }
 
   // Dynamo governance check before posting
-  const governanceContent = generated.title + "\n\n" + generated.content;
-  const govResult = await governWithSolar("Daily Post", governanceContent);
-  const rec = govResult?.result?.recommendation;
-  const resScore = govResult?.result?.resonanceScore || 0;
-  log(`[Dynamo] rec=${rec} resonance=${resScore.toFixed(3)}`);
-  if (govResult && rec !== "PASS" && resScore < 0.75) {
-    log("Dynamo governance rejected post. Full result: " + JSON.stringify(govResult));
+  const governanceContent = generated.title + '\n\n' + generated.content;
+  const govOutcome = await callGovernWithSolar(
+    DYNAMO_MCP,
+    'Daily Post',
+    governanceContent,
+    { agentDid: GROOVER_DID, inference: governanceContent },
+  );
+  log(`[Dynamo] ${formatDynamoLog(govOutcome)}`);
+  if (shouldBlockDynamoAction(govOutcome, DYNAMO_BLOCK_RESONANCE_THRESHOLD)) {
+    log('Dynamo governance rejected post.');
     return false;
   }
 

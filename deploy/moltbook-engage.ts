@@ -2,12 +2,21 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  API_BASE,
+  DYNAMO_MCP,
+  DYNAMO_BLOCK_RESONANCE_THRESHOLD,
+  GROOVER_DID,
+  MAX_ACTIONS_PER_RUN,
+} from './engage-config.js';
+import {
   appendInferenceLog,
   buildInferenceLogEntry,
   callGovernWithSolar,
   extractDynamoResult,
   formatDynamoLog,
+  shouldBlockDynamoAction,
 } from './governance-helper.js';
+import { runPostTickRepertoire } from './post-tick-repertoire.js';
 import { buildOwnPostPrompt, parseInferenceResult } from './engage-prompt.js';
 import { validateEngageOutput } from './engage-output-guard.js';
 import { runHermesInference } from './hermes-runner.js';
@@ -17,10 +26,6 @@ import {
   shouldForceGovernanceWithRepertoire,
   toRepertoireLogFields,
 } from './repertoire-confidence.js';
-
-const API_BASE = 'https://www.moltbook.com/api/v1';
-const GROOVER_DID = 'did:groover:284895bead2ac15b';
-const DYNAMO_MCP = 'https://mcp-production-80e2.up.railway.app/call_connected_tool';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const STATE_PATH = join(__dirname, '..', '.moltbot', 'engage-state.json');
@@ -252,11 +257,20 @@ async function engageOnOwnPosts(): Promise<number> {
       );
 
       const dynamoResult = extractDynamoResult(govOutcome);
-      const rec = dynamoResult?.recommendation;
+      const rec = dynamoResult?.recommendation ?? null;
       const resScore = dynamoResult?.resonanceScore ?? 0;
 
-      if (govOutcome.ok && rec !== 'PASS' && resScore < 0.75) {
-        log("Dynamo governance rejected reply. Skipping.");
+      if (shouldBlockDynamoAction(govOutcome, DYNAMO_BLOCK_RESONANCE_THRESHOLD)) {
+        log('Dynamo governance rejected reply. Skipping.');
+        if (repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0) {
+          await runPostTickRepertoire({
+            taskId: commentId,
+            memorySignals: repertoireCtx.matchedSignals,
+            dynamoRecommendation: rec,
+            resonanceScore: resScore,
+            posted: false,
+          });
+        }
         continue;
       }
 
@@ -294,11 +308,20 @@ async function engageOnOwnPosts(): Promise<number> {
         //   }
         // }
 
+        if (repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0) {
+          await runPostTickRepertoire({
+            taskId: commentId,
+            memorySignals: repertoireCtx.matchedSignals,
+            dynamoRecommendation: rec,
+            resonanceScore: resScore,
+            posted: true,
+          });
+        }
+
         replied++;
 
-        // Hard cap: max 10 replies per run to avoid Hermes timeouts
-        if (replied >= 4) {
-          log("Reached 4 replies — stopping early to avoid timeout.");
+        if (replied >= MAX_ACTIONS_PER_RUN) {
+          log(`Reached ${MAX_ACTIONS_PER_RUN} replies — stopping early to avoid timeout.`);
           return replied;
         }
 

@@ -86,12 +86,15 @@ async function main(): Promise<void> {
   );
 
   try {
-    execSync('npx vitest run deploy/repertoire-confidence.test.ts deploy/governance-helper.test.ts', {
-      cwd: GROOVER_ROOT,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-    record('deploy unit tests', true, '15 passed');
+    execSync(
+      'npx vitest run deploy/repertoire-confidence.test.ts deploy/governance-helper.test.ts deploy/post-tick-repertoire.test.ts',
+      {
+        cwd: GROOVER_ROOT,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      },
+    );
+    record('deploy unit tests', true, 'deploy/*.test.ts passed');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     record('deploy unit tests', false, message.slice(0, 200));

@@ -2,12 +2,21 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  API_BASE,
+  DYNAMO_MCP,
+  DYNAMO_BLOCK_RESONANCE_THRESHOLD,
+  GROOVER_DID,
+  MAX_ACTIONS_PER_RUN,
+} from './engage-config.js';
+import {
   appendInferenceLog,
   buildInferenceLogEntry,
   callGovernWithSolar,
   extractDynamoResult,
   formatDynamoLog,
+  shouldBlockDynamoAction,
 } from './governance-helper.js';
+import { runPostTickRepertoire } from './post-tick-repertoire.js';
 import { buildOtherPostPrompt, parseInferenceResult } from './engage-prompt.js';
 import { validateEngageOutput } from './engage-output-guard.js';
 import { runHermesInference } from './hermes-runner.js';
@@ -17,10 +26,6 @@ import {
   shouldForceGovernanceWithRepertoire,
   toRepertoireLogFields,
 } from './repertoire-confidence.js';
-
-const API_BASE = 'https://www.moltbook.com/api/v1';
-const GROOVER_DID = 'did:groover:284895bead2ac15b';
-const DYNAMO_MCP = 'https://mcp-production-80e2.up.railway.app/call_connected_tool';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const STATE_PATH = join(__dirname, '..', '.moltbot', 'other-engage-state.json');
@@ -200,14 +205,25 @@ async function engageOnOtherPosts(): Promise<number> {
     const rec = dynamoResult?.recommendation;
     const resScore = dynamoResult?.resonanceScore ?? 0;
 
-    if (govOutcome.ok && rec !== 'PASS' && resScore < 0.75) {
+    if (shouldBlockDynamoAction(govOutcome, DYNAMO_BLOCK_RESONANCE_THRESHOLD)) {
       log('Dynamo rejected action');
+      if (repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0) {
+        await runPostTickRepertoire({
+          taskId: post.id,
+          memorySignals: repertoireCtx.matchedSignals,
+          dynamoRecommendation: rec ?? null,
+          resonanceScore: resScore,
+          posted: false,
+        });
+      }
       continue;
     }
 
     try {
       if (process.env.DRY_RUN === 'true') {
         log('DRY_RUN: skipping actual post');
+        state.repliedPostIds.push(post.id);
+        replied++;
       } else {
         await api(`/posts/${post.id}/comments`, {
           method: 'POST',
@@ -223,9 +239,19 @@ async function engageOnOtherPosts(): Promise<number> {
         state.repliedPostIds.push(post.id);
         log(`✓ Replied to other post: "${post.title}"`);
 
+        if (repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0) {
+          await runPostTickRepertoire({
+            taskId: post.id,
+            memorySignals: repertoireCtx.matchedSignals,
+            dynamoRecommendation: rec ?? null,
+            resonanceScore: resScore,
+            posted: true,
+          });
+        }
+
         replied++;
-        if (replied >= 4) {
-          log('Reached 4 replies — stopping early.');
+        if (replied >= MAX_ACTIONS_PER_RUN) {
+          log(`Reached ${MAX_ACTIONS_PER_RUN} replies — stopping early.`);
           return replied;
         }
       }

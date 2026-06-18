@@ -8,6 +8,7 @@ import {
   shouldForceGovernance,
   formatDynamoLog,
   buildInferenceLogEntry,
+  shouldBlockDynamoAction,
 } from './governance-helper.js';
 
 const TEST_SIGNALS = [
@@ -84,6 +85,68 @@ describe('matchPrimitivesFromInference', () => {
     for (let i = 1; i < matches.length; i++) {
       expect(matches[i - 1].confidence).toBeGreaterThanOrEqual(matches[i].confidence);
     }
+  });
+});
+
+describe('shouldBlockDynamoAction', () => {
+  const passOutcome = {
+    ok: true as const,
+    data: { result: { recommendation: 'PASS', resonanceScore: 0.5 } },
+    matchedPrimitives: [],
+  };
+
+  it('does not block when governance call failed', () => {
+    expect(
+      shouldBlockDynamoAction({
+        ok: false,
+        error: true,
+        message: 'unavailable',
+        matchedPrimitives: [],
+      }),
+    ).toBe(false);
+  });
+
+  it('does not block PASS regardless of resonance', () => {
+    expect(shouldBlockDynamoAction(passOutcome, 0.75)).toBe(false);
+  });
+
+  it('blocks non-PASS when resonance is below threshold', () => {
+    expect(
+      shouldBlockDynamoAction(
+        {
+          ok: true,
+          data: { result: { recommendation: 'REJECT', resonanceScore: 0.6 } },
+          matchedPrimitives: [],
+        },
+        0.75,
+      ),
+    ).toBe(true);
+  });
+
+  it('does not block non-PASS when resonance meets threshold', () => {
+    expect(
+      shouldBlockDynamoAction(
+        {
+          ok: true,
+          data: { result: { recommendation: 'REJECT', resonanceScore: 0.8 } },
+          matchedPrimitives: [],
+        },
+        0.75,
+      ),
+    ).toBe(false);
+  });
+
+  it('treats missing resonance as zero (blocks non-PASS)', () => {
+    expect(
+      shouldBlockDynamoAction(
+        {
+          ok: true,
+          data: { result: { recommendation: 'REVISION' } },
+          matchedPrimitives: [],
+        },
+        0.75,
+      ),
+    ).toBe(true);
   });
 });
 
