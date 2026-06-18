@@ -1,11 +1,13 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  buildGovernanceProposal,
+  appendInferenceLog,
+  buildInferenceLogEntry,
+  callGovernWithSolar,
+  extractDynamoResult,
   formatDynamoLog,
-  isOntologicalTrap,
-  matchPrimitivesFromInference,
+  shouldForceGovernance,
 } from './governance-helper.js';
 
 const API_BASE = 'https://www.moltbook.com/api/v1';
@@ -19,44 +21,6 @@ const LOG_DIR = join(__dirname, '..', 'research', 'groover-inference-logs');
 interface State {
   repliedPostIds: string[];
   lastCheck: string | null;
-}
-
-
-async function governWithSolar(
-  title: string,
-  content: string,
-  options: { inference?: string; force?: boolean } = {},
-): Promise<any> {
-  try {
-    const inference = options.inference ?? content;
-    const proposal = buildGovernanceProposal(title, content, {
-      agentDid: GROOVER_DID,
-      inferenceType: isOntologicalTrap(inference) ? 'ontological-trap' : undefined,
-      matchedPrimitives: matchPrimitivesFromInference(inference),
-      force: options.force ?? isOntologicalTrap(inference),
-    });
-
-    const res = await fetch(DYNAMO_MCP, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tool_name: "govern_with_solar",
-        params: {
-          proposal,
-          baseVoteWeight: 1.0,
-          spectralQuality: 0.9,
-        },
-      }),
-    });
-    if (!res.ok) {
-      log(`[Dynamo] HTTP error ${res.status}`);
-      return null;
-    }
-    return await res.json();
-  } catch (e) {
-    log(`[Dynamo] call failed: ${e}`);
-    return null;
-  }
 }
 
 
@@ -183,33 +147,36 @@ async function engageOnOtherPosts(): Promise<number> {
 
     const replyText = inferenceResult.publicReply;
 
-    const govResult = await governWithSolar(post.title || "Action", replyText, {
-      inference: inferenceResult.inference,
-      force: isOntologicalTrap(inferenceResult.inference),
-    });
-    const rec = govResult?.result?.recommendation;
-    const resScore = govResult?.result?.resonanceScore || 0;
-    log(`[Dynamo] ${formatDynamoLog(govResult)}`);
+    const govOutcome = await callGovernWithSolar(
+      DYNAMO_MCP,
+      post.title || 'Action',
+      replyText,
+      {
+        agentDid: GROOVER_DID,
+        inference: inferenceResult.inference,
+        force: shouldForceGovernance(inferenceResult.inference),
+      },
+    );
+    log(`[Dynamo] ${formatDynamoLog(govOutcome)}`);
 
-    const matchedPrimitives = matchPrimitivesFromInference(inferenceResult.inference);
-    if (!existsSync(LOG_DIR)) mkdirSync(LOG_DIR, { recursive: true });
-    const logFile = join(LOG_DIR, `${new Date().toISOString().split('T')[0]}.jsonl`);
-    appendFileSync(logFile, JSON.stringify({
-      timestamp: new Date().toISOString(),
-      source: 'groover',
-      post_id: post.id,
-      post_title: post.title,
-      type: 'other-post',
-      inference: inferenceResult.inference,
-      public_reply: replyText,
-      inference_type: isOntologicalTrap(inferenceResult.inference) ? 'ontological-trap' : undefined,
-      dynamo_result: govResult
-        ? { result: govResult.result, matchedPrimitives }
-        : { result: null, matchedPrimitives },
-      repertoire_signals: matchedPrimitives,
-    }) + '\n');
+    appendInferenceLog(
+      LOG_DIR,
+      buildInferenceLogEntry({
+        source: 'groover',
+        postId: post.id,
+        postTitle: post.title,
+        type: 'other-post',
+        inference: inferenceResult.inference,
+        publicReply: replyText,
+        govOutcome,
+      }),
+    );
 
-    if (govResult && rec !== "PASS" && resScore < 0.75) {
+    const dynamoResult = extractDynamoResult(govOutcome);
+    const rec = dynamoResult?.recommendation;
+    const resScore = dynamoResult?.resonanceScore ?? 0;
+
+    if (govOutcome.ok && rec !== 'PASS' && resScore < 0.75) {
       log("Dynamo rejected action");
       continue;
     }
