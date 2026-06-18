@@ -1,5 +1,28 @@
 {
   "mcpServers": {
+    "repertoire": {
+      "command": "npx",
+      "args": ["-y", "@0xray/repertoire", "mcp"]
+    },
+    "xray-governance": {
+      "command": "npx",
+      "args": ["-y", "0xray", "mcp", "governance"],
+      "env": {
+        "XRAY_FORCE_MCP_GOVERNANCE": "true"
+      }
+    },
+    "xray-researcher": {
+      "command": "npx",
+      "args": ["-y", "0xray", "mcp", "researcher"]
+    },
+    "xray-orchestrator": {
+      "command": "npx",
+      "args": ["-y", "0xray", "mcp", "orchestrator"]
+    },
+    "xray-enforcer": {
+      "command": "npx",
+      "args": ["-y", "0xray", "mcp", "enforcer"]
+    },
     "groover-registry": {
       "type": "http",
       "url": "https://registry-production-e2c4.up.railway.app"

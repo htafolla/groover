@@ -5,9 +5,12 @@
  * Used by moltbook-engage.ts and moltbook-other-engage.ts before Hermes inference.
  */
 
+import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const require = createRequire(import.meta.url);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -27,16 +30,37 @@ export interface RepertoireConsultResult extends RepertoireRoutingSnapshot {
   promptBlock: string;
 }
 
-const DEFAULT_REPERTOIRE_ROOT = join(__dirname, '..', '..', 'repertoire');
+const SIBLING_REPERTOIRE_ROOT = join(__dirname, '..', '..', 'repertoire');
+const LOCAL_NODE_MODULES_ROOT = join(__dirname, '..', 'node_modules', '@0xray', 'repertoire');
+
+function providerExistsAt(root: string): boolean {
+  return existsSync(join(root, 'dist/provider/memory-routing-provider.js'));
+}
+
+function resolveRepertoireRoot(): string {
+  if (process.env.REPERTOIRE_ROOT && providerExistsAt(process.env.REPERTOIRE_ROOT)) {
+    return process.env.REPERTOIRE_ROOT;
+  }
+
+  for (const candidate of [SIBLING_REPERTOIRE_ROOT, LOCAL_NODE_MODULES_ROOT]) {
+    if (providerExistsAt(candidate)) return candidate;
+  }
+
+  try {
+    const pkgJson = require.resolve('@0xray/repertoire/package.json');
+    const root = dirname(pkgJson);
+    if (providerExistsAt(root)) return root;
+  } catch {
+    // not installed
+  }
+
+  return process.env.REPERTOIRE_ROOT ?? SIBLING_REPERTOIRE_ROOT;
+}
 
 let cachedConsult:
   | ((description: string) => RepertoireConsultResult)
   | null
   | undefined;
-
-function resolveRepertoireRoot(): string {
-  return process.env.REPERTOIRE_ROOT ?? DEFAULT_REPERTOIRE_ROOT;
-}
 
 function unavailableResult(): RepertoireConsultResult {
   return {

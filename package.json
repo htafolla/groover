@@ -10,6 +10,7 @@
     "build": "tsc -b",
     "dev": "turbo run dev",
     "test": "vitest run",
+    "triage:stack": "tsx deploy/triage-stack.ts",
     "test:watch": "vitest",
     "govern": "echo 'Governance must be performed via xray-governance__govern_proposals and Dynamo__* tools before changes. See AGENTS.md.'",
     "enforce": "echo 'Run xray-enforcer__codex-enforcement and quality-gate-check via MCP on all changes.'",
@@ -18,6 +19,7 @@
     "start:registry": "npx tsx packages/marketplace/src/mcp-server.ts"
   },
   "devDependencies": {
+    "@0xray/repertoire": "^0.1.0",
     "@types/node": "^20.14.0",
     "tsx": "^4.16.0",
     "turbo": "^2.0.0",
