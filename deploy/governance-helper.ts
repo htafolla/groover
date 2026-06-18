@@ -53,6 +53,18 @@ export interface PrimitiveMatch {
   confidence: number;
 }
 
+export interface RepertoireRoutingLogFields {
+  consulted: boolean;
+  providerAvailable: boolean;
+  highConfidenceTrapPresent: boolean;
+  ontologicalTrapDetected: boolean;
+  recommendedAgent: string | null;
+  matchedSignals: string[];
+  avgConfidence: number;
+  maxConfidence: number;
+  complexityBoost: number;
+}
+
 export interface InferenceLogEntry {
   timestamp: string;
   source: string;
@@ -66,6 +78,7 @@ export interface InferenceLogEntry {
   matched_primitives: string[];
   match_confidence: Record<string, number>;
   repertoire_signals: string[];
+  repertoire_routing?: RepertoireRoutingLogFields;
   governance_forced: boolean;
   dynamo_result: {
     result: DynamoGovernanceResult | null;
@@ -326,6 +339,7 @@ export function buildInferenceLogEntry(params: {
   inference: string;
   publicReply: string;
   govOutcome: GovernanceCallOutcome | null;
+  repertoireRouting?: RepertoireRoutingLogFields;
 }): InferenceLogEntry {
   const primitiveMatches = matchPrimitivesFromInference(params.inference);
   const matchedPrimitives = primitiveMatches.map((match) => match.name);
@@ -368,6 +382,7 @@ export function buildInferenceLogEntry(params: {
   if (params.commentId !== undefined) entry.comment_id = params.commentId;
   if (params.type !== undefined) entry.type = params.type;
   if (isOntologicalTrap(params.inference)) entry.inference_type = 'ontological-trap';
+  if (params.repertoireRouting) entry.repertoire_routing = params.repertoireRouting;
 
   return entry;
 }

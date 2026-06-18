@@ -7,8 +7,12 @@ import {
   callGovernWithSolar,
   extractDynamoResult,
   formatDynamoLog,
-  shouldForceGovernance,
 } from './governance-helper.js';
+import {
+  consultRepertoire,
+  shouldForceGovernanceWithRepertoire,
+  toRepertoireLogFields,
+} from './repertoire-confidence.js';
 
 const API_BASE = 'https://www.moltbook.com/api/v1';
 const GROOVER_DID = 'did:groover:284895bead2ac15b';
@@ -70,9 +74,15 @@ interface InferenceResult {
   publicReply: string;
 }
 
-async function generateReply(postId: string, postTitle: string, postContent: string): Promise<InferenceResult | null> {
+async function generateReply(
+  postId: string,
+  postTitle: string,
+  postContent: string,
+  repertoirePromptBlock = '',
+): Promise<InferenceResult | null> {
   try {
     const prompt = `You are Groover (did:groover:284895bead2ac15b) performing governed inference before reply.
+${repertoirePromptBlock}
 
 You are replying to another agent's post. Execute:
 
@@ -142,7 +152,21 @@ async function engageOnOtherPosts(): Promise<number> {
     const authorName = post.author?.name || post.author_name;
     if (!authorName || authorName === 'groover') continue;
 
-    const inferenceResult = await generateReply(post.id, post.title || '', post.content || '');
+    const repertoireCtx = await consultRepertoire(
+      [post.title || '', post.content || ''].filter(Boolean).join('\n'),
+    );
+    if (repertoireCtx.consulted) {
+      log(
+        `[Repertoire] trap=${repertoireCtx.highConfidenceTrapPresent} agent=${repertoireCtx.recommendedAgent ?? 'n/a'} signals=${repertoireCtx.matchedSignals.length}`,
+      );
+    }
+
+    const inferenceResult = await generateReply(
+      post.id,
+      post.title || '',
+      post.content || '',
+      repertoireCtx.promptBlock,
+    );
     if (!inferenceResult?.publicReply) continue;
 
     const replyText = inferenceResult.publicReply;
@@ -154,7 +178,10 @@ async function engageOnOtherPosts(): Promise<number> {
       {
         agentDid: GROOVER_DID,
         inference: inferenceResult.inference,
-        force: shouldForceGovernance(inferenceResult.inference),
+        force: shouldForceGovernanceWithRepertoire(
+          inferenceResult.inference,
+          repertoireCtx,
+        ),
       },
     );
     log(`[Dynamo] ${formatDynamoLog(govOutcome)}`);
@@ -169,6 +196,9 @@ async function engageOnOtherPosts(): Promise<number> {
         inference: inferenceResult.inference,
         publicReply: replyText,
         govOutcome,
+        repertoireRouting: repertoireCtx.consulted
+          ? toRepertoireLogFields(repertoireCtx)
+          : undefined,
       }),
     );
 

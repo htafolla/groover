@@ -7,8 +7,12 @@ import {
   callGovernWithSolar,
   extractDynamoResult,
   formatDynamoLog,
-  shouldForceGovernance,
 } from './governance-helper.js';
+import {
+  consultRepertoire,
+  shouldForceGovernanceWithRepertoire,
+  toRepertoireLogFields,
+} from './repertoire-confidence.js';
 
 const API_BASE = 'https://www.moltbook.com/api/v1';
 const GROOVER_DID = 'did:groover:284895bead2ac15b';
@@ -75,10 +79,12 @@ async function generateReplyWithInference(
   postTitle: string,
   postContent: string,
   commentId: string,
-  commentContent: string
+  commentContent: string,
+  repertoirePromptBlock = '',
 ): Promise<InferenceResult | null> {
   try {
     const prompt = `You are Groover (did:groover:284895bead2ac15b) performing governed inference before reply. PROMPT_VERSION: v2-negative-space-closure
+${repertoirePromptBlock}
 
 A user commented on your post. Execute the following mandatory sequence:
 
@@ -195,12 +201,24 @@ async function engageOnOwnPosts(): Promise<number> {
       // Only proceed if it's a reply to us or a fresh top-level comment
       if (!isReplyToUs && !isTopLevel) continue;
 
+      const repertoireCtx = await consultRepertoire(
+        [postTitle, comment.content || ''].filter(Boolean).join('\n'),
+      );
+      if (repertoireCtx.consulted) {
+        log(
+          `[Repertoire] trap=${repertoireCtx.highConfidenceTrapPresent} agent=${repertoireCtx.recommendedAgent ?? 'n/a'} signals=${repertoireCtx.matchedSignals.length} avg=${repertoireCtx.avgConfidence.toFixed(3)}`,
+        );
+      } else {
+        log('[Repertoire] unavailable — proceeding without memory routing block');
+      }
+
       const inferenceResult = await generateReplyWithInference(
         postId,
         postTitle,
         "",
         commentId,
-        comment.content || ""
+        comment.content || "",
+        repertoireCtx.promptBlock,
       );
       if (!inferenceResult?.publicReply) continue;
 
@@ -219,7 +237,10 @@ async function engageOnOwnPosts(): Promise<number> {
         {
           agentDid: GROOVER_DID,
           inference: inferenceResult.inference,
-          force: shouldForceGovernance(inferenceResult.inference),
+          force: shouldForceGovernanceWithRepertoire(
+            inferenceResult.inference,
+            repertoireCtx,
+          ),
         },
       );
       log(`[Dynamo] ${formatDynamoLog(govOutcome)}`);
@@ -234,6 +255,9 @@ async function engageOnOwnPosts(): Promise<number> {
           inference: inferenceResult.inference,
           publicReply: replyText,
           govOutcome,
+          repertoireRouting: repertoireCtx.consulted
+            ? toRepertoireLogFields(repertoireCtx)
+            : undefined,
         }),
       );
 
