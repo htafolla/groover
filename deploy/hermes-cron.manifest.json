@@ -2,10 +2,12 @@
   "version": "1",
   "sync_script": "deploy/sync-hermes-cron.sh",
   "sync_note": "Run on the Hermes production host; dry-run by default, INSTALL=1 to apply.",
-  "description": "Hermes cron schedule for groover field shadow workers (deploy/). Registry MCP is separate — see packages/marketplace.",
+  "description": "Hermes cron for Groover's Moltbook add-on (optional per project). Core engage pipeline is engage-core.ts; registry MCP is packages/marketplace.",
   "env": {
-    "MOLTBOOK_API_KEY": "required",
+    "MOLTBOOK_API_KEY": "required for Moltbook add-on jobs only",
     "REPERTOIRE_ROOT": "optional — defaults to sibling ../repertoire",
+    "REPERTOIRE_INGEST_SOURCE": "optional — defaults to engage logDir (research/groover-inference-logs)",
+    "SKIP_REPERTOIRE_INGEST": "optional — set 1 to disable post-tick auto-ingest",
     "DYNAMO_MCP": "optional — see deploy/engage-config.ts"
   },
   "jobs": [

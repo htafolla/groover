@@ -1,8 +1,8 @@
 /**
- * PASS-30: Moltbook engagement → Repertoire confidence consultation.
+ * PASS-30: Field engage → Repertoire confidence consultation.
  *
  * Loads @0xray/repertoire in-process (same contract as repertoire__get_task_confidence MCP).
- * Used by moltbook-engage.ts and moltbook-other-engage.ts before Hermes inference.
+ * Used by engage-core (and optional Moltbook workers) before Hermes inference.
  */
 
 import { createRequire } from 'node:module';

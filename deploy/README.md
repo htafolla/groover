@@ -1,20 +1,30 @@
-# deploy/ — Groover field shadow workers
+# deploy/ — Field engage pipeline + optional add-ons
 
-Moltbook field workers: **consult → govern → act → Repertoire feedback**. Shared config lives in `engage-config.ts`; pipelines in `engage-core.ts`.
+**Core (no Moltbook required):** `engage-core.ts` runs **consult → infer → guard → govern → JSONL → Repertoire feedback + ingest**. Shared config: `engage-config.ts`, memory loop: `post-tick-repertoire.ts`.
 
-## Registry vs field shadow
+**Moltbook is an add-on**, not a platform dependency. Groover ships reference workers (`moltbook-*.ts`) as *its* activation — Jelly, ZigZag, or any project wires the same `engage-core` pipeline to their own surface and API keys.
 
-Groover splits into two cables that ship and operate independently. **`packages/marketplace/`** is the identity/registry MCP server (DID issuance, proof-of-autonomy challenge, plugin search) — run with `npm start` or deployed to Railway. **`deploy/`** is the field shadow: scheduled Hermes cron jobs that engage on Moltbook, call Dynamo governance, and write Repertoire feedback. Registry PRs and deploy PRs are separate concerns; cron workers never substitute for the registry endpoint.
+## Registry vs field engage
+
+Groover splits into two cables that ship and operate independently.
+
+| Cable | Path | Role |
+|-------|------|------|
+| **Registry** | `packages/marketplace/` | DID issuance, proof-of-autonomy, plugin search — `npm start` or Railway |
+| **Field engage** | `deploy/engage-core.ts` | Generic governed inference + Repertoire memory loop |
+| **Moltbook add-on** | `deploy/moltbook-*.ts` | Groover's optional public actuation — requires per-project `MOLTBOOK_API_KEY` |
+
+Registry PRs and deploy PRs are separate. Cron workers never substitute for the registry endpoint.
 
 ## Environment variables
 
-### Required (production workers)
+### Required for Moltbook add-on only
 
 | Variable | Used by |
 |----------|---------|
 | `MOLTBOOK_API_KEY` | `moltbook-client.ts`, `moltbook-engage.ts`, `moltbook-other-engage.ts`, `moltbook-post.ts`, `moltbook-heartbeat.ts` |
 
-Without this key, live workers exit with `FATAL`. Dry-run can use fixtures only; set `LIVE_READ=1` (or `--live-read`) to pull live Moltbook data during triage.
+Only needed when running Groover's Moltbook workers. Without this key, those scripts exit with `FATAL`. The core pipeline (`engage-dry-run`, triage, Repertoire ingest) runs without it. Set `LIVE_READ=1` to pull live Moltbook data during triage when the add-on is enabled.
 
 ### Optional — `engage-config.ts` (single source)
 
@@ -32,7 +42,8 @@ Without this key, live workers exit with `FATAL`. Dry-run can use fixtures only;
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `REPERTOIRE_ROOT` | sibling `../repertoire`, then `node_modules/@0xray/repertoire` | Path to Repertoire provider for consult + post-tick feedback |
+| `REPERTOIRE_ROOT` | sibling `../repertoire`, then `node_modules/@0xray/repertoire` | Path to Repertoire for consult, post-tick feedback, and JSONL ingest |
+| `REPERTOIRE_INGEST_SOURCE` | engage `logDir` (see below) | Override source directory for post-tick ingest when host paths differ |
 
 ### Optional — dry-run / triage toggles
 
@@ -42,6 +53,7 @@ Without this key, live workers exit with `FATAL`. Dry-run can use fixtures only;
 | `SKIP_HERMES` | `1` | `engage-dry-run.ts`: skip Hermes inference (repertoire + guard only) |
 | `SKIP_GOVERNANCE` | `1` | `engage-dry-run.ts`: skip Dynamo governance step |
 | `SKIP_REPERTOIRE_FEEDBACK` | `1` | `post-tick-repertoire.ts`: skip writing feedback after a tick |
+| `SKIP_REPERTOIRE_INGEST` | `1` | `post-tick-repertoire.ts`: skip auto-ingest after JSONL append (A3.1) |
 | `LIVE_READ` | `1` | `engage-dry-run.ts`: fetch live Moltbook data (needs `MOLTBOOK_API_KEY`) |
 | `HERMES_TRIAGE_INFERENCE` | `1` | `triage-stack.ts`: run one live `hermes -z` smoke call |
 
@@ -100,3 +112,5 @@ Jobs installed (prefix `groover-`):
 After apply: `hermes cron list && hermes cron status`.
 
 Host must have `MOLTBOOK_API_KEY` in the environment cron inherits; optionally `REPERTOIRE_ROOT` and `DYNAMO_MCP` (see manifest `env` block).
+
+After each tick, `engage-core` appends enriched JSONL to `research/groover-inference-logs/` (or `logDir` override) and runs **post-tick ingest** into Repertoire (`logs/groover-inference/`), idempotent by `comment_id` / `post_id`. No Moltbook API call is required for ingest — it reads local JSONL only.

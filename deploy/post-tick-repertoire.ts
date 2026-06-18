@@ -1,6 +1,7 @@
 /**
- * Post-tick memory loop — closes Repertoire feedback after each governed action.
- * Loads @0xray/repertoire provider in-process (same resolution as repertoire-confidence).
+ * Post-tick memory loop — Repertoire feedback + JSONL ingest after each governed action.
+ * Loads @0xray/repertoire in-process (same resolution as repertoire-confidence).
+ * Ingest reads local enriched JSONL only — no Moltbook API dependency.
  */
 
 import { createRequire } from 'node:module';
@@ -104,7 +105,7 @@ export async function runPostTickRepertoire(
 
   const result = cachedIngestFeedback({
     timestamp: new Date().toISOString(),
-    sessionId: `moltbook-${input.taskId}`,
+    sessionId: `field-${input.taskId}`,
     taskId: input.taskId,
     assignedAgent: 'field-shadow',
     memorySignals: input.memorySignals,
@@ -120,6 +121,91 @@ export async function runPostTickRepertoire(
   return { ok: true, updatedSignals: result?.updatedSignals };
 }
 
+export interface PostTickIngestResult {
+  ok: boolean;
+  skipped?: string;
+  imported?: number;
+  skippedLines?: number;
+  promoted?: string[];
+}
+
+type RepertoireServiceLike = {
+  ingestGrooverLogs(sourceDir: string): {
+    imported: number;
+    skipped: number;
+    promoted: string[];
+  };
+};
+
+let cachedRepertoireService: RepertoireServiceLike | null | undefined;
+
+function repertoireServiceConfig(root: string) {
+  return {
+    dataDir: join(root, 'data'),
+    signalsPath: join(root, 'data/curated_signals.json'),
+    logDir: join(root, 'logs/groover-inference'),
+    feedbackDir: join(root, 'logs', 'orchestrator-feedback'),
+  };
+}
+
+async function loadRepertoireService(): Promise<RepertoireServiceLike | null> {
+  if (cachedRepertoireService !== undefined) {
+    return cachedRepertoireService;
+  }
+
+  const root = resolveRepertoireRoot();
+  if (!root) {
+    cachedRepertoireService = null;
+    return null;
+  }
+
+  try {
+    const mod = await import(pathToFileURL(join(root, 'dist/index.js')).href);
+    if (!mod.RepertoireService) {
+      cachedRepertoireService = null;
+      return null;
+    }
+    cachedRepertoireService = new mod.RepertoireService(repertoireServiceConfig(root));
+    return cachedRepertoireService;
+  } catch {
+    cachedRepertoireService = null;
+    return null;
+  }
+}
+
+/**
+ * Idempotent ingest of new enriched JSONL lines from a local directory into Repertoire.
+ * Source defaults to the engage logDir; override with REPERTOIRE_INGEST_SOURCE on the host.
+ */
+export async function runPostTickIngest(sourceDir?: string): Promise<PostTickIngestResult> {
+  if (process.env.SKIP_REPERTOIRE_INGEST === '1') {
+    return { ok: true, skipped: 'SKIP_REPERTOIRE_INGEST' };
+  }
+
+  const resolvedSource = sourceDir ?? process.env.REPERTOIRE_INGEST_SOURCE;
+  if (!resolvedSource) {
+    return { ok: true, skipped: 'no-ingest-source' };
+  }
+
+  if (!existsSync(resolvedSource)) {
+    return { ok: true, skipped: 'ingest-source-missing', imported: 0, skippedLines: 0 };
+  }
+
+  const service = await loadRepertoireService();
+  if (!service) {
+    return { ok: false, skipped: 'repertoire-service-unavailable' };
+  }
+
+  const result = service.ingestGrooverLogs(resolvedSource);
+  return {
+    ok: true,
+    imported: result.imported,
+    skippedLines: result.skipped,
+    promoted: result.promoted,
+  };
+}
+
 export function resetPostTickCache(): void {
   cachedIngestFeedback = undefined;
+  cachedRepertoireService = undefined;
 }

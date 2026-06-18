@@ -18,6 +18,7 @@ import {
   formatDynamoLog,
   shouldBlockDynamoAction,
   type GovernanceCallOutcome,
+  type InferenceLogEntry,
 } from './governance-helper.js';
 import {
   buildChallengePrompt,
@@ -32,7 +33,10 @@ import {
 import { validateEngageOutput } from './engage-output-guard.js';
 import { runHermesInference } from './hermes-runner.js';
 import { MoltbookClient } from './moltbook-client.js';
-import { runPostTickRepertoire } from './post-tick-repertoire.js';
+import {
+  runPostTickIngest,
+  runPostTickRepertoire,
+} from './post-tick-repertoire.js';
 import {
   buildRepertoireConsultDescription,
   consultRepertoire,
@@ -88,6 +92,19 @@ export interface EngagePipelineResult {
 
 function defaultLog(msg: string): void {
   process.stdout.write(`[${new Date().toISOString()}] ${msg}\n`);
+}
+
+async function appendInferenceLogAndIngest(
+  logDir: string,
+  entry: InferenceLogEntry,
+): Promise<void> {
+  appendInferenceLog(logDir, entry);
+  const ingest = await runPostTickIngest(logDir);
+  if (ingest.imported && ingest.imported > 0) {
+    defaultLog(
+      `[Repertoire] ingest imported=${ingest.imported} skipped=${ingest.skippedLines ?? 0}`,
+    );
+  }
 }
 
 function buildConsultDescription(engageCase: EngageCase): string {
@@ -252,7 +269,7 @@ export async function runEngagePipeline(
           posted: false,
         });
       }
-      appendInferenceLog(
+      await appendInferenceLogAndIngest(
         options.logDir ?? DEFAULT_LOG_DIR,
         buildInferenceLogEntry({
           source: options.logSource ?? 'groover',
@@ -293,7 +310,7 @@ export async function runEngagePipeline(
   }
 
   if (!guard.ok) {
-    appendInferenceLog(
+    await appendInferenceLogAndIngest(
       options.logDir ?? DEFAULT_LOG_DIR,
       buildInferenceLogEntry({
         source: options.logSource ?? 'groover',
@@ -353,7 +370,7 @@ export async function runEngagePipeline(
     });
   }
 
-  appendInferenceLog(
+  await appendInferenceLogAndIngest(
     options.logDir ?? DEFAULT_LOG_DIR,
     buildInferenceLogEntry({
       source: options.logSource ?? 'groover',
@@ -527,7 +544,7 @@ export async function runPostPipeline(
           posted: false,
         });
       }
-      appendInferenceLog(
+      await appendInferenceLogAndIngest(
         options.logDir ?? DEFAULT_LOG_DIR,
         buildInferenceLogEntry({
           source: options.logSource ?? 'groover-post',
@@ -617,7 +634,7 @@ export async function runPostPipeline(
     });
   }
 
-  appendInferenceLog(
+  await appendInferenceLogAndIngest(
     options.logDir ?? DEFAULT_LOG_DIR,
     buildInferenceLogEntry({
       source: options.logSource ?? 'groover-post',
