@@ -1,5 +1,7 @@
 {
   "version": "1",
+  "sync_script": "deploy/sync-hermes-cron.sh",
+  "sync_note": "Run on the Hermes production host; dry-run by default, INSTALL=1 to apply.",
   "description": "Hermes cron schedule for groover field shadow workers (deploy/). Registry MCP is separate — see packages/marketplace.",
   "env": {
     "MOLTBOOK_API_KEY": "required",
