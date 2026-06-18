@@ -18,6 +18,16 @@ export const DYNAMO_MCP =
 export const GOVERNANCE_ENDPOINT =
   process.env.GOVERNANCE_ENDPOINT ?? `${DYNAMO_MCP_URL}/governance`;
 
+/** xray-governance MCP (internal deliberation — code-review, security-audit, researcher) */
+export const XRAY_GOVERNANCE_MCP_URL =
+  process.env.GOVERNANCE_MCP_URL?.replace(/\/$/, '') ??
+  (process.env.GOVERNANCE_API_KEY
+    ? 'https://governance-production-69c3.up.railway.app'
+    : 'http://localhost:4002');
+
+export const XRAY_GOVERNANCE_MCP_PATH =
+  process.env.GOVERNANCE_MCP_PATH ?? '/mcp';
+
 export const GROOVER_DID =
   process.env.GROOVER_DID ?? 'did:groover:284895bead2ac15b';
 

@@ -7,7 +7,10 @@ import {
   setCuratedSignalsForTesting,
   shouldForceGovernance,
   formatDynamoLog,
+  buildGovernanceProposal,
   buildInferenceLogEntry,
+  parseDynamoHammerEnvelope,
+  unwrapDynamoConnectedToolResponse,
   shouldBlockDynamoAction,
 } from './governance-helper.js';
 
@@ -150,11 +153,65 @@ describe('shouldBlockDynamoAction', () => {
   });
 });
 
+describe('buildGovernanceProposal', () => {
+  it('builds Dynamo-compliant structuredProposal with agent source', () => {
+    const payload = buildGovernanceProposal('Trap post', 'Public reply text', {
+      agentDid: 'did:groover:test',
+      inferenceType: 'ontological-trap',
+      matchedPrimitives: ['attestation-as-map'],
+      force: true,
+      deliberationSummary: 'code-review: approve (85%)',
+    });
+
+    expect(payload.structuredProposal.source).toBe('agent');
+    expect(payload.structuredProposal.summary).toContain('Trap post');
+    expect(payload.structuredProposal.summary).toContain('Public reply text');
+    expect(payload.structuredProposal.summary).toContain('attestation-as-map');
+    expect(payload.structuredProposal.summary).toContain('code-review: approve');
+    expect(payload.structuredProposal.tags).toEqual(['attestation-as-map']);
+    expect(payload.structuredProposal.summary).not.toContain('[object Object]');
+  });
+});
+
+describe('parseDynamoHammerEnvelope', () => {
+  it('unwraps call_connected_tool responses and maps hammer fields', () => {
+    const raw = {
+      success: true,
+      tool: 'govern_with_solar',
+      result: {
+        recommendation: 'NEEDS_REVISION',
+        structuralResonance: 0.74,
+        proximity: 0.81,
+        phaseAlignment: 0.68,
+        synchronization: 0.65,
+        signalTiming: 'trailing',
+        signalPurity: 0.82,
+        hammerReason: 'Moderate resonance',
+      },
+    };
+    const envelope = parseDynamoHammerEnvelope(unwrapDynamoConnectedToolResponse(raw));
+    expect(envelope?.recommendation).toBe('NEEDS_REVISION');
+    expect(envelope?.resonanceScore).toBe(0.74);
+    expect(envelope?.phaseAlignment).toBe(0.68);
+    expect(envelope?.signalTiming).toBe('trailing');
+    expect(envelope?.signalPurity).toBe(0.82);
+  });
+});
+
 describe('formatDynamoLog', () => {
-  it('formats successful Dynamo responses', () => {
+  it('formats successful Dynamo responses with extended hammer fields', () => {
     expect(
-      formatDynamoLog({ result: { recommendation: 'PASS', resonanceScore: 0.812 } }),
-    ).toBe('rec=PASS resonance=0.812');
+      formatDynamoLog({
+        result: {
+          recommendation: 'PASS',
+          resonanceScore: 0.812,
+          phaseAlignment: 0.68,
+          synchronization: 0.65,
+          signalTiming: 'synced',
+          signalPurity: 0.9,
+        },
+      }),
+    ).toBe('rec=PASS resonance=0.812 phase=0.680 sync=0.650 timing=synced purity=0.900');
   });
 
   it('formats governance call errors', () => {
@@ -202,6 +259,38 @@ describe('buildInferenceLogEntry', () => {
     expect(entry.repertoire_signals).toEqual(entry.matched_primitives);
     expect(entry.governance_forced).toBe(true);
     expect(entry.inference_type).toBe('ontological-trap');
+  });
+
+  it('embeds deliberation rounds and full hammer envelope when provided', () => {
+    const entry = buildInferenceLogEntry({
+      source: 'groover',
+      postId: 'post-3',
+      inference: 'TYPE: ontological-trap\nattestation-as-map closure primitive.',
+      publicReply: 'Reply text',
+      govOutcome: {
+        ok: true,
+        data: {
+          result: {
+            recommendation: 'NEEDS_REVISION',
+            resonanceScore: 0.74,
+            phaseAlignment: 0.68,
+            synchronization: 0.65,
+            signalTiming: 'trailing',
+            hammerReason: 'Moderate resonance',
+          },
+        },
+        matchedPrimitives: ['attestation-as-map'],
+      },
+      deliberationRounds: [
+        { server: 'code-review', decision: 'approve', confidence: 0.85 },
+        { server: 'security-audit', decision: 'needs_revision', confidence: 0.78 },
+        { server: 'researcher', decision: 'approve', confidence: 0.91 },
+      ],
+    });
+
+    expect(entry.deliberation_rounds).toHaveLength(3);
+    expect(entry.dynamo_result.result?.phaseAlignment).toBe(0.68);
+    expect(entry.dynamo_result.result?.hammerReason).toBe('Moderate resonance');
   });
 
   it('uses pre-inference repertoire signals when provided', () => {

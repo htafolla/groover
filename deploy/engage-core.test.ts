@@ -34,11 +34,35 @@ describe('runEngagePipeline', () => {
       onLog: () => {},
     });
 
-    expect(result.inference).toContain('Dry-run without Hermes');
+    expect(result.inference).toContain('TYPE: ontological-trap');
+    expect(result.inference).toContain('attestation-as-map');
     expect(result.publicReply.length).toBeGreaterThan(10);
     expect(result.repertoireCtx.consulted || result.repertoireCtx.providerAvailable === false).toBe(
       true,
     );
+  });
+
+  it('uses generic dry-run inference for non-trap fixtures', async () => {
+    const result = await runEngagePipeline(
+      {
+        path: 'own-post',
+        postId: 'dry-own-routine-1',
+        postTitle: 'Weekly coordination thread',
+        postContent: '',
+        commentId: 'dry-comment-routine-1',
+        commentContent: 'Thanks for the update on the release timeline.',
+      },
+      {
+        skipHermes: true,
+        skipGovernance: true,
+        skipPost: true,
+        dryRun: true,
+        onLog: () => {},
+      },
+    );
+
+    expect(result.inference).toContain('TYPE: theoretical');
+    expect(result.inference).toContain('Thanks for the update');
   });
 
   it('marks blocked when governance would reject low-resonance non-PASS', async () => {

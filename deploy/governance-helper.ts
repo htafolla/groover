@@ -33,16 +33,62 @@ export interface GovernOptions {
   inferenceType?: string;
   matchedPrimitives?: string[];
   force?: boolean;
+  deliberationSummary?: string;
 }
 
-export interface DynamoGovernanceResult {
-  recommendation?: string;
-  resonanceScore?: number;
+export interface StructuredGovernanceProposal {
+  summary: string;
+  source: 'agent';
+  intent: string;
+  tags: string[];
+  scope: 'agent';
 }
+
+export interface GovernanceProposalPayload {
+  structuredProposal: StructuredGovernanceProposal;
+}
+
+export interface DynamoHammerEnvelope {
+  recommendation?: 'PASS' | 'NEEDS_REVISION' | 'REJECT' | string;
+  resonanceScore?: number;
+  structuralResonance?: number;
+  proximity?: number;
+  phaseAlignment?: number;
+  vortexAlignment?: number;
+  synchronization?: number;
+  signalTiming?: 'leading' | 'trailing' | 'synced' | string;
+  hybridVerdict?: string;
+  fullBox7DVerdict?: string;
+  fullBox7DComposite?: number;
+  signalPurity?: number;
+  hammerReason?: string;
+  phaseType?: 'push' | 'pull' | string;
+  isotope?: string;
+  smoothedResonance?: number;
+  trend?: string;
+  moralNumerologicalTension?: string;
+  trinitariumDetectedConcerns?: string[];
+  solarContext?: { solarActivityLevel?: string };
+  neuralContextUsed?: boolean;
+}
+
+/** @deprecated Use DynamoHammerEnvelope — kept for call-site compatibility */
+export type DynamoGovernanceResult = DynamoHammerEnvelope;
 
 export interface DynamoResponse {
-  result?: DynamoGovernanceResult;
+  result?: DynamoHammerEnvelope;
 }
+
+export interface DeliberationVote {
+  server: string;
+  decision: string;
+  confidence: number;
+  reasoning?: string;
+}
+
+export type DeliberationRoundOutcome =
+  | { ok: true; votes: DeliberationVote[]; summary: string }
+  | { ok: false; message: string; votes: DeliberationVote[] };
 
 export type GovernanceCallOutcome =
   | { ok: true; data: DynamoResponse; matchedPrimitives: string[] }
@@ -80,13 +126,21 @@ export interface InferenceLogEntry {
   repertoire_signals: string[];
   repertoire_routing?: RepertoireRoutingLogFields;
   governance_forced: boolean;
+  deliberation_rounds?: DeliberationVote[];
   dynamo_result: {
-    result: DynamoGovernanceResult | null;
+    result: DynamoHammerEnvelope | null;
     matchedPrimitives: string[];
     error?: string;
     status?: number;
   };
 }
+
+const MAX_PROPOSAL_SUMMARY_LENGTH = 8000;
+const INTERNAL_DELIBERATION_SERVERS = new Set([
+  'code-review',
+  'security-audit',
+  'researcher',
+]);
 
 interface SignalIndex {
   signals: CuratedSignal[];
@@ -227,17 +281,88 @@ export function buildGovernanceProposal(
   title: string,
   content: string,
   options: GovernOptions,
-) {
-  return {
+): GovernanceProposalPayload {
+  const summary = [
     title,
-    description: content,
-    type: 'strategic',
-    source: 'groover-inference',
-    agentDid: options.agentDid,
-    inferenceType: options.inferenceType,
-    matchedPrimitives: options.matchedPrimitives ?? [],
-    forced: options.force ?? false,
+    content,
+    options.deliberationSummary,
+    options.matchedPrimitives?.length
+      ? `Matched primitives: ${options.matchedPrimitives.join(', ')}`
+      : '',
+    options.inferenceType ? `Inference type: ${options.inferenceType}` : '',
+    options.force ? 'Governance forced: true' : '',
+    `Agent: ${options.agentDid}`,
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+    .slice(0, MAX_PROPOSAL_SUMMARY_LENGTH);
+
+  return {
+    structuredProposal: {
+      summary,
+      source: 'agent',
+      intent: 'groover-engage',
+      tags: options.matchedPrimitives ?? [],
+      scope: 'agent',
+    },
   };
+}
+
+export function parseDynamoHammerEnvelope(raw: unknown): DynamoHammerEnvelope | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const solarContext =
+    r.solarContext && typeof r.solarContext === 'object'
+      ? { solarActivityLevel: (r.solarContext as Record<string, unknown>).solarActivityLevel as string | undefined }
+      : undefined;
+
+  return {
+    recommendation: r.recommendation as DynamoHammerEnvelope['recommendation'],
+    resonanceScore:
+      typeof r.resonanceScore === 'number'
+        ? r.resonanceScore
+        : typeof r.structuralResonance === 'number'
+          ? r.structuralResonance
+          : undefined,
+    structuralResonance: r.structuralResonance as number | undefined,
+    proximity: r.proximity as number | undefined,
+    phaseAlignment: r.phaseAlignment as number | undefined,
+    vortexAlignment: r.vortexAlignment as number | undefined,
+    synchronization: r.synchronization as number | undefined,
+    signalTiming: r.signalTiming as DynamoHammerEnvelope['signalTiming'],
+    hybridVerdict: r.hybridVerdict as string | undefined,
+    fullBox7DVerdict: r.fullBox7DVerdict as string | undefined,
+    fullBox7DComposite: r.fullBox7DComposite as number | undefined,
+    signalPurity: r.signalPurity as number | undefined,
+    hammerReason: r.hammerReason as string | undefined,
+    phaseType: r.phaseType as DynamoHammerEnvelope['phaseType'],
+    isotope: r.isotope as string | undefined,
+    smoothedResonance: r.smoothedResonance as number | undefined,
+    trend: r.trend as string | undefined,
+    moralNumerologicalTension: r.moralNumerologicalTension as string | undefined,
+    trinitariumDetectedConcerns: Array.isArray(r.trinitariumDetectedConcerns)
+      ? (r.trinitariumDetectedConcerns as string[])
+      : undefined,
+    solarContext,
+    neuralContextUsed: r.neuralContextUsed as boolean | undefined,
+  };
+}
+
+export function unwrapDynamoConnectedToolResponse(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw;
+  const obj = raw as Record<string, unknown>;
+  if (obj.success === true && obj.result !== undefined) return obj.result;
+  return raw;
+}
+
+export function buildDeliberationSummary(votes: DeliberationVote[]): string {
+  if (votes.length === 0) return '';
+  return votes
+    .map(
+      (vote) =>
+        `${vote.server}: ${vote.decision} (${(vote.confidence * 100).toFixed(0)}%)${vote.reasoning ? ` — ${vote.reasoning.slice(0, 200)}` : ''}`,
+    )
+    .join('\n');
 }
 
 export function formatDynamoLog(
@@ -256,18 +381,29 @@ export function formatDynamoLog(
   return formatDynamoResult(outcome.result);
 }
 
-function formatDynamoResult(result: DynamoGovernanceResult | undefined): string {
+function formatDynamoResult(result: DynamoHammerEnvelope | undefined): string {
   const rec = result?.recommendation ?? 'N/A';
   const resonance =
     typeof result?.resonanceScore === 'number'
       ? result.resonanceScore.toFixed(3)
       : 'N/A';
-  return `rec=${rec} resonance=${resonance}`;
+  const parts = [`rec=${rec}`, `resonance=${resonance}`];
+  if (typeof result?.phaseAlignment === 'number') {
+    parts.push(`phase=${result.phaseAlignment.toFixed(3)}`);
+  }
+  if (typeof result?.synchronization === 'number') {
+    parts.push(`sync=${result.synchronization.toFixed(3)}`);
+  }
+  if (result?.signalTiming) parts.push(`timing=${result.signalTiming}`);
+  if (typeof result?.signalPurity === 'number') {
+    parts.push(`purity=${result.signalPurity.toFixed(3)}`);
+  }
+  return parts.join(' ');
 }
 
 export function extractDynamoResult(
   outcome: GovernanceCallOutcome | null | undefined,
-): DynamoGovernanceResult | null {
+): DynamoHammerEnvelope | null {
   if (!outcome || !outcome.ok) return null;
   return outcome.data.result ?? null;
 }
@@ -296,6 +432,7 @@ export async function callGovernWithSolar(
     agentDid: string;
     inference?: string;
     force?: boolean;
+    deliberationSummary?: string;
   },
 ): Promise<GovernanceCallOutcome> {
   const inference = options.inference ?? content;
@@ -307,6 +444,7 @@ export async function callGovernWithSolar(
     inferenceType: isOntologicalTrap(inference) ? 'ontological-trap' : undefined,
     matchedPrimitives,
     force: options.force ?? shouldForceGovernance(inference),
+    deliberationSummary: options.deliberationSummary,
   });
 
   try {
@@ -316,7 +454,7 @@ export async function callGovernWithSolar(
       body: JSON.stringify({
         tool_name: 'govern_with_solar',
         params: {
-          proposal,
+          structuredProposal: proposal.structuredProposal,
           baseVoteWeight: 1.0,
           spectralQuality: 0.9,
         },
@@ -334,8 +472,9 @@ export async function callGovernWithSolar(
       };
     }
 
-    const data = (await res.json()) as DynamoResponse;
-    return { ok: true, data, matchedPrimitives };
+    const raw = await res.json();
+    const hammer = parseDynamoHammerEnvelope(unwrapDynamoConnectedToolResponse(raw));
+    return { ok: true, data: { result: hammer ?? undefined }, matchedPrimitives };
   } catch (error) {
     return {
       ok: false,
@@ -343,6 +482,70 @@ export async function callGovernWithSolar(
       message: String(error),
       matchedPrimitives,
     };
+  }
+}
+
+export async function callDeliberationRound(params: {
+  title: string;
+  description: string;
+  evidence: string[];
+  mcpUrl?: string;
+  mcpPath?: string;
+  timeoutMs?: number;
+}): Promise<DeliberationRoundOutcome> {
+  const {
+    XRAY_GOVERNANCE_MCP_URL,
+    XRAY_GOVERNANCE_MCP_PATH,
+  } = await import('./engage-config.js');
+  const { McpStreamableClient } = await import('./mcp-streamable-client.js');
+
+  const baseUrl = params.mcpUrl ?? XRAY_GOVERNANCE_MCP_URL;
+  const mcpPath = params.mcpPath ?? XRAY_GOVERNANCE_MCP_PATH;
+  const timeoutMs = params.timeoutMs ?? 60_000;
+
+  try {
+    const client = new McpStreamableClient({
+      baseUrl,
+      mcpPath,
+      apiKey: process.env.GOVERNANCE_API_KEY,
+      timeoutMs,
+    });
+
+    const parsed = (await client.callTool('govern_proposals', {
+      proposals: [
+        {
+          id: `groover-delib-${Date.now()}`,
+          type: 'strategic',
+          title: params.title,
+          description: params.description,
+          evidence: params.evidence,
+          confidence: 0.85,
+        },
+      ],
+      options: { require_external: false },
+    })) as {
+      results?: Array<{
+        votes?: Array<{
+          server?: string;
+          decision?: string;
+          confidence?: number;
+          reasoning?: string;
+        }>;
+      }>;
+    };
+
+    const votes: DeliberationVote[] = (parsed.results?.[0]?.votes ?? [])
+      .filter((vote) => vote.server && INTERNAL_DELIBERATION_SERVERS.has(vote.server))
+      .map((vote) => ({
+        server: vote.server!,
+        decision: vote.decision ?? 'abstain',
+        confidence: typeof vote.confidence === 'number' ? vote.confidence : 0.5,
+        reasoning: vote.reasoning,
+      }));
+
+    return { ok: true, votes, summary: buildDeliberationSummary(votes) };
+  } catch (error) {
+    return { ok: false, message: String(error), votes: [] };
   }
 }
 
@@ -360,6 +563,7 @@ export function buildInferenceLogEntry(params: {
   repertoireSignals?: string[];
   /** Override governance_forced when Repertoire trap detected before inference. */
   governanceForced?: boolean;
+  deliberationRounds?: DeliberationVote[];
 }): InferenceLogEntry {
   const primitiveMatches = matchPrimitivesFromInference(params.inference);
   const matchedPrimitives = primitiveMatches.map((match) => match.name);
@@ -383,8 +587,9 @@ export function buildInferenceLogEntry(params: {
       status: params.govOutcome.status,
     };
   } else {
+    const rawResult = params.govOutcome.data.result;
     dynamoResult = {
-      result: params.govOutcome.data.result ?? null,
+      result: rawResult ? parseDynamoHammerEnvelope(rawResult) : null,
       matchedPrimitives: params.govOutcome.matchedPrimitives,
     };
   }
@@ -407,6 +612,9 @@ export function buildInferenceLogEntry(params: {
   if (params.type !== undefined) entry.type = params.type;
   if (isOntologicalTrap(params.inference)) entry.inference_type = 'ontological-trap';
   if (params.repertoireRouting) entry.repertoire_routing = params.repertoireRouting;
+  if (params.deliberationRounds?.length) {
+    entry.deliberation_rounds = params.deliberationRounds;
+  }
 
   return entry;
 }

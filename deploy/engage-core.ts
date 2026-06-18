@@ -1,7 +1,11 @@
 /**
- * Unified engage pipeline — consult → infer → guard → govern → act → feedback.
+ * Unified engage pipeline — consult → infer → guard → deliberate → hammer → act → feedback.
  * Used by live workers and dry-run triage.
  */
+
+import { loadPlatformEnv } from './load-platform-env.js';
+
+loadPlatformEnv();
 
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,10 +17,12 @@ import {
 import {
   appendInferenceLog,
   buildInferenceLogEntry,
+  callDeliberationRound,
   callGovernWithSolar,
   extractDynamoResult,
   formatDynamoLog,
   shouldBlockDynamoAction,
+  type DeliberationVote,
   type GovernanceCallOutcome,
   type InferenceLogEntry,
 } from './governance-helper.js';
@@ -63,6 +69,7 @@ export interface EngageCase {
 export interface EngagePipelineOptions {
   skipHermes?: boolean;
   skipGovernance?: boolean;
+  skipDeliberation?: boolean;
   skipPost?: boolean;
   dryRun?: boolean;
   recentReplyHashes?: Set<string>;
@@ -92,6 +99,41 @@ export interface EngagePipelineResult {
 
 function defaultLog(msg: string): void {
   process.stdout.write(`[${new Date().toISOString()}] ${msg}\n`);
+}
+
+function buildDeliberationEvidence(
+  engageCase: EngageCase,
+  inference: string,
+  publicReply: string,
+  repertoireCtx: RepertoireConsultResult,
+): string[] {
+  const evidence: string[] = [];
+  if (repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0) {
+    evidence.push(`repertoire signals: ${repertoireCtx.matchedSignals.join(', ')}`);
+  }
+  if (repertoireCtx.promptBlock) {
+    evidence.push(repertoireCtx.promptBlock.slice(0, 2000));
+  }
+  evidence.push(`inference excerpt: ${inference.slice(0, 1500)}`);
+  evidence.push(`public reply excerpt: ${publicReply.slice(0, 1000)}`);
+  if (engageCase.postContent) {
+    evidence.push(`post context: ${engageCase.postContent.slice(0, 1000)}`);
+  }
+  if (engageCase.commentContent) {
+    evidence.push(`comment context: ${engageCase.commentContent.slice(0, 1000)}`);
+  }
+  return evidence;
+}
+
+function buildDryRunInference(engageCase: EngageCase): string {
+  const source = (engageCase.commentContent ?? engageCase.postContent ?? '').trim();
+  const trapLike =
+    /ontological-trap|attestation-as-map|consumer-boundary|parse-mutation/i.test(source) ||
+    /trap/i.test(engageCase.postId);
+  if (trapLike) {
+    return `TYPE: ontological-trap\n${source}\nattestation-as-map closure primitive.`;
+  }
+  return `TYPE: theoretical\n${source || `Dry-run without Hermes (${engageCase.postId}).`}`;
 }
 
 async function appendInferenceLogAndIngest(
@@ -198,7 +240,7 @@ export async function runEngagePipeline(
   let publicReply = '';
 
   if (options.skipHermes) {
-    inference = `TYPE: theoretical\nDry-run without Hermes (${engageCase.postId}).`;
+    inference = buildDryRunInference(engageCase);
     publicReply = `Acknowledged your point on ${engageCase.postTitle.slice(0, 48)}. Dry-run placeholder reply.`;
   } else {
     const prompt = buildPrompt(engageCase, repertoireCtx.promptBlock);
@@ -239,8 +281,30 @@ export async function runEngagePipeline(
   let govOutcome: GovernanceCallOutcome | null = null;
   let dynamoRecommendation: string | null = null;
   let resonanceScore = 0;
+  let deliberationRounds: DeliberationVote[] = [];
+  let deliberationSummary = '';
 
   if (!options.skipGovernance) {
+    if (!options.skipDeliberation) {
+      const delib = await callDeliberationRound({
+        title: engageCase.postTitle || 'Engagement',
+        description: `${inference}\n\n---\n\n${publicReply}`,
+        evidence: buildDeliberationEvidence(
+          engageCase,
+          inference,
+          publicReply,
+          repertoireCtx,
+        ),
+      });
+      if (delib.ok) {
+        deliberationRounds = delib.votes;
+        deliberationSummary = delib.summary;
+        log(`[Deliberation] ${delib.votes.length} internal votes`);
+      } else {
+        log(`[Deliberation] unavailable — ${delib.message}`);
+      }
+    }
+
     govOutcome = await callGovernWithSolar(
       DYNAMO_MCP,
       engageCase.postTitle || 'Engagement',
@@ -249,6 +313,7 @@ export async function runEngagePipeline(
         agentDid: GROOVER_DID,
         inference,
         force: governanceForced,
+        deliberationSummary,
       },
     );
     log(`[Dynamo] ${formatDynamoLog(govOutcome)}`);
@@ -288,6 +353,7 @@ export async function runEngagePipeline(
               ? repertoireCtx.matchedSignals
               : undefined,
           governanceForced,
+          deliberationRounds,
         }),
       );
       return {
@@ -329,6 +395,7 @@ export async function runEngagePipeline(
             ? repertoireCtx.matchedSignals
             : undefined,
         governanceForced,
+        deliberationRounds,
       }),
     );
     return {
@@ -389,6 +456,7 @@ export async function runEngagePipeline(
           ? repertoireCtx.matchedSignals
           : undefined,
       governanceForced,
+      deliberationRounds,
     }),
   );
 

@@ -12,8 +12,11 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadPlatformEnv } from './load-platform-env.js';
 import { runEngagePipeline, type EngageCase } from './engage-core.js';
 import { MoltbookClient } from './moltbook-client.js';
+
+loadPlatformEnv();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const GROOVER_ROOT = join(__dirname, '..');
