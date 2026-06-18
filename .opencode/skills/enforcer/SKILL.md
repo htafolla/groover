@@ -2,7 +2,7 @@
 source: framework
 name: enforcer
 description: Codex compliance validation and error prevention
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [quality, enforcer]

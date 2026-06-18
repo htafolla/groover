@@ -30,3 +30,15 @@ Think deeply before recommending. Consider trade-offs and long-term implications
 - Risk analysis and mitigation planning
 - High-level system design and framework evolution
 - Technical debt identification and prioritization
+
+## When to invoke (autonomy-command)
+
+Lead dev dispatches strategist when `analyze-complexity` score **>25** or work spans multiple repos/phases.
+
+| Output required | Format |
+|-----------------|--------|
+| Phased plan | Phase N + goal + definition of done |
+| Todo breakdown | ID, task, subagent assignment |
+| Risks | Top 3 with mitigations |
+
+Use `orchestrate-task` or Task subagent. Return actionable todos — not essays.

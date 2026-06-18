@@ -16,6 +16,86 @@
     },
     "global-git": {
       "enabled": false
+    },
+    "xray-governance": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "0xray",
+        "mcp",
+        "governance"
+      ],
+      "enabled": true,
+      "environment": {
+        "XRAY_FORCE_MCP_GOVERNANCE": "true"
+      }
+    },
+    "xray-skills": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "0xray",
+        "mcp",
+        "skills"
+      ],
+      "enabled": true
+    },
+    "xray-orchestrator": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "0xray",
+        "mcp",
+        "orchestrator"
+      ],
+      "enabled": true
+    },
+    "xray-enforcer": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "0xray",
+        "mcp",
+        "enforcer"
+      ],
+      "enabled": true
+    },
+    "xray-researcher": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "0xray",
+        "mcp",
+        "researcher"
+      ],
+      "enabled": true
+    },
+    "xray-code-review": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "0xray",
+        "mcp",
+        "code-review"
+      ],
+      "enabled": true
+    },
+    "xray-architect-tools": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "0xray",
+        "mcp",
+        "architect-tools"
+      ],
+      "enabled": true
     }
   },
   "agent": {

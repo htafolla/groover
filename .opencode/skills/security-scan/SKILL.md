@@ -2,7 +2,7 @@
 source: framework
 name: security-scan
 description: Security vulnerability scanning and assessment
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [security, security, scan]

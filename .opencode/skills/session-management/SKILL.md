@@ -2,7 +2,7 @@
 source: framework
 name: session-management
 description: Manage user sessions and persistent state
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [infrastructure, session, management]

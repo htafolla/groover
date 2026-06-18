@@ -2,7 +2,7 @@
 source: framework
 name: refactoring-strategies
 description: Code refactoring techniques and strategies
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [refactoring, refactoring, strategies]

@@ -2,7 +2,7 @@
 source: framework
 name: testing-strategy
 description: Design comprehensive testing strategies and optimize test coverage
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [testing, strategy, coverage, quality]
@@ -38,6 +38,17 @@ This skill helps design and optimize testing strategies for:
 - Test coverage optimization
 - Testing best practices implementation
 
-## Integration
+## Per-suite triage (autonomy-command rule 3)
 
-Provides testing expertise and coverage analysis when requested through the skills system.
+After major changes, **do not** run the full test suite first.
+
+```text
+1. Identify affected test file(s) from the diff
+2. Run ONE suite: npm test -- path/to/focused.test.ts
+3. Read ALL failure output — triage root cause
+4. Fix → rerun that suite until green
+5. Repeat for each affected suite
+6. Only then: npm test (full suite gate)
+```
+
+Lead dev owns every failure. No "pre-existing" deferrals.

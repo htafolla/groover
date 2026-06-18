@@ -96,7 +96,7 @@ codex_terms: [5, 7, 32]  # Related Codex term numbers
 ```markdown
 ## What Next?
 
-- Related Codex terms: [codex.json](../../.opencode/xray/codex.json)
+- Related Codex terms: [codex.json](../../../../.xray/codex.json)
 - Next story to write: [suggestion]
 ```
 

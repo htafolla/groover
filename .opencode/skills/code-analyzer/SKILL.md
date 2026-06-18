@@ -2,7 +2,7 @@
 source: framework
 name: code-analyzer
 description: Deep code analysis, metrics extraction, and pattern detection (CONSOLIDATED - combines analyzer, explore, and original code-analyzer)
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [analysis, metrics, code-quality, patterns]

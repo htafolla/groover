@@ -2,7 +2,7 @@
 source: framework
 name: researcher
 description: Multi-repo analysis, documentation lookup, and implementation examples
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [research, researcher]
@@ -28,10 +28,23 @@ Multi-repo analysis, documentation lookup, and implementation examples.
 - **find_implementations**: Find implementations
 - **analyze_documentation**: Analyze documentation
 
-## Usage
+## When to invoke (autonomy-command)
 
-This skill provides research capabilities for researcher functionality.
+Lead dev dispatches researcher **before** major planning, refactors, or cross-repo work — not only when user says "research."
 
-## Integration
+| Trigger | Action |
+|---------|--------|
+| Major refactor / new phase | `search_codebase`, `get_documentation`, `find_implementation` |
+| Prior art / patterns | Search sibling repos (xray, groover, repertoire) |
+| Proposal analysis | `analyze_proposal` via xray-researcher MCP |
 
-Activated when research capabilities are requested through the skills system.
+## MCP tools (xray-researcher)
+
+- `get_documentation` — module/class docs (`target` required)
+- `search_codebase` — text search in workspace
+- `find_implementation` — locate implementations
+- `analyze_proposal` — governance-aware proposal review
+
+## Return shape for lead
+
+Summarize: findings (3–5 bullets), file paths, recommended next todos. Do not defer work back to lead without concrete patches or todos.

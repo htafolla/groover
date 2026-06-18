@@ -2,7 +2,7 @@
 source: framework
 name: state-manager
 description: Application state management and persistence
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [infrastructure, state, manager]

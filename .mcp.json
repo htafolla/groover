@@ -2,38 +2,77 @@
   "mcpServers": {
     "repertoire": {
       "command": "npx",
-      "args": ["-y", "@0xray/repertoire", "mcp"]
+      "args": [
+        "-y",
+        "@0xray/repertoire",
+        "mcp"
+      ]
     },
     "xray-governance": {
       "command": "npx",
-      "args": ["-y", "0xray", "mcp", "governance"],
+      "args": [
+        "-y",
+        "0xray",
+        "mcp",
+        "governance"
+      ],
       "env": {
         "XRAY_FORCE_MCP_GOVERNANCE": "true"
       }
     },
     "xray-skills": {
       "command": "npx",
-      "args": ["-y", "0xray", "mcp", "skills"]
+      "args": [
+        "-y",
+        "0xray",
+        "mcp",
+        "skills"
+      ]
     },
     "xray-researcher": {
       "command": "npx",
-      "args": ["-y", "0xray", "mcp", "researcher"]
+      "args": [
+        "-y",
+        "0xray",
+        "mcp",
+        "researcher"
+      ]
     },
     "xray-orchestrator": {
       "command": "npx",
-      "args": ["-y", "0xray", "mcp", "orchestrator"]
+      "args": [
+        "-y",
+        "0xray",
+        "mcp",
+        "orchestrator"
+      ]
     },
     "xray-enforcer": {
       "command": "npx",
-      "args": ["-y", "0xray", "mcp", "enforcer"]
+      "args": [
+        "-y",
+        "0xray",
+        "mcp",
+        "enforcer"
+      ]
     },
     "xray-code-review": {
       "command": "npx",
-      "args": ["-y", "0xray", "mcp", "code-review"]
+      "args": [
+        "-y",
+        "0xray",
+        "mcp",
+        "code-review"
+      ]
     },
     "xray-architect-tools": {
       "command": "npx",
-      "args": ["-y", "0xray", "mcp", "architect-tools"]
+      "args": [
+        "-y",
+        "0xray",
+        "mcp",
+        "architect-tools"
+      ]
     },
     "groover-registry": {
       "type": "http",

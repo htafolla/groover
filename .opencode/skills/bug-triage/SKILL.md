@@ -2,7 +2,7 @@
 source: framework
 name: bug-triage
 description: Bug triage, debugging analysis, and issue prioritization
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [debugging, bug-fix, triage, error-analysis]

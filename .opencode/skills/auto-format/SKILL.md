@@ -2,7 +2,7 @@
 source: framework
 name: auto-format
 description: Automated code formatting and style consistency
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [formatting, auto, format]

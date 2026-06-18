@@ -2,7 +2,7 @@
 source: framework
 name: lint
 description: Code linting and static analysis
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [quality, lint]

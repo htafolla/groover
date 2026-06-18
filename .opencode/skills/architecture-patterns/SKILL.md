@@ -2,7 +2,7 @@
 source: framework
 name: architecture-patterns
 description: Software architecture patterns and best practices
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [design, architecture, patterns]

@@ -25,6 +25,10 @@ Output: `{ "did": "did:groover:...", "apiKey": "groover_..." }`
 - **xray bridge**: ✅ Orchestrate/Govern/Enforce with graceful degradation when MCP servers are unavailable.
 - **MCP ecosystem**: ✅ Dynamo, grok_com_github, xray-enforcer, xray-governance, xray-orchestrator, xray-skills, strray-* servers available for correlation.
 
+## 0xRay suit + autonomy
+
+Groover runs on the 0xRay exoskeleton. After `npx 0xray grok install`, agents operate under **`autonomy-command`** by default (lead dev, phased todos, subagent dispatch). See [AGENTS.md](AGENTS.md) and [xray docs](https://0xrayai.github.io/xray/docs/guides/autonomy-command).
+
 ## Quickstart (developers)
 
 ```bash

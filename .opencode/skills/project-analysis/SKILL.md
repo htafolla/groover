@@ -2,7 +2,7 @@
 source: framework
 name: project-analysis
 description: Analyze project structure, complexity, and health metrics
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [analysis, project, complexity, health]

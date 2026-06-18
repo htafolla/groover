@@ -2,7 +2,7 @@
 source: framework
 name: multimodal-looker
 description: Visual content analysis for diagrams, screenshots, and UI mockups
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [visual, diagrams, screenshots, accessibility, ui-analysis]

@@ -2,7 +2,7 @@
 source: framework
 name: code-review
 description: Perform comprehensive code quality assessment and provide improvement suggestions
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [review, quality, assessment, improvement]

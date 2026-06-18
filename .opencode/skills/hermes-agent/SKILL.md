@@ -1,6 +1,6 @@
 ---
 name: hermes-agent
-description: Manage 0xRay framework from Hermes Agent via the native strray-hermes plugin. Covers the 4 plugin tools (validate, codex_check, health, hooks), lifecycle hooks, slash commands, bridge architecture, and CLI fallback.
+description: Manage 0xRay framework from Hermes Agent via the native xray-hermes plugin. Covers the 4 plugin tools (validate, codex_check, health, hooks), lifecycle hooks, slash commands, bridge architecture, and CLI fallback.
 version: 2.1.0
 author: 0xRay AI
 metadata:
@@ -9,7 +9,7 @@ metadata:
     related_skills: []
 ---
 
-# 0xRay Hermes Plugin (strray-hermes)
+# 0xRay Hermes Plugin (xray-hermes)
 
 Native Hermes plugin providing 0xRay framework integration — quality gates, codex enforcement, git hooks, and full pre/post processing pipeline. Runs via a Node.js bridge to compiled framework components.
 
@@ -24,7 +24,7 @@ Native Hermes plugin providing 0xRay framework integration — quality gates, co
 ## Plugin Architecture
 
 ```
-~/.hermes/plugins/strray-hermes/
+~/.hermes/plugins/xray-hermes/
 ├── __init__.py         # Plugin registration, hooks, slash commands
 ├── tools.py            # 4 tool handlers (validate, codex_check, health, hooks)
 ├── schemas.py          # JSON schemas the LLM sees
@@ -43,17 +43,17 @@ Native Hermes plugin providing 0xRay framework integration — quality gates, co
 
 **Fallback:** When bridge is unavailable, tools fall back to `npx 0xray` CLI commands.
 
-**Config path resolution:** `STRRAY_CONFIG_DIR/` > `.xray/` > `.opencode/xray/` > built-in defaults.
+**Config path resolution:** `XRAY_CONFIG_DIR/` > `.xray/` > built-in defaults.
 
 ## 4 Tools
 
-### strray_validate
+### xray_validate
 
 Run pre-commit validation on files. Uses bridge quality gate + processor pipeline, falls back to CLI.
 
 ```
-strray_validate(files=["src/my-module.ts"], operation="commit")
-strray_validate(files=["src/auth.ts", "src/auth.test.ts"], operation="modify")
+xray_validate(files=["src/my-module.ts"], operation="commit")
+xray_validate(files=["src/auth.ts", "src/auth.test.ts"], operation="modify")
 ```
 
 Parameters:
@@ -62,13 +62,13 @@ Parameters:
 
 Returns: pass/fail with per-file results and violations.
 
-### strray_codex_check
+### xray_codex_check
 
 Validate code against the 60-term Universal Development Codex. Checks error-handling, type-safety, performance, security, architecture.
 
 ```
-strray_codex_check(code="const x: any = foo()", operation="create")
-strray_codex_check(code=snippet, operation="modify", focus_areas=["security", "error-handling"])
+xray_codex_check(code="const x: any = foo()", operation="create")
+xray_codex_check(code=snippet, operation="modify", focus_areas=["security", "error-handling"])
 ```
 
 Parameters:
@@ -78,25 +78,25 @@ Parameters:
 
 Returns: violations list with actionable remediation.
 
-### strray_health
+### xray_health
 
 Framework health check. Returns version, loaded components, project root.
 
 ```
-strray_health()
+xray_health()
 ```
 
 Returns: framework status, version, component availability, node version.
 
-### strray_hooks
+### xray_hooks
 
 Manage 0xRay git hooks (install, uninstall, list, status).
 
 ```
-strray_hooks(action="install")
-strray_hooks(action="status")
-strray_hooks(action="list")
-strray_hooks(action="uninstall", hooks=["pre-commit"])
+xray_hooks(action="install")
+xray_hooks(action="status")
+xray_hooks(action="list")
+xray_hooks(action="uninstall", hooks=["pre-commit"])
 ```
 
 Parameters:
@@ -122,7 +122,7 @@ Fires before ANY tool executes:
 1. Tracks session stats
 2. Logs tool-start event to `logs/framework/plugin-tool-events.log`
 3. For code-producing tools (write_file, patch, execute_code, write, edit): runs quality gate + pre-processors via bridge
-4. For other tools: nudges when a 0xRay MCP alternative exists (e.g., grep → search_codebase, eslint → strray_lint)
+4. For other tools: nudges when a 0xRay MCP alternative exists (e.g., grep → search_codebase, eslint → xray_lint)
 
 ### post_tool_call
 
@@ -137,16 +137,16 @@ Fires when a new session starts. Resets stats and logs to disk. Registration is 
 ## Slash Command
 
 ```
-/strray status    — Plugin and framework health (calls bridge)
-/strray stats     — Session pipeline statistics
-/strray help      — Show available commands
+/xray status    — Plugin and framework health (calls bridge)
+/xray stats     — Session pipeline statistics
+/xray help      — Show available commands
 /sr status        — Alias
 ```
 
 ## Session Stats (tracked automatically)
 
-The plugin tracks per-session counters visible via `/strray stats`:
-- total_tool_calls, code_operations, strray_mcp_calls, native_tool_calls
+The plugin tracks per-session counters visible via `/xray stats`:
+- total_tool_calls, code_operations, xray_mcp_calls, native_tool_calls
 - quality_gate_runs, quality_gate_blocks
 - pre_processor_runs, post_processor_runs
 - bridge_calls, bridge_errors
@@ -164,13 +164,13 @@ All logs go to `logs/framework/` in the project root:
 
 | User Says | Tool / Command |
 |----------|---------------|
-| "Is 0xRay working?" | `strray_health()` or `/strray status` |
-| "Check these files before I commit" | `strray_validate(files=[...], operation="commit")` |
-| "Is this code codex compliant?" | `strray_codex_check(code=..., operation="create")` |
-| "Set up git hooks" | `strray_hooks(action="install")` |
-| "What hooks are installed?" | `strray_hooks(action="status")` |
-| "Show session stats" | `/strray stats` |
-| "Why is the bridge failing?" | Check `strray_health()` → if `framework: "not_loaded"`, verify `dist/` symlink |
+| "Is 0xRay working?" | `xray_health()` or `/xray status` |
+| "Check these files before I commit" | `xray_validate(files=[...], operation="commit")` |
+| "Is this code codex compliant?" | `xray_codex_check(code=..., operation="create")` |
+| "Set up git hooks" | `xray_hooks(action="install")` |
+| "What hooks are installed?" | `xray_hooks(action="status")` |
+| "Show session stats" | `/xray stats` |
+| "Why is the bridge failing?" | Check `xray_health()` → if `framework: "not_loaded"`, verify `dist/` symlink |
 
 ## Bridge Commands (internal)
 
@@ -188,8 +188,8 @@ These are called by the Python tools via `bridge.mjs`, not directly by the LLM:
 
 Bridge can be invoked directly for debugging:
 ```bash
-echo '{"command":"health"}' | node ~/.hermes/plugins/strray-hermes/bridge.mjs
-node ~/.hermes/plugins/strray-hermes/bridge.mjs health --cwd /path/to/project
+echo '{"command":"health"}' | node ~/.hermes/plugins/xray-hermes/bridge.mjs
+node ~/.hermes/plugins/xray-hermes/bridge.mjs health --cwd /path/to/project
 ```
 
 ## Relationship to MCP Servers
@@ -198,15 +198,15 @@ The plugin and MCP servers are complementary:
 - **Plugin tools** = offline-first, always available, lightweight (validate, codex check, health, hooks)
 - **MCP servers** = deeper analysis requiring running Node.js (lint, security scan, architecture assessment, orchestration, codebase search)
 
-The plugin's pre_tool_call hook nudges when an MCP alternative exists (e.g., "use mcp_strray_lint_lint instead of raw eslint"). This is advisory, not blocking.
+The plugin's pre_tool_call hook nudges when an MCP alternative exists (e.g., "use mcp_xray_lint_lint instead of raw eslint"). This is advisory, not blocking.
 
 ## Pitfalls
 
 - Plugin requires restart after install/edit: Hermes loads plugins once at session start.
 - Bridge needs `dist/` symlink: The bridge loads compiled `.js` from `dist/` → `node_modules/0xray/dist/`. If the symlink breaks, bridge returns `framework: "not_loaded"`.
-- `strray_codex_check` without `code` param returns health, not a codex check. Pass `code` for actual validation.
+- `xray_codex_check` without `code` param returns health, not a codex check. Pass `code` for actual validation.
 - CLI fallback requires `npx 0xray` in PATH. If bridge fails and CLI isn't available, tools return errors.
 - Quality gate blocks are logged but NOT enforced (advisory). The tool returns violations; the agent decides what to do.
-- Git hooks use symlinks from `.git/hooks/` → `hooks/`. If the `hooks/` directory doesn't exist in the project, `strray_hooks(action="install")` skips those hooks.
-- Project root detection walks up from CWD looking for `node_modules/0xray`, `.opencode/xray/features.json`, or `package.json`. Override with `STRRAY_PROJECT_ROOT` env var.
+- Git hooks use symlinks from `.git/hooks/` → `hooks/`. If the `hooks/` directory doesn't exist in the project, `xray_hooks(action="install")` skips those hooks.
+- Project root detection walks up from CWD looking for `node_modules/0xray`, `.xray/features.json`, or `package.json`. Override with `XRAY_PROJECT_ROOT` env var.
 - `logs/framework/` is created automatically. Never breaks the agent if permissions fail.

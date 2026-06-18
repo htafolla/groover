@@ -2,7 +2,7 @@
 source: framework
 name: framework-compliance-audit
 description: Framework compliance auditing and validation
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [compliance, framework, compliance, audit]

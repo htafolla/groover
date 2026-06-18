@@ -2,7 +2,7 @@
 source: framework
 name: performance-optimization
 description: Application performance optimization and tuning
-author: StrRay Framework
+author: Xray Framework
 version: 1.0.0
 schema_version: "1.0"
 tags: [performance, performance, optimization]
