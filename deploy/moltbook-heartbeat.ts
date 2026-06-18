@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runHermesInference } from './hermes-runner.js';
 
 const API_BASE = 'https://www.moltbook.com/api/v1';
 const INTERVAL_MS = 30 * 60 * 1000;
@@ -240,14 +241,7 @@ Output format:
 Title: <title>
 Content: <content>`;
 
-    const { writeFileSync } = await import('node:fs');
-    const { execSync } = await import('node:child_process');
-
-    const tmpPath = '/tmp/groover-daily-post.txt';
-    writeFileSync(tmpPath, prompt);
-
-    const cmd = `hermes -z "$(cat ${tmpPath})" --provider xai-oauth --model grok-4.3`;
-    const result = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 120000 }).trim();
+    const result = runHermesInference(prompt);
 
     if (!result || result.length < 30) return null;
 
@@ -271,14 +265,7 @@ Return ONLY the numeric result with exactly two decimal places. No explanation, 
 
 Challenge: ${text}`;
 
-    const { writeFileSync } = await import('node:fs');
-    const { execSync } = await import('node:child_process');
-
-    const tmpPath = '/tmp/groover-challenge.txt';
-    writeFileSync(tmpPath, prompt);
-
-    const cmd = `hermes -z "$(cat ${tmpPath})" --provider xai-oauth --model grok-4.3`;
-    const result = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 120000 }).trim();
+    const result = runHermesInference(prompt);
 
     const match = result.match(/(-?\d+\.\d{2})/);
     if (match) return match[1];
