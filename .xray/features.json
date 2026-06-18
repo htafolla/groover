@@ -144,5 +144,15 @@
       "on_chain": false,
       "tags": []
     }
+  },
+  "memory_routing": {
+    "enabled": true,
+    "provider": "repertoire",
+    "module_path": "../repertoire/dist/provider/memory-routing-provider.js",
+    "config": {
+      "dataDir": "../repertoire/data",
+      "signalsPath": "../repertoire/data/curated_signals.json",
+      "logDir": "../repertoire/logs/groover-inference"
+    }
   }
 }
