@@ -11,6 +11,8 @@
     "dev": "turbo run dev",
     "test": "vitest run",
     "triage:stack": "tsx deploy/triage-stack.ts",
+    "triage:engage-dry": "tsx deploy/engage-dry-run.ts",
+    "triage:engage-loop": "tsx deploy/engage-dry-run.ts --loops 3 --delay-ms 8000",
     "test:watch": "vitest",
     "govern": "echo 'Governance must be performed via xray-governance__govern_proposals and Dynamo__* tools before changes. See AGENTS.md.'",
     "enforce": "echo 'Run xray-enforcer__codex-enforcement and quality-gate-check via MCP on all changes.'",

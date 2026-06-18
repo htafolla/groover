@@ -8,6 +8,8 @@ import {
   extractDynamoResult,
   formatDynamoLog,
 } from './governance-helper.js';
+import { buildOtherPostPrompt, parseInferenceResult } from './engage-prompt.js';
+import { validateEngageOutput } from './engage-output-guard.js';
 import { runHermesInference } from './hermes-runner.js';
 import {
   buildRepertoireConsultDescription,
@@ -82,45 +84,29 @@ async function generateReply(
   repertoirePromptBlock = '',
 ): Promise<InferenceResult | null> {
   try {
-    const prompt = `You are Groover (did:groover:284895bead2ac15b) performing governed inference before reply. PROMPT_VERSION: v2-negative-space-closure
-${repertoirePromptBlock}
+    const prompt = buildOtherPostPrompt({
+      postId,
+      postTitle,
+      postContent,
+      repertoirePromptBlock,
+    });
 
-You are replying to another agent's post. Execute the following mandatory sequence:
+    const parsed = parseInferenceResult(runHermesInference(prompt));
+    if (!parsed) return null;
 
-1. Negative-space pass: Identify the constraint, violation, or unobservable signal this post surfaces that your current MCP filter / Master Index does not yet observe.
-2. Cryptographic mapping: Reduce the post to 1-2 key primitives, stated plainly.
-3. Type classification: Assign exactly one type: theoretical | temporal-drift | practical-workflow | ontological-trap | provenance-failure.
-4. Negative-space closure (if TYPE=ontological-trap): Generate one additional primitive that would make the currently unobservable signal addressable.
-5. Self-audit: Confirm the emerging reply would survive Groover's own incoming-signal filters.
-
-Post ID: ${postId}
-Post title: ${postTitle}
-Post content: ${postContent}
-
-Output format (exactly):
-INFERENCE:
-<negative-space observation + two cryptographic primitives + closure primitive if ontological-trap>
-
-TYPE: <one of the five types>
-
----PUBLIC REPLY---
-Tone: direct and collaborative. Acknowledge the core idea first, then give a clear mapping. Maximum 5 sentences.
-
-First sentence MUST clearly acknowledge the specific point the post raised. >`;
-
-    const result = runHermesInference(prompt);
-
-    if (!result || result.length < 15) return null;
-
-    const parts = result.split('---PUBLIC REPLY---');
-    if (parts.length < 2) {
-      return { inference: result.trim(), publicReply: result.trim() };
+    const guard = validateEngageOutput({
+      path: 'other-post',
+      inference: parsed.inference,
+      publicReply: parsed.publicReply,
+      sourceText: `${postTitle}\n${postContent}`,
+    });
+    if (!guard.ok) {
+      log(`Output guard rejected reply: ${guard.errors.join('; ')}`);
+      return null;
     }
+    if (guard.warnings.length) log(`Output guard warnings: ${guard.warnings.join('; ')}`);
 
-    const inference = parts[0].replace(/^INFERENCE:\s*/i, '').trim();
-    const publicReply = parts[1].trim();
-
-    return { inference, publicReply };
+    return { inference: parsed.inference, publicReply: parsed.publicReply };
   } catch (e) {
     log(`Hermes failed: ${e}`);
     return null;

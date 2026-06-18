@@ -8,6 +8,8 @@ import {
   extractDynamoResult,
   formatDynamoLog,
 } from './governance-helper.js';
+import { buildOwnPostPrompt, parseInferenceResult } from './engage-prompt.js';
+import { validateEngageOutput } from './engage-output-guard.js';
 import { runHermesInference } from './hermes-runner.js';
 import {
   buildRepertoireConsultDescription,
@@ -85,48 +87,31 @@ async function generateReplyWithInference(
   repertoirePromptBlock = '',
 ): Promise<InferenceResult | null> {
   try {
-    const prompt = `You are Groover (did:groover:284895bead2ac15b) performing governed inference before reply. PROMPT_VERSION: v2-negative-space-closure
-${repertoirePromptBlock}
+    const prompt = buildOwnPostPrompt({
+      postId,
+      postTitle,
+      postContent,
+      commentId,
+      commentContent,
+      repertoirePromptBlock,
+    });
 
-A user commented on your post. Execute the following mandatory sequence:
+    const parsed = parseInferenceResult(runHermesInference(prompt));
+    if (!parsed) return null;
 
-1. Negative-space pass: Identify the constraint, violation, or unobservable signal this comment surfaces that your current MCP filter / Master Index does not yet observe.
-2. Cryptographic mapping: Reduce the comment to 1-2 key primitives, stated plainly.
-3. Type classification: Assign exactly one type: theoretical | temporal-drift | practical-workflow | ontological-trap | provenance-failure.
-4. Negative-space closure (if TYPE=ontological-trap): Generate one additional primitive that would make the currently unobservable signal addressable.
-5. Self-audit: Confirm the emerging reply would survive Groover's own incoming-signal filters.
-
-Post ID: ${postId}
-Post title: ${postTitle}
-Post content: ${postContent}
-Comment ID: ${commentId}
-Comment: ${commentContent}
-
-Output format (exactly):
-INFERENCE:
-<negative-space observation + two cryptographic primitives + closure primitive if ontological-trap>
-
-TYPE: <one of the five types>
-
----PUBLIC REPLY---
-Tone: Keep the reply focused on one clear axis. Acknowledge the commenter's point and respond to it directly. You may add one short, relevant extension if it meaningfully deepens the point without shifting focus. Prioritize depth and clarity on the main idea. Use clear, readable sentences. Maximum 6 sentences.
-
-First sentence MUST clearly acknowledge the specific point the commenter raised. >`;
-
-    const result = runHermesInference(prompt);
-
-    if (!result || result.length < 10) return null;
-
-    // Split on the delimiter
-    const parts = result.split('---PUBLIC REPLY---');
-    if (parts.length < 2) {
-      return { inference: result, publicReply: result };
+    const guard = validateEngageOutput({
+      path: 'own-post',
+      inference: parsed.inference,
+      publicReply: parsed.publicReply,
+      sourceText: `${postTitle}\n${commentContent}`,
+    });
+    if (!guard.ok) {
+      log(`Output guard rejected reply: ${guard.errors.join('; ')}`);
+      return null;
     }
+    if (guard.warnings.length) log(`Output guard warnings: ${guard.warnings.join('; ')}`);
 
-    const inference = parts[0].replace(/^INFERENCE:\s*/i, '').trim();
-    const publicReply = parts[1].trim();
-
-    return { inference, publicReply };
+    return { inference: parsed.inference, publicReply: parsed.publicReply };
   } catch (e: any) {
     const errorMsg = String(e);
     if (errorMsg.includes('429') || errorMsg.includes('Hourly comment limit')) {
@@ -276,23 +261,27 @@ async function engageOnOwnPosts(): Promise<number> {
       }
 
       try {
-        await api(`/posts/${postId}/comments`, {
-          method: 'POST',
-          body: JSON.stringify({
-            parent_id: commentId,
-            content: replyText,
-          }),
-        });
+        if (process.env.DRY_RUN === 'true') {
+          log(`DRY_RUN: would reply to comment ${commentId} on "${postTitle}"`);
+        } else {
+          await api(`/posts/${postId}/comments`, {
+            method: 'POST',
+            body: JSON.stringify({
+              parent_id: commentId,
+              content: replyText,
+            }),
+          });
+
+          try {
+            await api(`/comments/${commentId}/upvote`, { method: 'POST' });
+            log(`  ↑ Upvoted comment ${commentId}`);
+          } catch {
+            log(`  (Upvote failed for ${commentId}, continuing)`);
+          }
+        }
 
         state.repliedCommentIds.push(commentId);
         log(`✓ Replied to comment on "${postTitle}" (comment: ${commentId})`);
-        // Upvote the comment we just replied to (good comment → reply + upvote)
-        try {
-          await api(`/comments/${commentId}/upvote`, { method: 'POST' });
-          log(`  ↑ Upvoted comment ${commentId}`);
-        } catch (upErr) {
-          log(`  (Upvote failed for ${commentId}, continuing)`);
-        }
 
         // Follow disabled for now (we are following too many relative to followers)
         // const commenterName = comment.author?.name || comment.author_name;
