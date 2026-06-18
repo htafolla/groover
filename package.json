@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "0xray": "^3.4.7",
-    "agentuimanifest": "file:../agentuimanifest",
+    "agentuimanifest": "file:packages/agentuimanifest",
     "zod": "^3.25.76"
   }
 }

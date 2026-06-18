@@ -7,6 +7,7 @@ import {
   agentUiManifestSchema,
   type AgentUiManifest,
 } from 'agentuimanifest';
+import type { ZodIssue } from 'zod';
 import { frameworkLogger } from '../../xray/src/index.js';
 
 export type { AgentUiManifest };
@@ -47,7 +48,7 @@ export function validateAgentUiManifest(manifest: unknown): {
   }
 
   const errors = result.error.issues.map(
-    (issue) => `${issue.path.join('.') || 'root'}: ${issue.message}`,
+    (issue: ZodIssue) => `${issue.path.join('.') || 'root'}: ${issue.message}`,
   );
   frameworkLogger.log('marketplace', 'ui-manifest-validation-failed', 'warning', { errors });
   return { valid: false, errors };

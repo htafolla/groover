@@ -1,0 +1,13 @@
+{
+  "name": "agentuimanifest",
+  "version": "1.0.0",
+  "description": "Declarative UI schema for MCP agents (vendored for Railway deploy)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./schema/agent-ui-manifest.schema.ts"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  }
+}

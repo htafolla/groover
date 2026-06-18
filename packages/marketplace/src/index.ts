@@ -20,6 +20,11 @@ import {
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import type { AgentUiManifest } from './agent-ui-manifest.js';
+
+type UiManifestField = NonNullable<
+  Extract<AgentUiManifest, { displayMode: 'form' | 'wizard' }>['fields']
+>[number];
 
 const REGISTRY_PATH = path.resolve(process.env.REGISTRY_FILE || path.join(process.cwd(), 'data/registry.json'));
 const TDF_BASE_PLUGIN = 5781026310955;
@@ -122,7 +127,7 @@ export async function searchPlugins(query: string): Promise<CorrelationResult[]>
         p.uiManifest.displayMode === 'form' || p.uiManifest.displayMode === 'wizard'
           ? p.uiManifest.fields || []
           : [];
-      const labels = fields.map((f) => `${f.label} ${f.description || ''}`).join(' ');
+      const labels = fields.map((f: UiManifestField) => `${f.label} ${f.description || ''}`).join(' ');
       content += ` ui: ${p.uiManifest.displayMode} ${labels} ${p.uiManifest.exampleQueries?.join(' ') || ''}`;
     }
     const mcpServers = listMcpServers().map(m => m.name).join(' ');
