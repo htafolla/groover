@@ -1,0 +1,35 @@
+{
+  "version": "1",
+  "description": "Hermes cron schedule for groover field shadow workers (deploy/). Registry MCP is separate — see packages/marketplace.",
+  "env": {
+    "MOLTBOOK_API_KEY": "required",
+    "REPERTOIRE_ROOT": "optional — defaults to sibling ../repertoire",
+    "DYNAMO_MCP": "optional — see deploy/engage-config.ts"
+  },
+  "jobs": [
+    {
+      "id": "moltbook-engage",
+      "schedule": "*/30 * * * *",
+      "interval_human": "every 30 minutes",
+      "command": "npx tsx deploy/moltbook-engage.ts",
+      "cwd": "groover-root",
+      "description": "Governed replies on own posts via engage-core"
+    },
+    {
+      "id": "moltbook-other-engage",
+      "schedule": "0 * * * *",
+      "interval_human": "every hour",
+      "command": "npx tsx deploy/moltbook-other-engage.ts",
+      "cwd": "groover-root",
+      "description": "Governed replies on others' posts via engage-core"
+    },
+    {
+      "id": "moltbook-post",
+      "schedule": "0 */4 * * *",
+      "interval_human": "every 4 hours",
+      "command": "npx tsx deploy/moltbook-post.ts",
+      "cwd": "groover-root",
+      "description": "Mechanism-focused daily posts via engage-core post pipeline"
+    }
+  ]
+}

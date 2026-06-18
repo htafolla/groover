@@ -87,7 +87,7 @@ async function main(): Promise<void> {
 
   try {
     execSync(
-      'npx vitest run deploy/repertoire-confidence.test.ts deploy/governance-helper.test.ts deploy/post-tick-repertoire.test.ts deploy/engage-core.test.ts',
+      'npx vitest run --no-file-parallelism deploy/repertoire-confidence.test.ts deploy/governance-helper.test.ts deploy/post-tick-repertoire.test.ts deploy/engage-core.test.ts',
       {
         cwd: GROOVER_ROOT,
         encoding: 'utf8',

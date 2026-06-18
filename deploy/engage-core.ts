@@ -20,9 +20,14 @@ import {
   type GovernanceCallOutcome,
 } from './governance-helper.js';
 import {
+  buildChallengePrompt,
+  buildDailyPostPrompt,
   buildOtherPostPrompt,
   buildOwnPostPrompt,
+  parseChallengeAnswer,
+  parseDailyPostResult,
   parseInferenceResult,
+  type DailyPostDraft,
 } from './engage-prompt.js';
 import { validateEngageOutput } from './engage-output-guard.js';
 import { runHermesInference } from './hermes-runner.js';
@@ -385,5 +390,281 @@ export async function runEngagePipeline(
     resonanceScore,
     repertoireCtx,
     govOutcome,
+  };
+}
+
+export interface PostPipelineOptions {
+  skipHermes?: boolean;
+  skipGovernance?: boolean;
+  skipPost?: boolean;
+  dryRun?: boolean;
+  draft?: DailyPostDraft;
+  recentTitles?: string[];
+  logDir?: string;
+  logSource?: string;
+  onLog?: (msg: string) => void;
+  moltbook?: MoltbookClient;
+  resetRepertoireCache?: boolean;
+}
+
+export interface PostPipelineResult {
+  ok: boolean;
+  blocked: boolean;
+  posted: boolean;
+  verified: boolean;
+  errors: string[];
+  title: string;
+  content: string;
+  postId: string | null;
+  repertoireCtx: RepertoireConsultResult;
+  dynamoRecommendation: string | null;
+  resonanceScore: number;
+  govOutcome: GovernanceCallOutcome | null;
+}
+
+async function fetchRecentPostTitles(
+  moltbook: MoltbookClient,
+  limit = 4,
+): Promise<string[]> {
+  try {
+    const data = (await moltbook.get(`/posts?submolt=general&limit=${limit}`)) as {
+      posts?: Array<{ title?: string }>;
+      feed?: Array<{ title?: string }>;
+    };
+    const posts = data.posts || data.feed || [];
+    return posts.map((p) => p.title).filter(Boolean).slice(0, limit) as string[];
+  } catch {
+    return [];
+  }
+}
+
+export async function runPostPipeline(
+  options: PostPipelineOptions = {},
+): Promise<PostPipelineResult> {
+  const log = options.onLog ?? defaultLog;
+  const errors: string[] = [];
+
+  if (options.resetRepertoireCache !== false) {
+    resetRepertoireConfidenceCache();
+  }
+
+  let title = options.draft?.title ?? '';
+  let content = options.draft?.content ?? '';
+
+  if (!options.skipHermes && (!title || !content)) {
+    const moltbook = options.moltbook ?? MoltbookClient.fromEnv();
+    const recentTitles =
+      options.recentTitles ?? (await fetchRecentPostTitles(moltbook));
+    try {
+      const raw = runHermesInference(buildDailyPostPrompt(recentTitles));
+      const parsed = parseDailyPostResult(raw);
+      if (!parsed) {
+        errors.push('hermes returned unparseable daily post');
+      } else {
+        title = parsed.title;
+        content = parsed.content;
+      }
+    } catch (error) {
+      errors.push(`hermes daily post failed: ${error}`);
+    }
+  } else if (options.skipHermes && !title) {
+    title = 'Dry-run mechanism post';
+    content =
+      'Dry-run placeholder: one specific mechanism in agent governance pipelines, with a stated tradeoff between observability and latency.';
+  }
+
+  if (!title || !content) {
+    return {
+      ok: false,
+      blocked: false,
+      posted: false,
+      verified: false,
+      errors,
+      title,
+      content,
+      postId: null,
+      repertoireCtx: unavailableResult(),
+      dynamoRecommendation: null,
+      resonanceScore: 0,
+      govOutcome: null,
+    };
+  }
+
+  const repertoireCtx = await consultRepertoire(
+    buildRepertoireConsultDescription({ postTitle: title, postContent: content }),
+  );
+  if (repertoireCtx.consulted) {
+    log(
+      `[Repertoire] trap=${repertoireCtx.highConfidenceTrapPresent} agent=${repertoireCtx.recommendedAgent ?? 'n/a'} signals=${repertoireCtx.matchedSignals.length}`,
+    );
+  }
+
+  const inference = `${title}\n\n${content}`;
+  let govOutcome: GovernanceCallOutcome | null = null;
+  let dynamoRecommendation: string | null = null;
+  let resonanceScore = 0;
+
+  if (!options.skipGovernance) {
+    govOutcome = await callGovernWithSolar(DYNAMO_MCP, 'Daily Post', inference, {
+      agentDid: GROOVER_DID,
+      inference,
+    });
+    log(`[Dynamo] ${formatDynamoLog(govOutcome)}`);
+    const dynamoResult = extractDynamoResult(govOutcome);
+    dynamoRecommendation = dynamoResult?.recommendation ?? null;
+    resonanceScore = dynamoResult?.resonanceScore ?? 0;
+
+    if (shouldBlockDynamoAction(govOutcome, DYNAMO_BLOCK_RESONANCE_THRESHOLD)) {
+      errors.push(
+        `dynamo blocked: ${dynamoRecommendation ?? 'non-PASS'} (resonance ${resonanceScore.toFixed(3)} < ${DYNAMO_BLOCK_RESONANCE_THRESHOLD})`,
+      );
+      if (repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0) {
+        await runPostTickRepertoire({
+          taskId: `post-blocked-${Date.now()}`,
+          memorySignals: repertoireCtx.matchedSignals,
+          dynamoRecommendation,
+          resonanceScore,
+          posted: false,
+        });
+      }
+      appendInferenceLog(
+        options.logDir ?? DEFAULT_LOG_DIR,
+        buildInferenceLogEntry({
+          source: options.logSource ?? 'groover-post',
+          postId: 'blocked',
+          postTitle: title,
+          type: 'daily-post',
+          inference,
+          publicReply: content,
+          govOutcome,
+          repertoireRouting: repertoireCtx.consulted
+            ? toRepertoireLogFields(repertoireCtx)
+            : undefined,
+          repertoireSignals:
+            repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0
+              ? repertoireCtx.matchedSignals
+              : undefined,
+          governanceForced: false,
+        }),
+      );
+      return {
+        ok: false,
+        blocked: true,
+        posted: false,
+        verified: false,
+        errors,
+        title,
+        content,
+        postId: null,
+        repertoireCtx,
+        dynamoRecommendation,
+        resonanceScore,
+        govOutcome,
+      };
+    }
+  }
+
+  let posted = false;
+  let verified = false;
+  let postId: string | null = null;
+  const shouldPost = !options.skipPost && !options.dryRun;
+
+  if (shouldPost) {
+    const client = options.moltbook ?? MoltbookClient.fromEnv();
+    const result = (await client.post('/posts', {
+      submolt_name: 'general',
+      title,
+      content,
+    })) as { post?: { id: string; verification?: { challenge_text: string; verification_code: string } } };
+
+    if (result?.post) {
+      posted = true;
+      postId = result.post.id;
+      log(`Posted: "${title}" (id: ${postId})`);
+
+      if (result.post.verification) {
+        log(`Verification challenge received for post ${postId}`);
+        try {
+          const answer = parseChallengeAnswer(
+            runHermesInference(buildChallengePrompt(result.post.verification.challenge_text)),
+          );
+          if (answer !== null) {
+            const verifyRes = (await client.post('/verify', {
+              verification_code: result.post.verification.verification_code,
+              answer,
+            })) as { success?: boolean };
+            verified = Boolean(verifyRes?.success);
+            log(`Verify API response: success=${verified}`);
+          }
+        } catch (error) {
+          errors.push(`verification failed: ${error}`);
+        }
+      }
+    } else {
+      errors.push('moltbook post returned no post object');
+    }
+  } else if (options.dryRun) {
+    log(`DRY_RUN: would post "${title}"`);
+  }
+
+  if (repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0) {
+    await runPostTickRepertoire({
+      taskId: postId ?? `post-${Date.now()}`,
+      memorySignals: repertoireCtx.matchedSignals,
+      dynamoRecommendation,
+      resonanceScore,
+      posted,
+    });
+  }
+
+  appendInferenceLog(
+    options.logDir ?? DEFAULT_LOG_DIR,
+    buildInferenceLogEntry({
+      source: options.logSource ?? 'groover-post',
+      postId: postId ?? 'dry-run',
+      postTitle: title,
+      type: 'daily-post',
+      inference,
+      publicReply: content,
+      govOutcome,
+      repertoireRouting: repertoireCtx.consulted
+        ? toRepertoireLogFields(repertoireCtx)
+        : undefined,
+      repertoireSignals:
+        repertoireCtx.consulted && repertoireCtx.matchedSignals.length > 0
+          ? repertoireCtx.matchedSignals
+          : undefined,
+      governanceForced: false,
+    }),
+  );
+
+  return {
+    ok: errors.length === 0,
+    blocked: false,
+    posted,
+    verified,
+    errors,
+    title,
+    content,
+    postId,
+    repertoireCtx,
+    dynamoRecommendation,
+    resonanceScore,
+    govOutcome,
+  };
+}
+
+function unavailableResult(): RepertoireConsultResult {
+  return {
+    consulted: false,
+    providerAvailable: false,
+    highConfidenceTrapPresent: false,
+    ontologicalTrapDetected: false,
+    recommendedAgent: null,
+    matchedSignals: [],
+    avgConfidence: 0,
+    maxConfidence: 0,
+    complexityBoost: 0,
+    promptBlock: '',
   };
 }

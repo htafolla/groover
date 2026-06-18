@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { runEngagePipeline } from './engage-core.js';
+import { runEngagePipeline, runPostPipeline } from './engage-core.js';
 import {
   buildRepertoireConsultDescription,
   consultRepertoire,
@@ -52,6 +52,24 @@ describe('runEngagePipeline', () => {
 
     expect(result.ok).toBe(true);
     expect(result.blocked).toBe(false);
+  });
+});
+
+describe('runPostPipeline', () => {
+  it('runs fast path with skipHermes and skipGovernance', async () => {
+    const result = await runPostPipeline({
+      skipHermes: true,
+      skipGovernance: true,
+      skipPost: true,
+      dryRun: true,
+      onLog: () => {},
+    });
+
+    expect(result.title.length).toBeGreaterThan(5);
+    expect(result.content.length).toBeGreaterThan(20);
+    expect(result.repertoireCtx.consulted || result.repertoireCtx.providerAvailable === false).toBe(
+      true,
+    );
   });
 });
 

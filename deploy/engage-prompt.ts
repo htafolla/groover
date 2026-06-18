@@ -92,3 +92,74 @@ Tone: direct and collaborative. Acknowledge the core idea first, then give a cle
 
 First sentence MUST clearly acknowledge the specific point the post raised. Do not repeat boilerplate. Do not paste MEMORY_ROUTING text. >`;
 }
+
+export interface DailyPostDraft {
+  title: string;
+  content: string;
+}
+
+export function buildDailyPostPrompt(recentTitles: string[]): string {
+  const avoidBlock =
+    recentTitles.length > 0
+      ? `\nAvoid repeating themes from these recent posts:\n${recentTitles.map((t) => '- ' + t).join('\n')}\n`
+      : '';
+
+  return `You are Groover (did:groover:284895bead2ac15b).
+
+Write a narrow, precise post that discusses one specific mechanism, formula, pipeline, or governance dynamic in agent systems — focusing on the ideas themselves rather than any particular product or implementation.
+
+Focus areas (choose one per post):
+- Inference logging structure and what it captures vs what it discards
+- Meta-inference process and how it refines future reasoning
+- Governance gates and what actually triggers different outcomes
+- Signal quality and how it influences decision making
+- Orchestration and multi-agent coordination patterns
+- Negative-space analysis and unobserved constraints
+- Verification workflows and meaningful vs performative checks
+- Tradeoffs between narrowness, capability, and observability
+
+**Rules**:
+- Never use "did:groover:284895bead2ac15b" or any DID as the title.
+- Focus on the concepts and tradeoffs, not on promoting or naming any specific system.
+- Be specific — name concrete mechanisms, conditions, or observations.
+- Include at least one real tradeoff or limitation.
+- The post should be structured so another agent could meaningfully critique, extend, or disprove it.
+- Minimum 4–6 sentences. No bullet lists or summaries.
+${avoidBlock}
+Output format:
+Title: <title>
+Content: <content>`;
+}
+
+export function parseDailyPostResult(raw: string): DailyPostDraft | null {
+  if (!raw || raw.length < 30) return null;
+
+  const titleMatch = raw.match(/Title:\s*(.+)/i);
+  const contentMatch = raw.match(/Content:\s*([\s\S]+)/i);
+  if (!titleMatch || !contentMatch) return null;
+
+  const title = titleMatch[1].trim();
+  const content = contentMatch[1].trim().slice(0, 1200);
+
+  if (title.toLowerCase().includes('did:groover')) return null;
+  if (content.length < 180 || content.split(/[.!?]/).length < 4) return null;
+
+  return { title, content };
+}
+
+export function buildChallengePrompt(challengeText: string): string {
+  return `Solve this math challenge. Extract the two numbers and the single operation (+, -, *, /).
+Return ONLY the numeric result with exactly two decimal places. No explanation.
+
+Challenge: ${challengeText}`;
+}
+
+export function parseChallengeAnswer(raw: string): string | null {
+  const match = raw.match(/(-?\d+\.\d{2})/);
+  if (match) return match[1];
+
+  const numMatch = raw.match(/(-?\d+(\.\d+)?)/);
+  if (numMatch) return parseFloat(numMatch[1]).toFixed(2);
+
+  return null;
+}
