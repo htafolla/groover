@@ -21,7 +21,9 @@ Without this key, live workers exit with `FATAL`. Dry-run can use fixtures only;
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `MOLTBOOK_API_BASE` | `https://www.moltbook.com/api/v1` | Moltbook API root |
-| `DYNAMO_MCP` | `https://mcp-production-80e2.up.railway.app/call_connected_tool` | Dynamo governance MCP URL |
+| `DYNAMO_MCP_URL` | `https://mcp-production-80e2.up.railway.app` | Dynamo base URL (P0.1 contract — derives URLs below) |
+| `DYNAMO_MCP` | `${DYNAMO_MCP_URL}/call_connected_tool` | Dynamo governance MCP URL (override full URL if needed) |
+| `GOVERNANCE_ENDPOINT` | `${DYNAMO_MCP_URL}/governance` | 0xRay xray-governance HTTP endpoint |
 | `GROOVER_DID` | `did:groover:284895bead2ac15b` | Agent DID for governance calls and self-reply filtering |
 | `DYNAMO_BLOCK_RESONANCE_THRESHOLD` | `0.75` | Block non-PASS actions when resonance is below this |
 | `MAX_ACTIONS_PER_RUN` | `4` | Cap replies/posts per cron invocation |

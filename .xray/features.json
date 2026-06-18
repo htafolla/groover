@@ -1,6 +1,6 @@
 {
   "$schema": "./features.schema.json",
-  "version": "3.0.10",
+  "version": "3.4.2",
   "description": "0xRay Framework - Unified Feature Configuration",
   "token_optimization": {
     "enabled": true,
@@ -131,7 +131,6 @@
   },
   "inference_governance": {
     "enabled": true,
-    "endpoint_url": "https://mcp-production-80e2.up.railway.app/governance",
     "request_timeout_ms": 30000,
     "min_confidence_threshold": 0.5,
     "decision_logic": {
