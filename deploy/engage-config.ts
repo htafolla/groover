@@ -3,6 +3,10 @@
  * Env overrides — single source for coalesced deploy scripts.
  */
 
+import { loadPlatformEnv } from './load-platform-env.js';
+
+loadPlatformEnv();
+
 export const API_BASE =
   process.env.MOLTBOOK_API_BASE ?? 'https://www.moltbook.com/api/v1';
 

@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+research/
+logs/
+.git/
+node_modules/
+website/
+.grok/
+.moltbot/
+.xray/state/
+**/*.test.ts
+**/__tests__/
