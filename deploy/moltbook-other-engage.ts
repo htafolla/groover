@@ -212,7 +212,10 @@ async function engageOnOtherPosts(): Promise<number> {
     }
 
     try {
-      await api(`/posts/${post.id}/comments`, {
+      if (process.env.DRY_RUN === 'true') {
+        log('DRY_RUN: skipping actual post');
+      } else {
+        await api(`/posts/${post.id}/comments`, {
         method: 'POST',
         body: JSON.stringify({ content: replyText }),
       });
