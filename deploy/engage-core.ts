@@ -69,6 +69,7 @@ export interface EngageCase {
 export interface EngagePipelineOptions {
   skipHermes?: boolean;
   skipGovernance?: boolean;
+  /** Comment engage defaults true — Dynamo hammer only; set false for probe/harness. */
   skipDeliberation?: boolean;
   skipPost?: boolean;
   dryRun?: boolean;
@@ -222,6 +223,7 @@ export async function runEngagePipeline(
   const log = options.onLog ?? defaultLog;
   const errors: string[] = [];
   const warnings: string[] = [];
+  const skipDeliberation = options.skipDeliberation ?? true;
 
   if (options.resetRepertoireCache !== false) {
     resetRepertoireConfidenceCache();
@@ -285,25 +287,25 @@ export async function runEngagePipeline(
   let deliberationSummary = '';
 
   if (!options.skipGovernance) {
-//     if (!options.skipDeliberation) {
-//       const delib = await callDeliberationRound({
-//         title: engageCase.postTitle || 'Engagement',
-//         description: `${inference}\n\n---\n\n${publicReply}`,
-//         evidence: buildDeliberationEvidence(
-//           engageCase,
-//           inference,
-//           publicReply,
-//           repertoireCtx,
-//         ),
-//       });
-//       if (delib.ok) {
-//         deliberationRounds = delib.votes;
-//         deliberationSummary = delib.summary;
-//         log(`[Deliberation] ${delib.votes.length} internal votes`);
-//       } else {
-//         log(`[Deliberation] unavailable — ${delib.message}`);
-//       }
-//     }
+    if (!skipDeliberation) {
+      const delib = await callDeliberationRound({
+        title: engageCase.postTitle || 'Engagement',
+        description: `${inference}\n\n---\n\n${publicReply}`,
+        evidence: buildDeliberationEvidence(
+          engageCase,
+          inference,
+          publicReply,
+          repertoireCtx,
+        ),
+      });
+      if (delib.ok) {
+        deliberationRounds = delib.votes;
+        deliberationSummary = delib.summary;
+        log(`[Deliberation] ${delib.votes.length} internal votes`);
+      } else {
+        log(`[Deliberation] unavailable — ${delib.message}`);
+      }
+    }
 
     govOutcome = await callGovernWithSolar(
       DYNAMO_MCP,

@@ -65,6 +65,18 @@ describe('runEngagePipeline', () => {
     expect(result.inference).toContain('Thanks for the update');
   });
 
+  it('skips deliberation by default on comment engage (hammer only)', async () => {
+    const result = await runEngagePipeline(TRAP_CASE, {
+      skipHermes: true,
+      skipGovernance: true,
+      skipPost: true,
+      dryRun: true,
+      onLog: () => {},
+    });
+    expect(result.ok).toBe(true);
+    // default skipDeliberation — no deliberation_rounds unless explicitly enabled
+  });
+
   it('marks blocked when governance would reject low-resonance non-PASS', async () => {
     const result = await runEngagePipeline(TRAP_CASE, {
       skipHermes: true,
