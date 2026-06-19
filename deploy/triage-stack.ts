@@ -117,13 +117,17 @@ TYPE: ontological-trap
 One sentence acknowledgment.`;
 
       const result = runHermesInference(prompt, { timeoutMs: 90_000 });
-      const hasInference = result.includes('INFERENCE') || result.length > 20;
-      const hasDelimiter = result.includes('---PUBLIC REPLY---');
-      record(
-        'hermes -z inference',
-        hasInference,
-        `len=${result.length} delimiter=${hasDelimiter}`,
-      );
+      if (result) {
+        const hasInference = result.includes('INFERENCE') || result.length > 20;
+        const hasDelimiter = result.includes('---PUBLIC REPLY---');
+        record(
+          'hermes -z inference',
+          hasInference,
+          `len=${result.length} delimiter=${hasDelimiter}`,
+        );
+      } else {
+        record('hermes -z inference', false, 'null result (Command failed or timeout)');
+      }
     } catch (error) {
       record('hermes -z inference', false, String(error).slice(0, 200));
     }
