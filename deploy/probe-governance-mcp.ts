@@ -1,7 +1,12 @@
 #!/usr/bin/env node
+/**
+ * Probe governance deliberation voters.
+ * Default: in-process xray nucleus + local Hermes xAI OAuth (plugin path).
+ * Remote: set GOVERNANCE_MCP_URL (+ GOVERNANCE_API_KEY if the host requires it).
+ */
+
 import { loadPlatformEnv } from './load-platform-env.js';
-import { XRAY_GOVERNANCE_MCP_URL, XRAY_GOVERNANCE_MCP_PATH } from './engage-config.js';
-import { McpStreamableClient } from './mcp-streamable-client.js';
+import { callDeliberationRound } from './governance-helper.js';
 
 loadPlatformEnv();
 
@@ -14,47 +19,28 @@ function err(msg: string): void {
 }
 
 async function main(): Promise<void> {
-  const hasKey = Boolean(process.env.GOVERNANCE_API_KEY);
-  const mcpUrl = process.env.GOVERNANCE_MCP_URL ?? XRAY_GOVERNANCE_MCP_URL;
-  const mcpPath = process.env.GOVERNANCE_MCP_PATH ?? XRAY_GOVERNANCE_MCP_PATH;
-
-  out(`GOVERNANCE_API_KEY loaded: ${hasKey}`);
-  out(`GOVERNANCE_MCP_URL: ${mcpUrl}`);
-
-  if (!hasKey) {
-    err('No GOVERNANCE_API_KEY. Set in groover/.env or export before running.');
-    process.exit(2);
+  const remote = Boolean(process.env.GOVERNANCE_MCP_URL);
+  out(`mode: ${remote ? 'remote MCP' : 'local in-process (plugin path)'}`);
+  if (remote) {
+    out(`GOVERNANCE_MCP_URL: ${process.env.GOVERNANCE_MCP_URL}`);
+    out(`GOVERNANCE_API_KEY loaded: ${Boolean(process.env.GOVERNANCE_API_KEY)}`);
+  } else {
+    out(`XRAY_ROOT: ${process.env.XRAY_ROOT ?? '(sibling ../xray or 0xray package)'}`);
   }
 
-  const client = new McpStreamableClient({
-    baseUrl: mcpUrl,
-    mcpPath,
-    apiKey: process.env.GOVERNANCE_API_KEY,
+  const result = await callDeliberationRound({
+    title: 'Governance deliberation probe',
+    description: 'Internal deliberation without external Dynamo',
+    evidence: ['attestation-as-map'],
   });
 
-  await client.ensureSession();
-  out('session: initialized');
+  if (!result.ok) {
+    err(result.message ?? 'deliberation failed');
+    process.exit(1);
+  }
 
-  const parsed = (await client.callTool('govern_proposals', {
-    proposals: [
-      {
-        type: 'strategic',
-        title: 'P0.6b deliberation probe',
-        description: 'Internal deliberation without external Dynamo',
-        evidence: ['attestation-as-map'],
-      },
-    ],
-    options: { require_external: false },
-  })) as {
-    results?: Array<{ votes?: Array<{ server: string; decision: string }> }>;
-  };
-
-  const votes = parsed.results?.[0]?.votes ?? [];
-  const internal = votes.filter((v) =>
-    ['code-review', 'security-audit', 'researcher'].includes(v.server),
-  );
-  out(`internal votes: ${internal.length}`);
-  for (const vote of internal) {
+  out(`internal votes: ${result.votes.length}`);
+  for (const vote of result.votes) {
     out(`  ${vote.server}: ${vote.decision}`);
   }
 }

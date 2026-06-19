@@ -22,15 +22,21 @@ export const DYNAMO_MCP =
 export const GOVERNANCE_ENDPOINT =
   process.env.GOVERNANCE_ENDPOINT ?? `${DYNAMO_MCP_URL}/governance`;
 
-/** xray-governance MCP (internal deliberation — code-review, security-audit, researcher) */
-export const XRAY_GOVERNANCE_MCP_URL =
-  process.env.GOVERNANCE_MCP_URL?.replace(/\/$/, '') ??
-  (process.env.GOVERNANCE_API_KEY
-    ? 'https://governance-production-69c3.up.railway.app'
-    : 'http://localhost:4002');
+const explicitGovernanceMcpUrl = process.env.GOVERNANCE_MCP_URL?.trim() || '';
+
+/**
+ * Optional remote xray-governance HTTP MCP (hosted Railway, etc.).
+ * Default deliberation uses in-process nucleus + Hermes OAuth — not this URL.
+ */
+export const XRAY_GOVERNANCE_MCP_URL = explicitGovernanceMcpUrl
+  ? explicitGovernanceMcpUrl.replace(/\/$/, '')
+  : 'http://localhost:4002';
 
 export const XRAY_GOVERNANCE_MCP_PATH =
   process.env.GOVERNANCE_MCP_PATH ?? '/mcp';
+
+/** True only when an operator explicitly opts into remote HTTP governance MCP. */
+export const USE_REMOTE_GOVERNANCE_MCP = Boolean(explicitGovernanceMcpUrl);
 
 export const GROOVER_DID =
   process.env.GROOVER_DID ?? 'did:groover:284895bead2ac15b';

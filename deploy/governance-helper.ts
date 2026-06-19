@@ -485,6 +485,69 @@ export async function callGovernWithSolar(
   }
 }
 
+function mapInternalDeliberationVotes(
+  votes: Array<{
+    server?: string;
+    decision?: string;
+    confidence?: number;
+    reasoning?: string;
+  }>,
+): DeliberationVote[] {
+  return votes
+    .filter((vote) => vote.server && INTERNAL_DELIBERATION_SERVERS.has(vote.server))
+    .map((vote) => ({
+      server: vote.server!,
+      decision: vote.decision ?? 'abstain',
+      confidence: typeof vote.confidence === 'number' ? vote.confidence : 0.5,
+      reasoning: vote.reasoning,
+    }));
+}
+
+async function callRemoteDeliberationRound(params: {
+  title: string;
+  description: string;
+  evidence: string[];
+  mcpUrl: string;
+  mcpPath: string;
+  timeoutMs: number;
+}): Promise<DeliberationRoundOutcome> {
+  const { McpStreamableClient } = await import('./mcp-streamable-client.js');
+
+  const client = new McpStreamableClient({
+    baseUrl: params.mcpUrl,
+    mcpPath: params.mcpPath,
+    apiKey: process.env.GOVERNANCE_API_KEY,
+    timeoutMs: params.timeoutMs,
+  });
+
+  const parsed = (await client.callTool('govern_proposals', {
+    proposals: [
+      {
+        id: `groover-delib-${Date.now()}`,
+        type: 'strategic',
+        title: params.title,
+        description: params.description,
+        evidence: params.evidence,
+        confidence: 0.85,
+        source: 'inference',
+      },
+    ],
+    options: { require_external: false },
+  })) as {
+    results?: Array<{
+      votes?: Array<{
+        server?: string;
+        decision?: string;
+        confidence?: number;
+        reasoning?: string;
+      }>;
+    }>;
+  };
+
+  const votes = mapInternalDeliberationVotes(parsed.results?.[0]?.votes ?? []);
+  return { ok: true, votes, summary: buildDeliberationSummary(votes) };
+}
+
 export async function callDeliberationRound(params: {
   title: string;
   description: string;
@@ -493,56 +556,36 @@ export async function callDeliberationRound(params: {
   mcpPath?: string;
   timeoutMs?: number;
 }): Promise<DeliberationRoundOutcome> {
-  const {
-    XRAY_GOVERNANCE_MCP_URL,
-    XRAY_GOVERNANCE_MCP_PATH,
-  } = await import('./engage-config.js');
-  const { McpStreamableClient } = await import('./mcp-streamable-client.js');
-
-  const baseUrl = params.mcpUrl ?? XRAY_GOVERNANCE_MCP_URL;
-  const mcpPath = params.mcpPath ?? XRAY_GOVERNANCE_MCP_PATH;
   const timeoutMs = params.timeoutMs ?? 60_000;
+  const remoteUrl =
+    params.mcpUrl ?? (process.env.GOVERNANCE_MCP_URL?.trim() || undefined);
 
   try {
-    const client = new McpStreamableClient({
-      baseUrl,
-      mcpPath,
-      apiKey: process.env.GOVERNANCE_API_KEY,
+    if (remoteUrl) {
+      const { XRAY_GOVERNANCE_MCP_PATH } = await import('./engage-config.js');
+      return await callRemoteDeliberationRound({
+        title: params.title,
+        description: params.description,
+        evidence: params.evidence,
+        mcpUrl: remoteUrl.replace(/\/$/, ''),
+        mcpPath: params.mcpPath ?? process.env.GOVERNANCE_MCP_PATH ?? XRAY_GOVERNANCE_MCP_PATH,
+        timeoutMs,
+      });
+    }
+
+    const { callLocalGovernanceDeliberation } = await import('./local-governance.js');
+    const local = await callLocalGovernanceDeliberation({
+      title: params.title,
+      description: params.description,
+      evidence: params.evidence,
       timeoutMs,
     });
 
-    const parsed = (await client.callTool('govern_proposals', {
-      proposals: [
-        {
-          id: `groover-delib-${Date.now()}`,
-          type: 'strategic',
-          title: params.title,
-          description: params.description,
-          evidence: params.evidence,
-          confidence: 0.85,
-        },
-      ],
-      options: { require_external: false },
-    })) as {
-      results?: Array<{
-        votes?: Array<{
-          server?: string;
-          decision?: string;
-          confidence?: number;
-          reasoning?: string;
-        }>;
-      }>;
-    };
+    if (!local.ok) {
+      return { ok: false, message: local.message ?? 'local governance failed', votes: [] };
+    }
 
-    const votes: DeliberationVote[] = (parsed.results?.[0]?.votes ?? [])
-      .filter((vote) => vote.server && INTERNAL_DELIBERATION_SERVERS.has(vote.server))
-      .map((vote) => ({
-        server: vote.server!,
-        decision: vote.decision ?? 'abstain',
-        confidence: typeof vote.confidence === 'number' ? vote.confidence : 0.5,
-        reasoning: vote.reasoning,
-      }));
-
+    const votes = mapInternalDeliberationVotes(local.votes);
     return { ok: true, votes, summary: buildDeliberationSummary(votes) };
   } catch (error) {
     return { ok: false, message: String(error), votes: [] };

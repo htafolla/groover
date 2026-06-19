@@ -26,12 +26,20 @@ function parseEnvLine(line: string): { key: string; value: string } | null {
   return { key, value };
 }
 
-function loadEnvFile(path: string): void {
+/** Hermes host env may carry remote governance MCP keys — deploy defaults to local plugin path. */
+const HERMES_GOVERNANCE_REMOTE_KEYS = new Set([
+  'GOVERNANCE_MCP_URL',
+  'GOVERNANCE_MCP_PATH',
+  'GOVERNANCE_API_KEY',
+]);
+
+function loadEnvFile(path: string, options?: { skipKeys?: Set<string> }): void {
   if (!existsSync(path)) return;
   const lines = readFileSync(path, 'utf8').split('\n');
   for (const line of lines) {
     const parsed = parseEnvLine(line);
     if (!parsed) continue;
+    if (options?.skipKeys?.has(parsed.key)) continue;
     if (process.env[parsed.key] === undefined) {
       process.env[parsed.key] = parsed.value;
     }
@@ -50,7 +58,11 @@ export function loadPlatformEnv(): void {
   ].filter(Boolean);
 
   for (const path of candidates) {
-    loadEnvFile(path);
+    const isHermesEnv = Boolean(home) && path === join(home, '.hermes', '.env');
+    loadEnvFile(
+      path,
+      isHermesEnv ? { skipKeys: HERMES_GOVERNANCE_REMOTE_KEYS } : undefined,
+    );
   }
 
   if (process.env.XRAY_ROOT) loadEnvFile(join(process.env.XRAY_ROOT, '.env'));

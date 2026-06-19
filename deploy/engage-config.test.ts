@@ -38,4 +38,20 @@ describe('engage-config env mesh (P0.1)', () => {
     const { GOVERNANCE_ENDPOINT } = await import('./engage-config.js');
     expect(GOVERNANCE_ENDPOINT).toBe('https://gov.custom.test/governance');
   });
+
+  it('does not switch governance MCP to Railway when only GOVERNANCE_API_KEY is set', async () => {
+    vi.stubEnv('GOVERNANCE_API_KEY', 'test-key-should-not-imply-remote');
+    vi.stubEnv('GOVERNANCE_MCP_URL', '');
+    const { XRAY_GOVERNANCE_MCP_URL, USE_REMOTE_GOVERNANCE_MCP } = await import(
+      './engage-config.js'
+    );
+    expect(XRAY_GOVERNANCE_MCP_URL).toBe('http://localhost:4002');
+    expect(USE_REMOTE_GOVERNANCE_MCP).toBe(false);
+  });
+
+  it('marks remote governance only when GOVERNANCE_MCP_URL is explicit', async () => {
+    vi.stubEnv('GOVERNANCE_MCP_URL', 'https://governance.example.test');
+    const { USE_REMOTE_GOVERNANCE_MCP } = await import('./engage-config.js');
+    expect(USE_REMOTE_GOVERNANCE_MCP).toBe(true);
+  });
 });
