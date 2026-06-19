@@ -234,10 +234,18 @@ async function postToMoltbook(
   const context = `${engageCase.postTitle}\n${engageCase.commentContent || engageCase.postContent || ''}`;
 
   if (engageCase.path === 'own-post') {
-    await moltbook.post(`/posts/${engageCase.postId}/comments`, {
-      parent_id: engageCase.commentId,
-      content: publicReply,
-    });
+    try {
+      await moltbook.post(`/posts/${engageCase.postId}/comments`, {
+        parent_id: engageCase.commentId,
+        content: publicReply,
+      });
+    } catch (e: any) {
+      if (e.message?.includes('404') || e.message?.includes('Parent comment not found')) {
+        log(`[Skip] Parent comment ${engageCase.commentId} no longer exists`);
+        return;
+      }
+      throw e;
+    }
 
     if (engageCase.commentId) {
       await governedUpvote(moltbook, 'comment', engageCase.commentId, context, log);
