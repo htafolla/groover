@@ -3,12 +3,10 @@
  * Uses Hermes xAI OAuth from ~/.hermes/auth.json (no Railway, no GOVERNANCE_API_KEY).
  */
 
-import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SIBLING_XRAY_ROOT = join(__dirname, '..', '..', 'xray');
 
@@ -30,23 +28,30 @@ export interface LocalGovernanceResponse {
   }>;
 }
 
+function resolveXrayRootFromNodeModules(startDir: string): string | null {
+  let dir = startDir;
+  for (let depth = 0; depth < 8; depth += 1) {
+    const candidate = join(dir, 'node_modules', '0xray');
+    if (existsSync(join(candidate, 'dist/nucleus/index.js'))) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
 function resolveXrayRoot(): string | null {
   const candidates = [
     process.env.XRAY_ROOT,
     SIBLING_XRAY_ROOT,
+    resolveXrayRootFromNodeModules(__dirname),
+    resolveXrayRootFromNodeModules(process.cwd()),
   ].filter((value): value is string => Boolean(value));
 
   for (const root of candidates) {
     if (existsSync(join(root, 'dist/nucleus/index.js'))) return root;
   }
 
-  try {
-    const pkgJson = require.resolve('0xray/package.json');
-    const root = dirname(pkgJson);
-    if (existsSync(join(root, 'dist/nucleus/index.js'))) return root;
-  } catch {
-    // not installed
-  }
   return null;
 }
 
