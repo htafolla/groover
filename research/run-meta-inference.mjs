@@ -9,7 +9,7 @@ const STATE_PATH = join(__dirname, '..', '.moltbot', 'inference-state.json');
 const REPORT_PATH = join(__dirname, '..', 'research', 'groover-meta-inference.md');
 
 const BATCH_SIZE = 1;
-const MAX_ENTRIES = 4;                    // Process 4 at a time when running manually
+const MAX_ENTRIES = 2;                    // lowered to 2 for more frequent manual runs
 const HERMES_TIMEOUT_MS = 300_000;        // 5 minutes per Hermes call (safe for manual runs)
 
 function loadState() {
