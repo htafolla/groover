@@ -33,7 +33,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "0xray": "^3.4.7",
+    "0xray": "^3.4.8",
     "agentuimanifest": "file:packages/agentuimanifest",
     "zod": "^3.25.76"
   }
