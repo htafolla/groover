@@ -17,6 +17,12 @@ import {
   resetRepertoireConfidenceCache,
 } from './repertoire-confidence.js';
 import { runPostTickIngest, runPostTickRepertoire, resetPostTickCache } from './post-tick-repertoire.js';
+import { repertoireServicePaths } from './repertoire-service-config.js';
+import {
+  applyRepertoireTestSandbox,
+  clearRepertoireTestEnv,
+  createRepertoireTestSandbox,
+} from './repertoire-test-isolation.js';
 
 loadPlatformEnv();
 
@@ -67,12 +73,13 @@ async function loadSignalStats(signalName: string): Promise<SignalStats | null> 
   if (!root) return null;
 
   try {
+    const paths = repertoireServicePaths(root);
     const mod = await import(pathToFileURL(join(root, 'dist/index.js')).href);
     const service = new mod.RepertoireService({
-      dataDir: join(root, 'data'),
-      signalsPath: join(root, 'data/curated_signals.json'),
-      logDir: join(root, 'logs/groover-inference'),
-      feedbackDir: join(root, 'logs/orchestrator-feedback'),
+      dataDir: paths.dataDir,
+      signalsPath: paths.signalsPath,
+      logDir: paths.logDir,
+      feedbackDir: paths.feedbackDir,
     });
     const signal = service.signalsManager.getByName(signalName);
     if (!signal) return null;
@@ -87,6 +94,21 @@ async function loadSignalStats(signalName: string): Promise<SignalStats | null> 
 }
 
 async function main(): Promise<number> {
+  const repertoireRoot = resolveRepertoireRoot();
+  if (!repertoireRoot) {
+    err('P0.6c ABORT: Repertoire not found — set REPERTOIRE_ROOT and build dist');
+    return 1;
+  }
+
+  let sandbox: ReturnType<typeof createRepertoireTestSandbox> | null = null;
+  if (process.env.P06C_USE_PRODUCTION !== '1') {
+    sandbox = createRepertoireTestSandbox(repertoireRoot);
+    applyRepertoireTestSandbox(repertoireRoot, sandbox);
+    out(`P0.6c using isolated sandbox: ${sandbox.root}`);
+  } else {
+    out('P0.6c using production curated_signals.json (P06C_USE_PRODUCTION=1)');
+  }
+
   const signalName = 'attestation-as-map';
   const description = buildRepertoireConsultDescription({
     postTitle: TRAP_TITLE,
@@ -175,6 +197,14 @@ async function main(): Promise<number> {
   };
 
   out(JSON.stringify(report, null, 2));
+
+  resetRepertoireConfidenceCache();
+  resetPostTickCache();
+  if (sandbox) {
+    clearRepertoireTestEnv();
+    sandbox.cleanup();
+  }
+
   return report.status === 'PASS' ? 0 : 1;
 }
 

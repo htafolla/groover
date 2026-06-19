@@ -8,6 +8,7 @@ import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { repertoireServicePaths } from './repertoire-service-config.js';
 
 const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -77,11 +78,12 @@ export async function runPostTickRepertoire(
       const mod = await import(
         pathToFileURL(join(root, 'dist/provider/memory-routing-provider.js')).href
       );
+      const paths = repertoireServicePaths(root);
       const provider = mod.createMemoryRoutingProvider?.({
-        dataDir: join(root, 'data'),
-        signalsPath: join(root, 'data/curated_signals.json'),
-        logDir: join(root, 'logs/groover-inference'),
-        feedbackDir: join(root, 'logs', 'orchestrator-feedback'),
+        dataDir: paths.dataDir,
+        signalsPath: paths.signalsPath,
+        logDir: paths.logDir,
+        feedbackDir: paths.feedbackDir,
       });
       if (!provider?.ingestFeedback) {
         cachedIngestFeedback = null;
@@ -140,12 +142,7 @@ type RepertoireServiceLike = {
 let cachedRepertoireService: RepertoireServiceLike | null | undefined;
 
 function repertoireServiceConfig(root: string) {
-  return {
-    dataDir: join(root, 'data'),
-    signalsPath: join(root, 'data/curated_signals.json'),
-    logDir: join(root, 'logs/groover-inference'),
-    feedbackDir: join(root, 'logs', 'orchestrator-feedback'),
-  };
+  return repertoireServicePaths(root);
 }
 
 async function loadRepertoireService(): Promise<RepertoireServiceLike | null> {

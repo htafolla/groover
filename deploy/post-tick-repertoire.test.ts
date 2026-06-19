@@ -1,16 +1,21 @@
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SIBLING_REPERTOIRE_ROOT = join(__dirname, '..', '..', 'repertoire');
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   resetPostTickCache,
   runPostTickIngest,
   runPostTickRepertoire,
 } from './post-tick-repertoire.js';
+import {
+  applyRepertoireTestSandbox,
+  clearRepertoireTestEnv,
+  createRepertoireTestSandbox,
+  type RepertoireTestSandbox,
+} from './repertoire-test-isolation.js';
 
 const BASE_INPUT = {
   taskId: 'test-post-tick',
@@ -21,11 +26,24 @@ const BASE_INPUT = {
   durationMs: 1200,
 };
 
+let sandbox: RepertoireTestSandbox | null = null;
+const repertoireAvailable = existsSync(join(SIBLING_REPERTOIRE_ROOT, 'dist/index.js'));
+
+beforeEach(() => {
+  if (!repertoireAvailable) return;
+  sandbox = createRepertoireTestSandbox(SIBLING_REPERTOIRE_ROOT);
+  applyRepertoireTestSandbox(SIBLING_REPERTOIRE_ROOT, sandbox);
+  resetPostTickCache();
+});
+
 afterEach(() => {
   resetPostTickCache();
   delete process.env.SKIP_REPERTOIRE_FEEDBACK;
   delete process.env.SKIP_REPERTOIRE_INGEST;
   delete process.env.REPERTOIRE_INGEST_SOURCE;
+  clearRepertoireTestEnv();
+  sandbox?.cleanup();
+  sandbox = null;
 });
 
 describe('runPostTickRepertoire', () => {
@@ -44,6 +62,13 @@ describe('runPostTickRepertoire', () => {
   });
 
   it('ingests feedback when repertoire provider is available', async () => {
+    if (!repertoireAvailable || !sandbox) return;
+
+    const productionSignals = join(
+      SIBLING_REPERTOIRE_ROOT,
+      'data/curated_signals.json',
+    );
+    const productionBefore = readFileSync(productionSignals, 'utf8');
     const result = await runPostTickRepertoire(BASE_INPUT);
     if (result.skipped === 'repertoire-provider-unavailable') {
       expect(result.ok).toBe(false);
@@ -51,9 +76,11 @@ describe('runPostTickRepertoire', () => {
     }
     expect(result.ok).toBe(true);
     expect(result.skipped).toBeUndefined();
+    expect(readFileSync(productionSignals, 'utf8')).toBe(productionBefore);
   });
 
   it('marks success false when post blocked but high resonance', async () => {
+    if (!repertoireAvailable) return;
     const result = await runPostTickRepertoire({
       ...BASE_INPUT,
       posted: false,
@@ -78,11 +105,10 @@ describe('runPostTickIngest', () => {
   });
 
   it('imports enriched JSONL idempotently when repertoire is available', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'a31-ingest-'));
-    const sourceDir = join(root, 'source');
-    const targetDir = join(root, 'target');
+    if (!repertoireAvailable || !sandbox) return;
+
+    const sourceDir = join(sandbox.root, 'source');
     mkdirSync(sourceDir, { recursive: true });
-    mkdirSync(targetDir, { recursive: true });
 
     const uniqueId = `comment-a31-${Date.now()}`;
     const enrichedLine = JSON.stringify({
@@ -102,27 +128,13 @@ describe('runPostTickIngest', () => {
 
     writeFileSync(join(sourceDir, '2026-06-18.jsonl'), `${enrichedLine}\n`);
 
-    if (!existsSync(join(SIBLING_REPERTOIRE_ROOT, 'dist/index.js'))) {
-      rmSync(root, { recursive: true, force: true });
-      return;
-    }
-
-    process.env.REPERTOIRE_ROOT = SIBLING_REPERTOIRE_ROOT;
-    resetPostTickCache();
-
     const first = await runPostTickIngest(sourceDir);
-    if (first.skipped === 'repertoire-service-unavailable') {
-      rmSync(root, { recursive: true, force: true });
-      return;
-    }
+    if (first.skipped === 'repertoire-service-unavailable') return;
 
     expect(first.ok).toBe(true);
     expect(first.imported).toBe(1);
 
-    const targetFile = join(
-      SIBLING_REPERTOIRE_ROOT,
-      'logs/groover-inference/2026-06-18.jsonl',
-    );
+    const targetFile = join(sandbox.logDir, '2026-06-18.jsonl');
     const beforeLines = readFileSync(targetFile, 'utf8').trim().split('\n').length;
 
     const second = await runPostTickIngest(sourceDir);
@@ -132,6 +144,12 @@ describe('runPostTickIngest', () => {
     const afterLines = readFileSync(targetFile, 'utf8').trim().split('\n').length;
     expect(afterLines).toBe(beforeLines);
 
-    rmSync(root, { recursive: true, force: true });
+    const productionLog = join(
+      SIBLING_REPERTOIRE_ROOT,
+      'logs/groover-inference/2026-06-18.jsonl',
+    );
+    if (existsSync(productionLog)) {
+      expect(readFileSync(productionLog, 'utf8')).not.toContain(uniqueId);
+    }
   });
 });

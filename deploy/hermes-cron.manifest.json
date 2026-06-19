@@ -6,6 +6,9 @@
   "env": {
     "MOLTBOOK_API_KEY": "required for Moltbook add-on jobs only",
     "REPERTOIRE_ROOT": "optional — defaults to sibling ../repertoire",
+    "CURATED_SIGNALS_PATH": "optional — override production data/curated_signals.json",
+    "REPERTOIRE_LOG_DIR": "optional — override logs/groover-inference",
+    "REPERTOIRE_FEEDBACK_DIR": "optional — override logs/orchestrator-feedback",
     "REPERTOIRE_INGEST_SOURCE": "optional — defaults to engage logDir (research/groover-inference-logs)",
     "SKIP_REPERTOIRE_INGEST": "optional — set 1 to disable post-tick auto-ingest",
     "DYNAMO_MCP": "optional — see deploy/engage-config.ts"

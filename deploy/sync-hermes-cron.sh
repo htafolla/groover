@@ -151,6 +151,7 @@ upsert_cron_job() {
   existing_id="$(find_job_id_by_name "$job_name")"
 
   if [[ -n "$existing_id" ]]; then
+    log "  description: $description"
     dry "update cron job $job_name ($existing_id)"
     run hermes_cron edit "$existing_id" \
       --name "$job_name" \
@@ -160,14 +161,15 @@ upsert_cron_job() {
       --workdir "$GROOVER_ROOT" \
       --deliver "$DELIVER"
   else
+    log "  description: $description"
     dry "create cron job $job_name"
+    # --no-agent jobs: script stdout is the deliverable; omit positional prompt.
     run hermes_cron create "$schedule" \
       --name "$job_name" \
       --script "$script_name" \
       --no-agent \
       --workdir "$GROOVER_ROOT" \
-      --deliver "$DELIVER" \
-      "$description"
+      --deliver "$DELIVER"
   fi
 }
 

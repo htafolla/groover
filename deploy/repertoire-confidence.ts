@@ -9,6 +9,7 @@ import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { repertoireServicePaths } from './repertoire-service-config.js';
 
 const require = createRequire(import.meta.url);
 
@@ -141,10 +142,12 @@ async function loadConsultFn(): Promise<(description: string) => RepertoireConsu
     return () => unavailableResult();
   }
 
+  const paths = repertoireServicePaths(repertoireRoot);
   const provider = factory({
-    dataDir: join(repertoireRoot, 'data'),
-    signalsPath: join(repertoireRoot, 'data', 'curated_signals.json'),
-    logDir: join(repertoireRoot, 'logs', 'groover-inference'),
+    dataDir: paths.dataDir,
+    signalsPath: paths.signalsPath,
+    logDir: paths.logDir,
+    feedbackDir: paths.feedbackDir,
   });
 
   if (!provider?.isAvailable?.()) {
