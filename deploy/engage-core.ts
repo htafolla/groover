@@ -285,25 +285,25 @@ export async function runEngagePipeline(
   let deliberationSummary = '';
 
   if (!options.skipGovernance) {
-    if (!options.skipDeliberation) {
-      const delib = await callDeliberationRound({
-        title: engageCase.postTitle || 'Engagement',
-        description: `${inference}\n\n---\n\n${publicReply}`,
-        evidence: buildDeliberationEvidence(
-          engageCase,
-          inference,
-          publicReply,
-          repertoireCtx,
-        ),
-      });
-      if (delib.ok) {
-        deliberationRounds = delib.votes;
-        deliberationSummary = delib.summary;
-        log(`[Deliberation] ${delib.votes.length} internal votes`);
-      } else {
-        log(`[Deliberation] unavailable — ${delib.message}`);
-      }
-    }
+//     if (!options.skipDeliberation) {
+//       const delib = await callDeliberationRound({
+//         title: engageCase.postTitle || 'Engagement',
+//         description: `${inference}\n\n---\n\n${publicReply}`,
+//         evidence: buildDeliberationEvidence(
+//           engageCase,
+//           inference,
+//           publicReply,
+//           repertoireCtx,
+//         ),
+//       });
+//       if (delib.ok) {
+//         deliberationRounds = delib.votes;
+//         deliberationSummary = delib.summary;
+//         log(`[Deliberation] ${delib.votes.length} internal votes`);
+//       } else {
+//         log(`[Deliberation] unavailable — ${delib.message}`);
+//       }
+//     }
 
     govOutcome = await callGovernWithSolar(
       DYNAMO_MCP,
