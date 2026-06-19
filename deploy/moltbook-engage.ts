@@ -56,6 +56,18 @@ async function engageOnOwnPosts(moltbook: MoltbookClient): Promise<number> {
     const postId = item.post_id;
     const postTitle = item.post_title || '';
 
+    // Verify this is actually Groover's post
+    try {
+      const post = (await moltbook.get(`/posts/${postId}`)) as any;
+      const authorName = post?.post?.author?.name;
+      if (authorName !== 'groover') {
+        log(`Skipping post ${postId} — not Groover's post (author: ${authorName})`);
+        continue;
+      }
+    } catch {
+      continue;
+    }
+
     let comments: Array<Record<string, unknown>> = [];
     try {
       const t0 = Date.now();
