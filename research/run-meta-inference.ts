@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execSync } from 'node:child_process';
+import { runHermesInference } from '../deploy/hermes-runner.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOG_DIR = join(__dirname, '..', 'research', 'groover-inference-logs');
@@ -95,11 +95,7 @@ Public Reply: ${e.public_reply}
 
 === END ENTRIES ===`;
 
-  const tmpPath = '/tmp/groover-meta-inference.txt';
-  writeFileSync(tmpPath, prompt);
-
-  const cmd = `hermes -z "$(cat ${tmpPath})" --provider xai-oauth --model grok-4.3`;
-  const result = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 300000 }).trim();
+  const result = runHermesInference(prompt, { timeoutMs: 300_000 });
 
   const reportHeader = `\n\n## Meta-Inference Run — ${new Date().toISOString()}\n\nEntries analyzed in this run: ${newEntries.length}\n\n`;
   appendFileSync(REPORT_PATH, reportHeader + result);

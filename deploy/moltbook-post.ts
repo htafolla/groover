@@ -38,16 +38,29 @@ async function postDaily(): Promise<boolean> {
   const state = loadState();
   const now = Date.now();
 
-  if (state.lastPostTime) {
+  const dryRun = process.env.DRY_RUN === 'true';
+
+  if (!dryRun && state.lastPostTime) {
     const elapsed = now - new Date(state.lastPostTime).getTime();
     if (elapsed < POST_COOLDOWN_MS) {
       log('Post cooldown active');
       return false;
     }
   }
+  const result = await runPostPipeline({ onLog: log, dryRun });
+  if (!result.ok || result.blocked) {
+    if (result.errors.length > 0) {
+      log(`Post pipeline failed: ${result.errors.join('; ')}`);
+    }
+    return false;
+  }
 
-  const result = await runPostPipeline({ onLog: log });
-  if (!result.ok || result.blocked || !result.posted) {
+  if (dryRun) {
+    log(`DRY_RUN: post ready — "${result.title}"`);
+    return true;
+  }
+
+  if (!result.posted) {
     if (result.errors.length > 0) {
       log(`Post pipeline failed: ${result.errors.join('; ')}`);
     }

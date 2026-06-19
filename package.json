@@ -13,6 +13,7 @@
     "triage:stack": "tsx deploy/triage-stack.ts",
     "triage:engage-dry": "tsx deploy/engage-dry-run.ts",
     "triage:engage-loop": "tsx deploy/engage-dry-run.ts --loops 3 --delay-ms 8000",
+    "triage:moltbook-workers": "tsx deploy/validate-moltbook-workers.ts",
     "p06c:proof": "tsx deploy/p06c-consult-delta-proof.ts",
     "test:watch": "vitest",
     "govern": "echo 'Governance must be performed via xray-governance__govern_proposals and Dynamo__* tools before changes. See AGENTS.md.'",
