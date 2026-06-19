@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Probe governance deliberation voters.
- * Default: in-process xray nucleus + local Hermes xAI OAuth (plugin path).
+ * Default: in-process xray nucleus + Hermes CLI (hermes -z), same as engage/cron workers.
  * Remote: set GOVERNANCE_MCP_URL (+ GOVERNANCE_API_KEY if the host requires it).
  */
 

@@ -122,8 +122,13 @@ write_runner_script() {
   body="$(cat <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
+export PATH="\${HERMES_BIN:+\$(dirname \"\$HERMES_BIN\"):}\$HOME/.local/bin:\$PATH"
 GROOVER_ROOT="${GROOVER_ROOT}"
 cd "\$GROOVER_ROOT"
+set -a
+[ -f "\$HOME/.hermes/.env" ] && . "\$HOME/.hermes/.env"
+[ -f "\$GROOVER_ROOT/.env" ] && . "\$GROOVER_ROOT/.env"
+set +a
 ${command}
 EOF
 )"

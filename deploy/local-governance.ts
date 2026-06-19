@@ -1,6 +1,6 @@
 /**
  * In-process xray nucleus governance — same path as the TUI/CLI plugin agents.
- * Uses Hermes xAI OAuth from ~/.hermes/auth.json (no Railway, no GOVERNANCE_API_KEY).
+ * Uses Hermes CLI inference (hermes -z) — same credential path as gateway/cron workers.
  */
 
 import { existsSync } from 'node:fs';

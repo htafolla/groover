@@ -4,6 +4,12 @@ const DEFAULT_PROVIDER = 'xai-oauth';
 const DEFAULT_MODEL = 'grok-4.3';
 const DEFAULT_TIMEOUT_MS = 120_000;
 
+export function resolveHermesBin(): string {
+  const explicit = process.env.HERMES_BIN?.trim();
+  if (explicit) return explicit;
+  return 'hermes';
+}
+
 /** Run Hermes one-shot inference without shell interpolation (safe for multiline prompts). */
 export function runHermesInference(
   prompt: string,
@@ -14,7 +20,7 @@ export function runHermesInference(
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   return execFileSync(
-    'hermes',
+    resolveHermesBin(),
     ['-z', prompt, '--provider', provider, '--model', model],
     { encoding: 'utf8', timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024 },
   ).trim();
