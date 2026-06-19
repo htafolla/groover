@@ -188,31 +188,69 @@ function sourceText(engageCase: EngageCase): string {
     : `${engageCase.postTitle}\n${engageCase.postContent}`;
 }
 
+
+async function governedUpvote(
+  moltbook: MoltbookClient,
+  targetType: 'post' | 'comment',
+  targetId: string,
+  context: string,
+  log: (msg: string) => void
+) {
+  try {
+    const gov = await callGovernWithSolar(
+      DYNAMO_MCP,
+      `Upvote ${targetType}`,
+      context,
+      {
+        agentDid: GROOVER_DID,
+        force: false,
+      }
+    );
+
+    const rec = gov?.result?.recommendation;
+    const score = gov?.result?.resonanceScore ?? 0;
+
+    if (rec === 'PASS' && score >= 0.75) {
+      const endpoint = targetType === 'post'
+        ? `/posts/${targetId}/upvote`
+        : `/comments/${targetId}/upvote`;
+
+      await moltbook.post(endpoint, {});
+      log(`[Upvote] ${targetType} ${targetId} (resonance=${score.toFixed(2)})`);
+    } else {
+      log(`[Upvote] Skipped ${targetType} ${targetId} (rec=${rec}, resonance=${score.toFixed(2)})`);
+    }
+  } catch (e) {
+    // non-fatal
+  }
+}
+
 async function postToMoltbook(
   engageCase: EngageCase,
   publicReply: string,
   moltbook: MoltbookClient,
+  log: (msg: string) => void
 ): Promise<void> {
+  const context = `${engageCase.postTitle}\n${engageCase.commentContent || engageCase.postContent || ''}`;
+
   if (engageCase.path === 'own-post') {
     await moltbook.post(`/posts/${engageCase.postId}/comments`, {
       parent_id: engageCase.commentId,
       content: publicReply,
     });
+
     if (engageCase.commentId) {
-      try {
-        await moltbook.post(`/comments/${engageCase.commentId}/upvote`, {});
-      } catch {
-        // non-fatal
-      }
+      await governedUpvote(moltbook, 'comment', engageCase.commentId, context, log);
     }
+    await governedUpvote(moltbook, 'post', engageCase.postId, context, log);
     return;
   }
 
+  // other-post
   await moltbook.post(`/posts/${engageCase.postId}/comments`, { content: publicReply });
-  try {
-    await moltbook.post(`/posts/${engageCase.postId}/upvote`, {});
-  } catch {
-    // non-fatal
+  await governedUpvote(moltbook, 'post', engageCase.postId, context, log);
+  if (engageCase.commentId) {
+    await governedUpvote(moltbook, 'comment', engageCase.commentId, context, log);
   }
 }
 
@@ -423,7 +461,7 @@ export async function runEngagePipeline(
 
   if (shouldPost) {
     const client = options.moltbook ?? MoltbookClient.fromEnv();
-    await postToMoltbook(engageCase, publicReply, client);
+    await postToMoltbook(engageCase, publicReply, client, log);
     posted = true;
   } else if (options.dryRun) {
     log(`DRY_RUN: would post reply on ${engageCase.path} ${engageCase.postId}`);
