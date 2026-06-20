@@ -27,6 +27,7 @@ try {
 try {
   console.log('\n→ Running general enrichment...');
   execSync('npx tsx deploy/enrich-repertoire.ts', { stdio: 'inherit' });
+  execSync('npx tsx deploy/repertoire-prune.ts', { stdio: 'inherit' });', { stdio: 'inherit' });
 } catch (e) {
   console.error('General enrichment failed:', e);
 }
