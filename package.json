@@ -23,7 +23,7 @@
     "start:registry": "npx tsx packages/marketplace/src/mcp-server.ts"
   },
   "devDependencies": {
-    "@0xray/repertoire": "^0.1.0",
+    "@0xray/repertoire": "^0.1.6",
     "@types/node": "^20.14.0",
     "tsx": "^4.16.0",
     "turbo": "^2.0.0",

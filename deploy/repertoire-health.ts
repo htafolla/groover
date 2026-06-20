@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from 'node:fs';
 
-const SIGNALS_PATH = 'node_modules/@0xray/repertoire/data/curated_signals.json';
+const SIGNALS_PATH = 'research/repertoire-brain/curated_signals.json';
 
 function check() {
   if (!existsSync(SIGNALS_PATH)) {

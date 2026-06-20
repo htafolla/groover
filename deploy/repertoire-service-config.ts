@@ -13,15 +13,18 @@ export interface RepertoireServicePaths {
 }
 
 export function repertoireServicePaths(root: string): RepertoireServicePaths {
-  const dataDir = process.env.REPERTOIRE_DATA_DIR ?? join(root, 'data');
+  // Prefer persistent brain location over node_modules
+  const defaultDataDir = join(__dirname, "..", "..", "research", "repertoire-brain");
+
+  const dataDir = process.env.REPERTOIRE_DATA_DIR ?? defaultDataDir;
   return {
     dataDir,
     signalsPath:
-      process.env.CURATED_SIGNALS_PATH ?? join(dataDir, 'curated_signals.json'),
+      process.env.CURATED_SIGNALS_PATH ?? join(dataDir, "curated_signals.json"),
     logDir:
-      process.env.REPERTOIRE_LOG_DIR ?? join(root, 'logs', 'groover-inference'),
+      process.env.REPERTOIRE_LOG_DIR ?? join(root, "logs", "groover-inference"),
     feedbackDir:
       process.env.REPERTOIRE_FEEDBACK_DIR ??
-      join(root, 'logs', 'orchestrator-feedback'),
+      join(root, "logs", "orchestrator-feedback"),
   };
 }

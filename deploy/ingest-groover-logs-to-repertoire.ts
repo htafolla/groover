@@ -1,3 +1,4 @@
+import type { Signal } from "./repertoire-utils";
 #!/usr/bin/env tsx
 /**
  * Groover Inference Logs → Repertoire Ingestion
@@ -10,7 +11,7 @@ import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const LOG_DIR = 'research/groover-inference-logs';
-const REPERTOIRE_SIGNALS = 'node_modules/@0xray/repertoire/data/curated_signals.json';
+const REPERTOIRE_SIGNALS = 'research/repertoire-brain/curated_signals.json';
 
 interface LogEntry {
   timestamp: string;

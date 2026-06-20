@@ -3,7 +3,7 @@
  *
  * Curated signals path resolution (in order):
  * 1. CURATED_SIGNALS_PATH env var (absolute or relative to cwd)
- * 2. <repo-root>/curated_signals.json (one level above deploy/)
+ * 2. research/repertoire-brain/curated_signals.json (persistent brain location)
  */
 
 import {

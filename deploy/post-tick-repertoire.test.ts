@@ -66,7 +66,7 @@ describe('runPostTickRepertoire', () => {
 
     const productionSignals = join(
       SIBLING_REPERTOIRE_ROOT,
-      'data/curated_signals.json',
+      'research/repertoire-brain/curated_signals.json',
     );
     const productionBefore = readFileSync(productionSignals, 'utf8');
     const result = await runPostTickRepertoire(BASE_INPUT);

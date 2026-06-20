@@ -1,3 +1,4 @@
+import type { Signal } from "./repertoire-utils";
 #!/usr/bin/env tsx
 /**
  * One-time seeding script
@@ -8,7 +9,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ECOSYSTEM_ROOT = '/tmp/verifiable-agent-ecosystem';
-const REPERTOIRE_SIGNALS = 'node_modules/@0xray/repertoire/data/curated_signals.json';
+const REPERTOIRE_SIGNALS = 'research/repertoire-brain/curated_signals.json';
 
 interface Signal {
   name: string;

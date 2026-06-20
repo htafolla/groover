@@ -36,8 +36,9 @@ When `multi_agent_orchestration.lead_dev_mode` is true in `features.json` (defau
 
 | Step | MCP tool | Notes |
 |------|----------|-------|
-| **Intake + classify** | `analyze-complexity` | Pass `tasks` array; response includes **lead-dev plan JSON** when mode is on |
-| Delegate | `orchestrate-task` | Include agent + sessionId (codex 67) |
+| **Intake + classify** | `analyze-complexity` | Pass `tasks` array; persists `.xray/state/lead-dev-plan.json` when mode is on |
+| Delegate (consult) | `orchestrate-task` | Invokes MCP consult skills (code-review, researcher, security-audit, etc.) |
+| Delegate (implement) | **host `Task` / `spawn_subagent`** | `orchestrate-task` **defers** backend-engineer, frontend-engineer, bug-triage — lead must spawn |
 | Monitor | `get-orchestration-status` | Lead updates todos |
 | Major work | researcher + architect-tools + code-review | Auto-listed in plan when complexity > threshold |
 
