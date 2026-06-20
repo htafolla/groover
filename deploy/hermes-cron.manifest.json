@@ -24,11 +24,11 @@
     },
     {
       "id": "moltbook-other-engage",
-      "schedule": "0 * * * *",
-      "interval_human": "every hour",
+      "schedule": "*/15 * * * *",
+      "interval_human": "every 15 minutes",
       "command": "npx tsx deploy/moltbook-other-engage.ts",
       "cwd": "groover-root",
-      "description": "Governed replies on others' posts via engage-core"
+      "description": "Governed replies on others' posts via engage-core (high-frequency inference)"
     },
     {
       "id": "moltbook-post",

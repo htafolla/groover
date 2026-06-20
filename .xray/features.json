@@ -1,6 +1,6 @@
 {
   "$schema": "./features.schema.json",
-  "version": "3.4.7",
+  "version": "3.5.4",
   "description": "0xRay Framework - Unified Feature Configuration",
   "token_optimization": {
     "enabled": true,
@@ -35,7 +35,8 @@
     "per_suite_test_triage": true,
     "phased_plan_threshold": 25,
     "auto_consult_major_work": true,
-    "no_new_surface": true
+    "no_new_surface": true,
+    "auto_chain_delegations": true
   },
   "autonomous_reporting": {
     "enabled": true,
@@ -137,13 +138,19 @@
   "memory_routing": {
     "enabled": true,
     "provider": "repertoire",
-    "module_path": "../repertoire/dist/provider/memory-routing-provider.js",
+    "module_path": "node_modules/@0xray/repertoire/dist/provider/memory-routing-provider.js",
     "config": {
-      "dataDir": "../repertoire/data",
-      "signalsPath": "../repertoire/data/curated_signals.json",
-      "logDir": "../repertoire/logs/groover-inference",
-      "feedbackDir": "../repertoire/logs/orchestrator-feedback"
+      "dataDir": "node_modules/@0xray/repertoire/data",
+      "signalsPath": "node_modules/@0xray/repertoire/data/curated_signals.json",
+      "logDir": "research/groover-inference-logs",
+      "feedbackDir": "research/groover-inference-logs"
     }
+  },
+  "synthesis": {
+    "enabled": false,
+    "every_n_gates": 12,
+    "every_n_turns": 0,
+    "every_n_todos_completed": 0
   },
   "inference_governance": {
     "enabled": true,
