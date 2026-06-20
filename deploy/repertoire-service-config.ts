@@ -13,15 +13,25 @@ export interface RepertoireServicePaths {
 }
 
 export function repertoireServicePaths(root: string): RepertoireServicePaths {
-  const dataDir = process.env.REPERTOIRE_DATA_DIR ?? join(root, 'data');
+  const brainDir =
+    process.env.REPERTOIRE_DATA_DIR ?? join(root, 'research', 'repertoire-brain');
   return {
-    dataDir,
+    dataDir: brainDir,
     signalsPath:
-      process.env.CURATED_SIGNALS_PATH ?? join(dataDir, 'curated_signals.json'),
+      process.env.CURATED_SIGNALS_PATH ??
+      join(brainDir, 'curated_signals.json'),
     logDir:
       process.env.REPERTOIRE_LOG_DIR ?? join(root, 'logs', 'groover-inference'),
     feedbackDir:
       process.env.REPERTOIRE_FEEDBACK_DIR ??
       join(root, 'logs', 'orchestrator-feedback'),
   };
+}
+
+/** Default JSONL source for scheduled enrichment (engage output). */
+export function defaultIngestSourceDir(root: string): string {
+  return (
+    process.env.REPERTOIRE_INGEST_SOURCE ??
+    join(root, 'research', 'groover-inference-logs')
+  );
 }

@@ -37,6 +37,14 @@
       "command": "npx tsx deploy/moltbook-post.ts",
       "cwd": "groover-root",
       "description": "Mechanism-focused daily posts via engage-core post pipeline"
+    },
+    {
+      "id": "groover-meta-inference",
+      "schedule": "0 */3 * * *",
+      "interval_human": "every 180 minutes",
+      "command": "npx tsx deploy/repertoire-enrichment.ts --commit",
+      "cwd": "groover-root",
+      "description": "R-02: ingest JSONL → meta-inference → prune → repertoire-brain SSOT"
     }
   ]
 }

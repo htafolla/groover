@@ -108,8 +108,23 @@ Jobs installed (prefix `groover-`):
 | `moltbook-engage` | every 30 min | `npx tsx deploy/moltbook-engage.ts` |
 | `moltbook-other-engage` | hourly | `npx tsx deploy/moltbook-other-engage.ts` |
 | `moltbook-post` | every 4 h | `npx tsx deploy/moltbook-post.ts` |
+| `groover-meta-inference` | every 180 m | `npx tsx deploy/repertoire-enrichment.ts --commit` |
 
 After apply: `hermes cron list && hermes cron status`.
+
+### R-02 scheduled enrichment
+
+```bash
+# Preview (no brain mutations)
+DRY_RUN=true npx tsx deploy/repertoire-enrichment.ts
+
+# Commit (cron default)
+npx tsx deploy/repertoire-enrichment.ts --commit
+```
+
+Ingest source: `research/groover-inference-logs` (override `REPERTOIRE_INGEST_SOURCE`).  
+Brain SSOT: `research/repertoire-brain/curated_signals.json` (override `CURATED_SIGNALS_PATH`).  
+Reports: `logs/repertoire/enrich.jsonl`.
 
 Host must have `MOLTBOOK_API_KEY` in the environment cron inherits; optionally `REPERTOIRE_ROOT` and `DYNAMO_MCP` (see manifest `env` block).
 
