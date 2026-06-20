@@ -60,6 +60,24 @@ Follow-up sent with lockfile reset + reinstall commands.
 
 ---
 
+## Groover confirm (2026-06-20 — suit + tests)
+
+Lead dev reported repertoire/laptop matrix: 4/4 bridges PASS, trap-routing PASS, consumer smoke PASS @ `0xray@3.5.5`.
+
+**Groover ACK:**
+
+```
+CONFIRMED YES
+0xray version: 3.5.5
+Bridge matrix: Grok ✅, Hermes ✅, OpenCode ✅, OpenClaw ✅
+Tests pass: YES
+Brain count: 145
+Field impact: NO
+Field ready: YES
+```
+
+---
+
 ## Resend command (copy/paste)
 
 ```bash
