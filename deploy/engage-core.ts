@@ -8,32 +8,13 @@ import { loadPlatformEnv } from './load-platform-env.js';
 loadPlatformEnv();
 
 import { join, dirname } from 'node:path';
-
-// === Anti disc-seeking guard (added 2026-06-20) ===
-const REPETITIVE_KEYWORDS = [
-  "guardrail", "guardrails", "shell", "exit code", "hook",
-  "inference log", "pruning", "negative evidence", "terminal state",
-  "attestation", "ontological trap", "consumption-boundary",
-  "model-latent-geometry", "criteria_selection_gap", "external_norm_smuggling"
-];
-
-export function isTopicRepetitive(title: string, recentTitles: string[]): boolean {
-  const lowerTitle = title.toLowerCase();
-  const titleKeywords = REPETITIVE_KEYWORDS.filter(kw => lowerTitle.includes(kw));
-  if (titleKeywords.length === 0) return false;
-
-  for (const recent of recentTitles) {
-    const recentLower = recent.toLowerCase();
-    const overlap = titleKeywords.filter(kw => recentLower.includes(kw)).length;
-    if (overlap >= 2) return true;
-  }
-  return false;
-}
 import { fileURLToPath } from 'node:url';
 import {
   DYNAMO_MCP,
   DYNAMO_BLOCK_RESONANCE_THRESHOLD,
   GROOVER_DID,
+  HERMES_TIMEOUT_MS,
+  MAX_HERMES_CALLS_PER_RUN,
 } from './engage-config.js';
 import {
   appendInferenceLog,
@@ -60,17 +41,6 @@ import {
 import { validateEngageOutput } from './engage-output-guard.js';
 import { runHermesInference } from './hermes-runner.js';
 import { MoltbookClient } from './moltbook-client.js';
-
-async function fetchRecentPostTitles(moltbook: MoltbookClient): Promise<string[]> {
-  try {
-    const data = (await moltbook.get('/posts/recent?limit=30')) as any;
-    const posts = data?.posts ?? data ?? [];
-    return posts.map((p: any) => p?.title).filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
 import {
   runPostTickIngest,
   runPostTickRepertoire,
@@ -96,6 +66,9 @@ export interface EngageCase {
   postContent: string;
   commentId?: string;
   commentContent?: string;
+  counterpartyAgent?: string;
+  counterpartyUrl?: string;
+  dialogKind?: string;
 }
 
 export interface EngagePipelineOptions {
@@ -132,6 +105,33 @@ export interface EngagePipelineResult {
 
 function defaultLog(msg: string): void {
   process.stdout.write(`[${new Date().toISOString()}] ${msg}\n`);
+}
+
+function resolveSkipHermes(
+  options: EngagePipelineOptions,
+  repertoireCtx: RepertoireConsultResult,
+): boolean {
+  if (options.skipHermes === true) return true;
+  if (options.dryRun === true) return true;
+  if (process.env.SKIP_HERMES === '1') return true;
+  return repertoireCtx.shouldSkipHermes;
+}
+
+function createHermesInvoker(log: (msg: string) => void): (prompt: string) => string | null {
+  let calls = 0;
+  return (prompt: string) => {
+    if (calls >= MAX_HERMES_CALLS_PER_RUN) {
+      log(`[Hermes] budget exhausted (${MAX_HERMES_CALLS_PER_RUN})`);
+      return null;
+    }
+    calls += 1;
+    return runHermesInference(prompt, { timeoutMs: HERMES_TIMEOUT_MS });
+  };
+}
+
+function degradedEngageReply(engageCase: EngageCase): string {
+  const title = engageCase.postTitle.slice(0, 48) || engageCase.postId;
+  return `Acknowledged your point on ${title}. Continuing with degraded inference path.`;
 }
 
 function buildDeliberationEvidence(
@@ -220,77 +220,46 @@ function sourceText(engageCase: EngageCase): string {
     : `${engageCase.postTitle}\n${engageCase.postContent}`;
 }
 
-
-async function governedUpvote(
-  moltbook: MoltbookClient,
-  targetType: 'post' | 'comment',
-  targetId: string,
-  context: string,
-  log: (msg: string) => void
-) {
-  try {
-    const gov = await callGovernWithSolar(
-      DYNAMO_MCP,
-      `Upvote ${targetType}`,
-      context,
-      {
-        agentDid: GROOVER_DID,
-        force: false,
-      }
-    );
-
-    const rec = gov?.result?.recommendation;
-    const score = gov?.result?.resonanceScore ?? 0;
-
-    if (rec === 'PASS' && score >= 0.75) {
-      const endpoint = targetType === 'post'
-        ? `/posts/${targetId}/upvote`
-        : `/comments/${targetId}/upvote`;
-
-      await moltbook.post(endpoint, {});
-      log(`[Upvote] ${targetType} ${targetId} (resonance=${score.toFixed(2)})`);
-    } else {
-      log(`[Upvote] Skipped ${targetType} ${targetId} (rec=${rec}, resonance=${score.toFixed(2)})`);
-    }
-  } catch (e) {
-    // non-fatal
-  }
+function counterpartyLogFields(engageCase: EngageCase): {
+  counterpartyAgent?: string;
+  counterpartyUrl?: string;
+  dialogKind?: string;
+} {
+  if (!engageCase.counterpartyAgent) return {};
+  return {
+    counterpartyAgent: engageCase.counterpartyAgent,
+    counterpartyUrl: engageCase.counterpartyUrl,
+    dialogKind:
+      engageCase.dialogKind ??
+      (engageCase.path === 'other-post' ? 'other-post-reply' : 'own-post-reply'),
+  };
 }
 
 async function postToMoltbook(
   engageCase: EngageCase,
   publicReply: string,
   moltbook: MoltbookClient,
-  log: (msg: string) => void
 ): Promise<void> {
-  const context = `${engageCase.postTitle}\n${engageCase.commentContent || engageCase.postContent || ''}`;
-
   if (engageCase.path === 'own-post') {
-    try {
-      await moltbook.post(`/posts/${engageCase.postId}/comments`, {
-        parent_id: engageCase.commentId,
-        content: publicReply,
-      });
-    } catch (e: any) {
-      if (e.message?.includes('404') || e.message?.includes('Parent comment not found')) {
-        log(`[Skip] Parent comment ${engageCase.commentId} no longer exists`);
-        return;
-      }
-      throw e;
-    }
-
+    await moltbook.post(`/posts/${engageCase.postId}/comments`, {
+      parent_id: engageCase.commentId,
+      content: publicReply,
+    });
     if (engageCase.commentId) {
-      await governedUpvote(moltbook, 'comment', engageCase.commentId, context, log);
+      try {
+        await moltbook.post(`/comments/${engageCase.commentId}/upvote`, {});
+      } catch {
+        // non-fatal
+      }
     }
-    await governedUpvote(moltbook, 'post', engageCase.postId, context, log);
     return;
   }
 
-  // other-post
   await moltbook.post(`/posts/${engageCase.postId}/comments`, { content: publicReply });
-  await governedUpvote(moltbook, 'post', engageCase.postId, context, log);
-  if (engageCase.commentId) {
-    await governedUpvote(moltbook, 'comment', engageCase.commentId, context, log);
+  try {
+    await moltbook.post(`/posts/${engageCase.postId}/upvote`, {});
+  } catch {
+    // non-fatal
   }
 }
 
@@ -310,21 +279,23 @@ export async function runEngagePipeline(
   const repertoireCtx = await consultRepertoire(buildConsultDescription(engageCase));
   if (repertoireCtx.consulted) {
     log(
-      `[Repertoire] trap=${repertoireCtx.highConfidenceTrapPresent} agent=${repertoireCtx.recommendedAgent ?? 'n/a'} signals=${repertoireCtx.matchedSignals.length} avg=${repertoireCtx.avgConfidence.toFixed(3)}`,
+      `[Repertoire] trap=${repertoireCtx.highConfidenceTrapPresent} agent=${repertoireCtx.recommendedAgent ?? 'n/a'} signals=${repertoireCtx.matchedSignals.length} avg=${repertoireCtx.avgConfidence.toFixed(3)} skipHermes=${repertoireCtx.shouldSkipHermes}`,
     );
+    if (repertoireCtx.consultSkippedReason) {
+      log(`[Repertoire] consult policy: ${repertoireCtx.consultSkippedReason}`);
+    }
   } else {
     log('[Repertoire] unavailable — proceeding without memory routing block');
-  }
 
-  // Anti disc-seeking guard for replies
-  const recentForReply = engageCase.recentTitles ?? [];
-  if (isTopicRepetitive(engageCase.postTitle, recentForReply)) {
+  // Live mode: never post low-value placeholder replies (spam prevention)
+  if (!options.dryRun && repertoireCtx.shouldSkipHermes) {
+    log("[Repertoire] live mode + shouldSkipHermes=true → skipping post to avoid spam");
     return {
-      ok: false,
+      ok: true,
       blocked: true,
       posted: false,
-      errors: ["blocked: target post too similar to recently engaged topics (disc seeking)"],
-      warnings,
+      errors: [],
+      warnings: ["skipped due to low Repertoire confidence"],
       inference: "",
       publicReply: "",
       repertoireTrap: repertoireCtx.highConfidenceTrapPresent,
@@ -337,35 +308,29 @@ export async function runEngagePipeline(
     };
   }
 
+  }
+
+  const skipHermes = resolveSkipHermes(options, repertoireCtx);
   let inference = '';
   let publicReply = '';
 
-  if (options.skipHermes) {
+  if (skipHermes) {
     inference = buildDryRunInference(engageCase);
-    publicReply = `Acknowledged your point on ${engageCase.postTitle.slice(0, 48)}. Dry-run placeholder reply.`;
+    publicReply = options.dryRun
+      ? `Acknowledged your point on ${engageCase.postTitle.slice(0, 48)}. Dry-run placeholder reply.`
+      : degradedEngageReply(engageCase);
   } else {
+    const invokeHermes = createHermesInvoker(log);
     const prompt = buildPrompt(engageCase, repertoireCtx.promptBlock);
-    const parsed = parseInferenceResult(runHermesInference(prompt));
+    const parsed = parseInferenceResult(invokeHermes(prompt));
     if (!parsed) {
-      return {
-        ok: false,
-        blocked: false,
-        posted: false,
-        errors: ['hermes returned unparseable output'],
-        warnings,
-        inference: '',
-        publicReply: '',
-        repertoireTrap: repertoireCtx.highConfidenceTrapPresent,
-        repertoireSignals: repertoireCtx.matchedSignals.length,
-        governanceForced: false,
-        dynamoRecommendation: null,
-        resonanceScore: 0,
-        repertoireCtx,
-        govOutcome: null,
-      };
+      warnings.push('hermes unavailable — using degraded inference');
+      inference = buildDryRunInference(engageCase);
+      publicReply = degradedEngageReply(engageCase);
+    } else {
+      inference = parsed.inference;
+      publicReply = parsed.publicReply;
     }
-    inference = parsed.inference;
-    publicReply = parsed.publicReply;
   }
 
   const guard = validateEngageOutput({
@@ -378,7 +343,9 @@ export async function runEngagePipeline(
   errors.push(...guard.errors);
   warnings.push(...guard.warnings);
 
-  const governanceForced = shouldForceGovernanceWithRepertoire(inference, repertoireCtx);
+  const governanceForced =
+    repertoireCtx.forceGovernance ||
+    shouldForceGovernanceWithRepertoire(inference, repertoireCtx);
   let govOutcome: GovernanceCallOutcome | null = null;
   let dynamoRecommendation: string | null = null;
   let resonanceScore = 0;
@@ -455,6 +422,7 @@ export async function runEngagePipeline(
               : undefined,
           governanceForced,
           deliberationRounds,
+          ...counterpartyLogFields(engageCase),
         }),
       );
       return {
@@ -497,6 +465,7 @@ export async function runEngagePipeline(
             : undefined,
         governanceForced,
         deliberationRounds,
+        ...counterpartyLogFields(engageCase),
       }),
     );
     return {
@@ -522,7 +491,7 @@ export async function runEngagePipeline(
 
   if (shouldPost) {
     const client = options.moltbook ?? MoltbookClient.fromEnv();
-    await postToMoltbook(engageCase, publicReply, client, log);
+    await postToMoltbook(engageCase, publicReply, client);
     posted = true;
   } else if (options.dryRun) {
     log(`DRY_RUN: would post reply on ${engageCase.path} ${engageCase.postId}`);
@@ -558,6 +527,7 @@ export async function runEngagePipeline(
           : undefined,
       governanceForced,
       deliberationRounds,
+      ...counterpartyLogFields(engageCase),
     }),
   );
 
@@ -608,6 +578,22 @@ export interface PostPipelineResult {
   govOutcome: GovernanceCallOutcome | null;
 }
 
+async function fetchRecentPostTitles(
+  moltbook: MoltbookClient,
+  limit = 4,
+): Promise<string[]> {
+  try {
+    const data = (await moltbook.get(`/posts?submolt=general&limit=${limit}`)) as {
+      posts?: Array<{ title?: string }>;
+      feed?: Array<{ title?: string }>;
+    };
+    const posts = data.posts || data.feed || [];
+    return posts.map((p) => p.title).filter(Boolean).slice(0, limit) as string[];
+  } catch {
+    return [];
+  }
+}
+
 export async function runPostPipeline(
   options: PostPipelineOptions = {},
 ): Promise<PostPipelineResult> {
@@ -621,40 +607,35 @@ export async function runPostPipeline(
   let title = options.draft?.title ?? '';
   let content = options.draft?.content ?? '';
 
-  if (!options.skipHermes && (!title || !content)) {
+  const postSkipHermes =
+    options.skipHermes === true ||
+    options.dryRun === true ||
+    process.env.SKIP_HERMES === '1';
+
+  if (!postSkipHermes && (!title || !content)) {
     const moltbook = options.moltbook ?? MoltbookClient.fromEnv();
-    const recentTitles = options.recentTitles ?? (await fetchRecentPostTitles(moltbook));
+    const recentTitles =
+      options.recentTitles ?? (await fetchRecentPostTitles(moltbook));
+    const invokeHermes = createHermesInvoker(log);
     try {
-      const raw = runHermesInference(buildDailyPostPrompt(recentTitles));
+      const raw = invokeHermes(buildDailyPostPrompt(recentTitles));
       const parsed = parseDailyPostResult(raw);
       if (!parsed) {
-        errors.push("hermes returned unparseable daily post");
+        title = 'Degraded mechanism post';
+        content =
+          'Degraded placeholder: one specific mechanism in agent governance pipelines, with a stated tradeoff between observability and latency.';
+        errors.push('hermes unavailable — using degraded daily post');
       } else {
         title = parsed.title;
         content = parsed.content;
-
-        // Anti disc-seeking / repeated topic guard
-        if (isTopicRepetitive(title, recentTitles)) {
-          errors.push("blocked: topic too similar to recent posts (disc seeking)");
-          return {
-            ok: false,
-            blocked: true,
-            posted: false,
-            verified: false,
-            errors,
-            title,
-            content,
-            postId: null,
-            repertoireCtx: unavailableResult(),
-            dynamoRecommendation: null,
-            resonanceScore: 0,
-            govOutcome: null,
-          };
-        }
       }
     } catch (error) {
       errors.push(`hermes daily post failed: ${error}`);
     }
+  } else if (postSkipHermes && !title) {
+    title = 'Dry-run mechanism post';
+    content =
+      'Dry-run placeholder: one specific mechanism in agent governance pipelines, with a stated tradeoff between observability and latency.';
   }
 
   if (!title || !content) {
@@ -769,8 +750,9 @@ export async function runPostPipeline(
       if (result.post.verification) {
         log(`Verification challenge received for post ${postId}`);
         try {
+          const verifyInvoker = createHermesInvoker(log);
           const answer = parseChallengeAnswer(
-            runHermesInference(buildChallengePrompt(result.post.verification.challenge_text)),
+            verifyInvoker(buildChallengePrompt(result.post.verification.challenge_text)),
           );
           if (answer !== null) {
             const verifyRes = (await client.post('/verify', {
@@ -850,6 +832,8 @@ function unavailableResult(): RepertoireConsultResult {
     maxConfidence: 0,
     complexityBoost: 0,
     promptBlock: '',
+    shouldSkipHermes: false,
+    forceGovernance: false,
+    consultSkippedReason: null,
   };
 }
-

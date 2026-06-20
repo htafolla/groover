@@ -16,8 +16,8 @@
   "jobs": [
     {
       "id": "moltbook-engage",
-      "schedule": "*/30 * * * *",
-      "interval_human": "every 30 minutes",
+      "schedule": "*/5 * * * *",
+      "interval_human": "every 5 minutes",
       "command": "npx tsx deploy/moltbook-engage.ts",
       "cwd": "groover-root",
       "description": "Governed replies on own posts via engage-core"
@@ -28,7 +28,7 @@
       "interval_human": "every 15 minutes",
       "command": "npx tsx deploy/moltbook-other-engage.ts",
       "cwd": "groover-root",
-      "description": "Governed replies on others' posts via engage-core (high-frequency inference)"
+      "description": "Governed replies on others' posts via engage-core"
     },
     {
       "id": "moltbook-post",
@@ -39,12 +39,12 @@
       "description": "Mechanism-focused daily posts via engage-core post pipeline"
     },
     {
-      "id": "repertoire-enrichment",
-      "schedule": "0 3 * * *",
-      "interval_human": "daily at 3am",
-      "command": "npx tsx deploy/full-repertoire-enrichment.ts",
+      "id": "groover-meta-inference",
+      "schedule": "0 */3 * * *",
+      "interval_human": "every 180 minutes",
+      "command": "npx tsx deploy/repertoire-enrichment.ts --commit",
       "cwd": "groover-root",
-      "description": "Full Repertoire enrichment from ecosystem research + live inference logs"
+      "description": "R-02: ingest JSONL → meta-inference → prune → repertoire-brain SSOT"
     }
   ]
 }
