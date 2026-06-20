@@ -8,6 +8,27 @@ import { loadPlatformEnv } from './load-platform-env.js';
 loadPlatformEnv();
 
 import { join, dirname } from 'node:path';
+
+// === Anti disc-seeking guard (added 2026-06-20) ===
+const REPETITIVE_KEYWORDS = [
+  "guardrail", "guardrails", "shell", "exit code", "hook",
+  "inference log", "pruning", "negative evidence", "terminal state",
+  "attestation", "ontological trap", "consumption-boundary",
+  "model-latent-geometry", "criteria_selection_gap", "external_norm_smuggling"
+];
+
+export function isTopicRepetitive(title: string, recentTitles: string[]): boolean {
+  const lowerTitle = title.toLowerCase();
+  const titleKeywords = REPETITIVE_KEYWORDS.filter(kw => lowerTitle.includes(kw));
+  if (titleKeywords.length === 0) return false;
+
+  for (const recent of recentTitles) {
+    const recentLower = recent.toLowerCase();
+    const overlap = titleKeywords.filter(kw => recentLower.includes(kw)).length;
+    if (overlap >= 2) return true;
+  }
+  return false;
+}
 import { fileURLToPath } from 'node:url';
 import {
   DYNAMO_MCP,
@@ -284,6 +305,27 @@ export async function runEngagePipeline(
     log('[Repertoire] unavailable — proceeding without memory routing block');
   }
 
+  // Anti disc-seeking guard for replies
+  const recentForReply = engageCase.recentTitles ?? [];
+  if (isTopicRepetitive(engageCase.postTitle, recentForReply)) {
+    return {
+      ok: false,
+      blocked: true,
+      posted: false,
+      errors: ["blocked: target post too similar to recently engaged topics (disc seeking)"],
+      warnings,
+      inference: "",
+      publicReply: "",
+      repertoireTrap: repertoireCtx.highConfidenceTrapPresent,
+      repertoireSignals: repertoireCtx.matchedSignals.length,
+      governanceForced: false,
+      dynamoRecommendation: null,
+      resonanceScore: 0,
+      repertoireCtx,
+      govOutcome: null,
+    };
+  }
+
   let inference = '';
   let publicReply = '';
 
@@ -555,22 +597,6 @@ export interface PostPipelineResult {
   govOutcome: GovernanceCallOutcome | null;
 }
 
-async function fetchRecentPostTitles(
-  moltbook: MoltbookClient,
-  limit = 4,
-): Promise<string[]> {
-  try {
-    const data = (await moltbook.get(`/posts?submolt=general&limit=${limit}`)) as {
-      posts?: Array<{ title?: string }>;
-      feed?: Array<{ title?: string }>;
-    };
-    const posts = data.posts || data.feed || [];
-    return posts.map((p) => p.title).filter(Boolean).slice(0, limit) as string[];
-  } catch {
-    return [];
-  }
-}
-
 export async function runPostPipeline(
   options: PostPipelineOptions = {},
 ): Promise<PostPipelineResult> {
@@ -586,24 +612,38 @@ export async function runPostPipeline(
 
   if (!options.skipHermes && (!title || !content)) {
     const moltbook = options.moltbook ?? MoltbookClient.fromEnv();
-    const recentTitles =
-      options.recentTitles ?? (await fetchRecentPostTitles(moltbook));
+    const recentTitles = options.recentTitles ?? (await fetchRecentPostTitles(moltbook));
     try {
       const raw = runHermesInference(buildDailyPostPrompt(recentTitles));
       const parsed = parseDailyPostResult(raw);
       if (!parsed) {
-        errors.push('hermes returned unparseable daily post');
+        errors.push("hermes returned unparseable daily post");
       } else {
         title = parsed.title;
         content = parsed.content;
+
+        // Anti disc-seeking / repeated topic guard
+        if (isTopicRepetitive(title, recentTitles)) {
+          errors.push("blocked: topic too similar to recent posts (disc seeking)");
+          return {
+            ok: false,
+            blocked: true,
+            posted: false,
+            verified: false,
+            errors,
+            title,
+            content,
+            postId: null,
+            repertoireCtx: unavailableResult(),
+            dynamoRecommendation: null,
+            resonanceScore: 0,
+            govOutcome: null,
+          };
+        }
       }
     } catch (error) {
       errors.push(`hermes daily post failed: ${error}`);
     }
-  } else if (options.skipHermes && !title) {
-    title = 'Dry-run mechanism post';
-    content =
-      'Dry-run placeholder: one specific mechanism in agent governance pipelines, with a stated tradeoff between observability and latency.';
   }
 
   if (!title || !content) {
@@ -801,3 +841,4 @@ function unavailableResult(): RepertoireConsultResult {
     promptBlock: '',
   };
 }
+
