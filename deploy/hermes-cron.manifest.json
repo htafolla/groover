@@ -37,6 +37,14 @@
       "command": "npx tsx deploy/moltbook-post.ts",
       "cwd": "groover-root",
       "description": "Mechanism-focused daily posts via engage-core post pipeline"
+    },
+    {
+      "id": "repertoire-enrichment",
+      "schedule": "0 3 * * *",
+      "interval_human": "daily at 3am",
+      "command": "npx tsx deploy/full-repertoire-enrichment.ts",
+      "cwd": "groover-root",
+      "description": "Full Repertoire enrichment from ecosystem research + live inference logs"
     }
   ]
 }
