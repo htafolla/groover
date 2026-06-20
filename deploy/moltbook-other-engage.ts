@@ -1,33 +1,31 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MAX_ACTIONS_PER_RUN } from './engage-config.js';
 import { runEngagePipeline } from './engage-core.js';
 import { MoltbookClient } from './moltbook-client.js';
+import {
+  loadJsonState,
+  loadRecentReplyHashes,
+  recordReplyHash,
+  saveJsonState,
+} from './engage-state-helpers.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const STATE_PATH = join(__dirname, '..', '.moltbot', 'other-engage-state.json');
 
 interface State {
   repliedPostIds: string[];
+  recentReplyHashes?: string[];
   lastCheck: string | null;
 }
 
 function loadState(): State {
-  try {
-    if (existsSync(STATE_PATH)) {
-      return JSON.parse(readFileSync(STATE_PATH, 'utf-8'));
-    }
-  } catch (e) {
-    log(`Failed to load state: ${e}`);
-  }
-  return { repliedPostIds: [], lastCheck: null };
+  return loadJsonState(STATE_PATH, { repliedPostIds: [], lastCheck: null });
 }
 
 function saveState(s: State): void {
-  const dir = dirname(STATE_PATH);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  writeFileSync(STATE_PATH, JSON.stringify(s, null, 2));
+  saveJsonState(STATE_PATH, s);
 }
 
 function log(msg: string): void {
@@ -36,6 +34,7 @@ function log(msg: string): void {
 
 async function engageOnOtherPosts(moltbook: MoltbookClient): Promise<number> {
   const state = loadState();
+  const recentReplyHashes = loadRecentReplyHashes(state);
   const dryRun = process.env.DRY_RUN === 'true';
 
   const feedData = (await moltbook.get('/feed?limit=25')) as {
@@ -61,18 +60,28 @@ async function engageOnOtherPosts(moltbook: MoltbookClient): Promise<number> {
       (post.author_name as string | undefined);
     if (!authorName || authorName === 'groover') continue;
 
+    const authorUrl =
+      (post.author as { url?: string; profile_url?: string } | undefined)?.url ||
+      (post.author as { url?: string; profile_url?: string } | undefined)?.profile_url ||
+      `https://www.moltbook.com/u/${authorName}`;
+
     const result = await runEngagePipeline(
       {
         path: 'other-post',
         postId,
         postTitle: String(post.title || ''),
         postContent: String(post.content || ''),
+        counterpartyAgent: authorName,
+        counterpartyUrl: authorUrl,
+        dialogKind: 'other-post-reply',
       },
       {
         dryRun,
+        skipHermes: dryRun || process.env.SKIP_HERMES === '1',
         moltbook,
         onLog: log,
         logSource: 'groover',
+        recentReplyHashes,
       },
     );
 
@@ -83,6 +92,13 @@ async function engageOnOtherPosts(moltbook: MoltbookClient): Promise<number> {
     if (!result.ok) continue;
 
     state.repliedPostIds.push(postId);
+    recordReplyHash(state, result.publicReply);
+    if (state.repliedPostIds.length > 400) {
+      state.repliedPostIds = state.repliedPostIds.slice(-400);
+    }
+    state.lastCheck = new Date().toISOString();
+    saveState(state);
+
     if (dryRun) {
       log('DRY_RUN: recorded other-post reply');
     } else {

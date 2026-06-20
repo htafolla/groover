@@ -1,9 +1,15 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GROOVER_DID, MAX_ACTIONS_PER_RUN } from './engage-config.js';
 import { runEngagePipeline } from './engage-core.js';
 import { MoltbookClient } from './moltbook-client.js';
+import {
+  loadJsonState,
+  loadRecentReplyHashes,
+  recordReplyHash,
+  saveJsonState,
+} from './engage-state-helpers.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const STATE_PATH = join(__dirname, '..', '.moltbot', 'engage-state.json');
@@ -11,22 +17,8 @@ const STATE_PATH = join(__dirname, '..', '.moltbot', 'engage-state.json');
 interface State {
   repliedCommentIds: string[];
   repliedOtherPostIds: string[];
+  recentReplyHashes?: string[];
   lastCheck: string | null;
-}
-
-function loadState(): State {
-  try {
-    if (existsSync(STATE_PATH)) {
-      return JSON.parse(readFileSync(STATE_PATH, 'utf-8'));
-    }
-  } catch { /* ignore */ }
-  return { repliedCommentIds: [], repliedOtherPostIds: [], lastCheck: null };
-}
-
-function saveState(s: State): void {
-  const dir = dirname(STATE_PATH);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  writeFileSync(STATE_PATH, JSON.stringify(s, null, 2));
 }
 
 function log(msg: string): void {
@@ -40,8 +32,21 @@ function trimState(state: State): void {
   state.lastCheck = new Date().toISOString();
 }
 
+function loadState(): State {
+  return loadJsonState(STATE_PATH, {
+    repliedCommentIds: [],
+    repliedOtherPostIds: [],
+    lastCheck: null,
+  });
+}
+
+function saveState(s: State): void {
+  saveJsonState(STATE_PATH, s);
+}
+
 async function engageOnOwnPosts(moltbook: MoltbookClient): Promise<number> {
   const state = loadState();
+  const recentReplyHashes = loadRecentReplyHashes(state);
   const home = (await moltbook.get('/home')) as {
     activity_on_your_posts?: Array<{ post_id: string; post_title?: string; new_notification_count?: number }>;
   };
@@ -91,6 +96,17 @@ async function engageOnOwnPosts(moltbook: MoltbookClient): Promise<number> {
 
       if (state.repliedCommentIds.includes(commentId)) continue;
 
+      const commenterName =
+        (comment.author as { name?: string } | undefined)?.name ||
+        (comment.author_name as string | undefined) ||
+        (comment.user as { name?: string } | undefined)?.name ||
+        commenterDid ||
+        'unknown';
+      const commenterUrl =
+        (comment.author as { url?: string; profile_url?: string } | undefined)?.url ||
+        (comment.author as { url?: string; profile_url?: string } | undefined)?.profile_url ||
+        `https://www.moltbook.com/u/${commenterName}`;
+
       try {
         const result = await runEngagePipeline(
           {
@@ -100,12 +116,17 @@ async function engageOnOwnPosts(moltbook: MoltbookClient): Promise<number> {
             postContent: '',
             commentId,
             commentContent: String(comment.content || ''),
+            counterpartyAgent: commenterName,
+            counterpartyUrl: commenterUrl,
+            dialogKind: 'own-post-reply',
           },
           {
             dryRun,
+            skipHermes: dryRun || process.env.SKIP_HERMES === '1',
             moltbook,
             onLog: log,
             logSource: 'groover',
+            recentReplyHashes,
           },
         );
 
@@ -116,6 +137,7 @@ async function engageOnOwnPosts(moltbook: MoltbookClient): Promise<number> {
         if (!result.ok) continue;
 
         state.repliedCommentIds.push(commentId);
+        recordReplyHash(state, result.publicReply);
         log(`✓ Replied to comment on "${postTitle}" (comment: ${commentId})`);
         replied++;
 

@@ -77,6 +77,20 @@ describe('runEngagePipeline', () => {
     // default skipDeliberation — no deliberation_rounds unless explicitly enabled
   });
 
+  it('degrades gracefully when hermes budget is zero', async () => {
+    process.env.MAX_HERMES_CALLS_PER_RUN = '0';
+    const result = await runEngagePipeline(TRAP_CASE, {
+      skipGovernance: true,
+      skipPost: true,
+      dryRun: false,
+      onLog: () => {},
+    });
+    expect(result.ok).toBe(true);
+    expect(result.inference.length).toBeGreaterThan(0);
+    expect(result.warnings.some((w) => w.includes('degraded'))).toBe(true);
+    delete process.env.MAX_HERMES_CALLS_PER_RUN;
+  });
+
   it('marks blocked when governance would reject low-resonance non-PASS', async () => {
     const result = await runEngagePipeline(TRAP_CASE, {
       skipHermes: true,

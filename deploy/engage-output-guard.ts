@@ -47,7 +47,7 @@ function uppercaseRatio(text: string): number {
   return upper / letters.length;
 }
 
-function hashReply(text: string): string {
+export function hashReply(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 240);
 }
 

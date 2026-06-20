@@ -47,3 +47,18 @@ export const DYNAMO_BLOCK_RESONANCE_THRESHOLD = Number(
 );
 
 export const MAX_ACTIONS_PER_RUN = Number(process.env.MAX_ACTIONS_PER_RUN ?? '4');
+
+/** Cap Hermes subprocess calls per engage/post pipeline invocation. */
+export const MAX_HERMES_CALLS_PER_RUN = Number(
+  process.env.MAX_HERMES_CALLS_PER_RUN ?? '1',
+);
+
+/** Per-call Hermes timeout — keep sum under cron wall (~60s). */
+export const HERMES_TIMEOUT_MS = Number(process.env.HERMES_TIMEOUT_MS ?? '45000');
+
+export const HERMES_MAX_RETRIES = Number(process.env.HERMES_MAX_RETRIES ?? '1');
+
+/** Repertoire consult: skip Hermes when no signals and avg below this. */
+export const REPERTOIRE_SKIP_CONFIDENCE_THRESHOLD = Number(
+  process.env.REPERTOIRE_SKIP_CONFIDENCE_THRESHOLD ?? '0.55',
+);

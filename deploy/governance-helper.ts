@@ -127,6 +127,9 @@ export interface InferenceLogEntry {
   repertoire_routing?: RepertoireRoutingLogFields;
   governance_forced: boolean;
   deliberation_rounds?: DeliberationVote[];
+  counterparty_agent?: string;
+  counterparty_url?: string;
+  dialog_kind?: string;
   dynamo_result: {
     result: DynamoHammerEnvelope | null;
     matchedPrimitives: string[];
@@ -607,6 +610,9 @@ export function buildInferenceLogEntry(params: {
   /** Override governance_forced when Repertoire trap detected before inference. */
   governanceForced?: boolean;
   deliberationRounds?: DeliberationVote[];
+  counterpartyAgent?: string;
+  counterpartyUrl?: string;
+  dialogKind?: string;
 }): InferenceLogEntry {
   const primitiveMatches = matchPrimitivesFromInference(params.inference);
   const matchedPrimitives = primitiveMatches.map((match) => match.name);
@@ -658,6 +664,9 @@ export function buildInferenceLogEntry(params: {
   if (params.deliberationRounds?.length) {
     entry.deliberation_rounds = params.deliberationRounds;
   }
+  if (params.counterpartyAgent) entry.counterparty_agent = params.counterpartyAgent;
+  if (params.counterpartyUrl) entry.counterparty_url = params.counterpartyUrl;
+  if (params.dialogKind) entry.dialog_kind = params.dialogKind;
 
   return entry;
 }

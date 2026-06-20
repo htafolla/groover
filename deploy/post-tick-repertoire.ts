@@ -141,8 +141,10 @@ type RepertoireServiceLike = {
 
 let cachedRepertoireService: RepertoireServiceLike | null | undefined;
 
-function repertoireServiceConfig(root: string) {
-  return repertoireServicePaths(root);
+const GROOVER_ROOT = join(__dirname, '..');
+
+function repertoireServiceConfig(_repertoirePackageRoot: string) {
+  return repertoireServicePaths(GROOVER_ROOT);
 }
 
 async function loadRepertoireService(): Promise<RepertoireServiceLike | null> {

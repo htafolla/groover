@@ -10,10 +10,12 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { repertoireServicePaths } from './repertoire-service-config.js';
+import { REPERTOIRE_SKIP_CONFIDENCE_THRESHOLD } from './engage-config.js';
 
 const require = createRequire(import.meta.url);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const GROOVER_ROOT = join(__dirname, '..');
 
 export interface RepertoireRoutingSnapshot {
   consulted: boolean;
@@ -29,6 +31,9 @@ export interface RepertoireRoutingSnapshot {
 
 export interface RepertoireConsultResult extends RepertoireRoutingSnapshot {
   promptBlock: string;
+  shouldSkipHermes: boolean;
+  forceGovernance: boolean;
+  consultSkippedReason: string | null;
 }
 
 const SIBLING_REPERTOIRE_ROOT = join(__dirname, '..', '..', 'repertoire');
@@ -75,7 +80,36 @@ function unavailableResult(): RepertoireConsultResult {
     maxConfidence: 0,
     complexityBoost: 0,
     promptBlock: '',
+    shouldSkipHermes: false,
+    forceGovernance: false,
+    consultSkippedReason: null,
   };
+}
+
+export function resolveRepertoireLivePolicy(
+  repertoire: RepertoireRoutingSnapshot,
+): Pick<RepertoireConsultResult, 'shouldSkipHermes' | 'forceGovernance' | 'consultSkippedReason'> {
+  if (!repertoire.consulted) {
+    return { shouldSkipHermes: false, forceGovernance: false, consultSkippedReason: null };
+  }
+  if (repertoire.highConfidenceTrapPresent) {
+    return {
+      shouldSkipHermes: false,
+      forceGovernance: true,
+      consultSkippedReason: null,
+    };
+  }
+  if (
+    repertoire.matchedSignals.length === 0 &&
+    repertoire.avgConfidence < REPERTOIRE_SKIP_CONFIDENCE_THRESHOLD
+  ) {
+    return {
+      shouldSkipHermes: true,
+      forceGovernance: false,
+      consultSkippedReason: 'low-signal-low-confidence',
+    };
+  }
+  return { shouldSkipHermes: false, forceGovernance: false, consultSkippedReason: null };
 }
 
 /** Build the text Repertoire matches against (post + comment), not the Hermes output. */
@@ -142,7 +176,7 @@ async function loadConsultFn(): Promise<(description: string) => RepertoireConsu
     return () => unavailableResult();
   }
 
-  const paths = repertoireServicePaths(repertoireRoot);
+  const paths = repertoireServicePaths(GROOVER_ROOT);
   const provider = factory({
     dataDir: paths.dataDir,
     signalsPath: paths.signalsPath,
@@ -177,9 +211,11 @@ async function loadConsultFn(): Promise<(description: string) => RepertoireConsu
       complexityBoost: confidence.complexityBoost ?? 0,
     };
 
+    const policy = resolveRepertoireLivePolicy(snapshot);
     return {
       ...snapshot,
       promptBlock: buildPromptBlock(snapshot),
+      ...policy,
     };
   };
 }

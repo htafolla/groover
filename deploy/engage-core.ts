@@ -13,6 +13,8 @@ import {
   DYNAMO_MCP,
   DYNAMO_BLOCK_RESONANCE_THRESHOLD,
   GROOVER_DID,
+  HERMES_TIMEOUT_MS,
+  MAX_HERMES_CALLS_PER_RUN,
 } from './engage-config.js';
 import {
   appendInferenceLog,
@@ -64,6 +66,9 @@ export interface EngageCase {
   postContent: string;
   commentId?: string;
   commentContent?: string;
+  counterpartyAgent?: string;
+  counterpartyUrl?: string;
+  dialogKind?: string;
 }
 
 export interface EngagePipelineOptions {
@@ -100,6 +105,33 @@ export interface EngagePipelineResult {
 
 function defaultLog(msg: string): void {
   process.stdout.write(`[${new Date().toISOString()}] ${msg}\n`);
+}
+
+function resolveSkipHermes(
+  options: EngagePipelineOptions,
+  repertoireCtx: RepertoireConsultResult,
+): boolean {
+  if (options.skipHermes === true) return true;
+  if (options.dryRun === true) return true;
+  if (process.env.SKIP_HERMES === '1') return true;
+  return repertoireCtx.shouldSkipHermes;
+}
+
+function createHermesInvoker(log: (msg: string) => void): (prompt: string) => string | null {
+  let calls = 0;
+  return (prompt: string) => {
+    if (calls >= MAX_HERMES_CALLS_PER_RUN) {
+      log(`[Hermes] budget exhausted (${MAX_HERMES_CALLS_PER_RUN})`);
+      return null;
+    }
+    calls += 1;
+    return runHermesInference(prompt, { timeoutMs: HERMES_TIMEOUT_MS });
+  };
+}
+
+function degradedEngageReply(engageCase: EngageCase): string {
+  const title = engageCase.postTitle.slice(0, 48) || engageCase.postId;
+  return `Acknowledged your point on ${title}. Continuing with degraded inference path.`;
 }
 
 function buildDeliberationEvidence(
@@ -188,6 +220,21 @@ function sourceText(engageCase: EngageCase): string {
     : `${engageCase.postTitle}\n${engageCase.postContent}`;
 }
 
+function counterpartyLogFields(engageCase: EngageCase): {
+  counterpartyAgent?: string;
+  counterpartyUrl?: string;
+  dialogKind?: string;
+} {
+  if (!engageCase.counterpartyAgent) return {};
+  return {
+    counterpartyAgent: engageCase.counterpartyAgent,
+    counterpartyUrl: engageCase.counterpartyUrl,
+    dialogKind:
+      engageCase.dialogKind ??
+      (engageCase.path === 'other-post' ? 'other-post-reply' : 'own-post-reply'),
+  };
+}
+
 async function postToMoltbook(
   engageCase: EngageCase,
   publicReply: string,
@@ -232,41 +279,36 @@ export async function runEngagePipeline(
   const repertoireCtx = await consultRepertoire(buildConsultDescription(engageCase));
   if (repertoireCtx.consulted) {
     log(
-      `[Repertoire] trap=${repertoireCtx.highConfidenceTrapPresent} agent=${repertoireCtx.recommendedAgent ?? 'n/a'} signals=${repertoireCtx.matchedSignals.length} avg=${repertoireCtx.avgConfidence.toFixed(3)}`,
+      `[Repertoire] trap=${repertoireCtx.highConfidenceTrapPresent} agent=${repertoireCtx.recommendedAgent ?? 'n/a'} signals=${repertoireCtx.matchedSignals.length} avg=${repertoireCtx.avgConfidence.toFixed(3)} skipHermes=${repertoireCtx.shouldSkipHermes}`,
     );
+    if (repertoireCtx.consultSkippedReason) {
+      log(`[Repertoire] consult policy: ${repertoireCtx.consultSkippedReason}`);
+    }
   } else {
     log('[Repertoire] unavailable — proceeding without memory routing block');
   }
 
+  const skipHermes = resolveSkipHermes(options, repertoireCtx);
   let inference = '';
   let publicReply = '';
 
-  if (options.skipHermes) {
+  if (skipHermes) {
     inference = buildDryRunInference(engageCase);
-    publicReply = `Acknowledged your point on ${engageCase.postTitle.slice(0, 48)}. Dry-run placeholder reply.`;
+    publicReply = options.dryRun
+      ? `Acknowledged your point on ${engageCase.postTitle.slice(0, 48)}. Dry-run placeholder reply.`
+      : degradedEngageReply(engageCase);
   } else {
+    const invokeHermes = createHermesInvoker(log);
     const prompt = buildPrompt(engageCase, repertoireCtx.promptBlock);
-    const parsed = parseInferenceResult(runHermesInference(prompt));
+    const parsed = parseInferenceResult(invokeHermes(prompt));
     if (!parsed) {
-      return {
-        ok: false,
-        blocked: false,
-        posted: false,
-        errors: ['hermes returned unparseable output'],
-        warnings,
-        inference: '',
-        publicReply: '',
-        repertoireTrap: repertoireCtx.highConfidenceTrapPresent,
-        repertoireSignals: repertoireCtx.matchedSignals.length,
-        governanceForced: false,
-        dynamoRecommendation: null,
-        resonanceScore: 0,
-        repertoireCtx,
-        govOutcome: null,
-      };
+      warnings.push('hermes unavailable — using degraded inference');
+      inference = buildDryRunInference(engageCase);
+      publicReply = degradedEngageReply(engageCase);
+    } else {
+      inference = parsed.inference;
+      publicReply = parsed.publicReply;
     }
-    inference = parsed.inference;
-    publicReply = parsed.publicReply;
   }
 
   const guard = validateEngageOutput({
@@ -279,7 +321,9 @@ export async function runEngagePipeline(
   errors.push(...guard.errors);
   warnings.push(...guard.warnings);
 
-  const governanceForced = shouldForceGovernanceWithRepertoire(inference, repertoireCtx);
+  const governanceForced =
+    repertoireCtx.forceGovernance ||
+    shouldForceGovernanceWithRepertoire(inference, repertoireCtx);
   let govOutcome: GovernanceCallOutcome | null = null;
   let dynamoRecommendation: string | null = null;
   let resonanceScore = 0;
@@ -356,6 +400,7 @@ export async function runEngagePipeline(
               : undefined,
           governanceForced,
           deliberationRounds,
+          ...counterpartyLogFields(engageCase),
         }),
       );
       return {
@@ -398,6 +443,7 @@ export async function runEngagePipeline(
             : undefined,
         governanceForced,
         deliberationRounds,
+        ...counterpartyLogFields(engageCase),
       }),
     );
     return {
@@ -459,6 +505,7 @@ export async function runEngagePipeline(
           : undefined,
       governanceForced,
       deliberationRounds,
+      ...counterpartyLogFields(engageCase),
     }),
   );
 
@@ -538,15 +585,24 @@ export async function runPostPipeline(
   let title = options.draft?.title ?? '';
   let content = options.draft?.content ?? '';
 
-  if (!options.skipHermes && (!title || !content)) {
+  const postSkipHermes =
+    options.skipHermes === true ||
+    options.dryRun === true ||
+    process.env.SKIP_HERMES === '1';
+
+  if (!postSkipHermes && (!title || !content)) {
     const moltbook = options.moltbook ?? MoltbookClient.fromEnv();
     const recentTitles =
       options.recentTitles ?? (await fetchRecentPostTitles(moltbook));
+    const invokeHermes = createHermesInvoker(log);
     try {
-      const raw = runHermesInference(buildDailyPostPrompt(recentTitles));
+      const raw = invokeHermes(buildDailyPostPrompt(recentTitles));
       const parsed = parseDailyPostResult(raw);
       if (!parsed) {
-        errors.push('hermes returned unparseable daily post');
+        title = 'Degraded mechanism post';
+        content =
+          'Degraded placeholder: one specific mechanism in agent governance pipelines, with a stated tradeoff between observability and latency.';
+        errors.push('hermes unavailable — using degraded daily post');
       } else {
         title = parsed.title;
         content = parsed.content;
@@ -554,7 +610,7 @@ export async function runPostPipeline(
     } catch (error) {
       errors.push(`hermes daily post failed: ${error}`);
     }
-  } else if (options.skipHermes && !title) {
+  } else if (postSkipHermes && !title) {
     title = 'Dry-run mechanism post';
     content =
       'Dry-run placeholder: one specific mechanism in agent governance pipelines, with a stated tradeoff between observability and latency.';
@@ -672,8 +728,9 @@ export async function runPostPipeline(
       if (result.post.verification) {
         log(`Verification challenge received for post ${postId}`);
         try {
+          const verifyInvoker = createHermesInvoker(log);
           const answer = parseChallengeAnswer(
-            runHermesInference(buildChallengePrompt(result.post.verification.challenge_text)),
+            verifyInvoker(buildChallengePrompt(result.post.verification.challenge_text)),
           );
           if (answer !== null) {
             const verifyRes = (await client.post('/verify', {
@@ -753,5 +810,8 @@ function unavailableResult(): RepertoireConsultResult {
     maxConfidence: 0,
     complexityBoost: 0,
     promptBlock: '',
+    shouldSkipHermes: false,
+    forceGovernance: false,
+    consultSkippedReason: null,
   };
 }
