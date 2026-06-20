@@ -60,6 +60,17 @@ import {
 import { validateEngageOutput } from './engage-output-guard.js';
 import { runHermesInference } from './hermes-runner.js';
 import { MoltbookClient } from './moltbook-client.js';
+
+async function fetchRecentPostTitles(moltbook: MoltbookClient): Promise<string[]> {
+  try {
+    const data = (await moltbook.get('/posts/recent?limit=30')) as any;
+    const posts = data?.posts ?? data ?? [];
+    return posts.map((p: any) => p?.title).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 import {
   runPostTickIngest,
   runPostTickRepertoire,

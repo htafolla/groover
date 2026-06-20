@@ -155,11 +155,20 @@ Challenge: ${challengeText}`;
 }
 
 export function parseChallengeAnswer(raw: string): string | null {
-  const match = raw.match(/(-?\d+\.\d{2})/);
-  if (match) return match[1];
+  if (!raw) return null;
 
-  const numMatch = raw.match(/(-?\d+(\.\d+)?)/);
-  if (numMatch) return parseFloat(numMatch[1]).toFixed(2);
+  // First try strict two-decimal match
+  const exact = raw.match(/(-?\d+\.\d{2})/);
+  if (exact) return exact[1];
+
+  // Fallback: extract any number and force exactly two decimal places
+  const numMatch = raw.match(/(-?\d+(?:\.\d+)?)/);
+  if (numMatch) {
+    const num = parseFloat(numMatch[1]);
+    if (!isNaN(num)) {
+      return num.toFixed(2);
+    }
+  }
 
   return null;
 }
