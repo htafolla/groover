@@ -229,3 +229,13 @@ export const identityEngine = new IdentityEngine();
 export function bindForRegistration(pubkeyHex: string, payload: string, metadata: Record<string, unknown> = {}): IdentityBinding {
   return identityEngine.bindForRegistration(pubkeyHex, payload, metadata);
 }
+
+export {
+  canonicalSuiBindMessage,
+  GROOVER_SUI_SCHEME,
+  issueSuiBinding,
+  SUI_BIND_VERSION,
+  suiAddressFromEd25519PublicKey,
+  verifySuiBinding,
+} from './sui-bind.js';
+export type { IssueSuiBindingInput, SuiWalletBinding } from './sui-bind.js';
