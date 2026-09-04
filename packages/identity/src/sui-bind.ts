@@ -1,7 +1,10 @@
 /**
  * Groover DID ↔ Sui address binding.
- * Portable proof Credible verifies without importing this package.
- * Message: credible-sui-bind:v1|{scheme}|{did}|{suiAddress}|{principalId}|{issuedAtMs}|{notAfterMs}
+ * Portable proof a relying party verifies without importing this package.
+ * Message: groover-sui-bind:v1|{did}|{suiAddress}|{issuedAtMs}|{notAfterMs}
+ *
+ * This proof does not name a fundraising principal or any other app role.
+ * Authorization (who may spend for whom) is the relying party's problem.
  */
 import * as crypto from 'crypto';
 import { blake2b } from '@noble/hashes/blake2b';
@@ -12,26 +15,23 @@ function didFromPubkey(publicKey: string): string {
 }
 
 export const GROOVER_SUI_SCHEME = 'did:groover';
-export const SUI_BIND_VERSION = 'credible-sui-bind:v1';
+export const SUI_BIND_VERSION = 'groover-sui-bind:v1';
 
 export interface SuiWalletBinding {
   scheme: string;
   did: string;
   suiAddress: string;
   publicKey: string;
-  principalId: string;
   issuedAtMs: number;
   notAfterMs: number;
   signature: string;
 }
 
-export function canonicalSuiBindMessage(binding: Omit<SuiWalletBinding, 'signature'>): string {
+export function canonicalSuiBindMessage(binding: Omit<SuiWalletBinding, 'signature'> | SuiWalletBinding): string {
   return [
     SUI_BIND_VERSION,
-    binding.scheme,
     binding.did,
     binding.suiAddress,
-    binding.principalId,
     String(binding.issuedAtMs),
     String(binding.notAfterMs),
   ].join('|');
@@ -72,7 +72,6 @@ export function suiAddressFromEd25519PublicKey(publicKeyHex: string): string {
 
 export type IssueSuiBindingInput = {
   publicKeyHex: string;
-  principalId: string;
   sign: (message: Uint8Array) => Uint8Array | Promise<Uint8Array>;
   did?: string;
   nowMs?: number;
@@ -83,12 +82,15 @@ export async function issueSuiBinding(input: IssueSuiBindingInput): Promise<SuiW
   const publicKey = normalizeHex(input.publicKeyHex);
   const suiAddress = suiAddressFromEd25519PublicKey(publicKey);
   const nowMs = input.nowMs ?? Date.now();
+  const did = input.did ?? didFromPubkey(publicKey);
+  if (!did.startsWith(`${GROOVER_SUI_SCHEME}:`)) {
+    throw new Error('DID must be did:groover');
+  }
   const fields: Omit<SuiWalletBinding, 'signature'> = {
     scheme: GROOVER_SUI_SCHEME,
-    did: input.did ?? didFromPubkey(publicKey),
+    did,
     suiAddress,
     publicKey,
-    principalId: input.principalId,
     issuedAtMs: nowMs,
     notAfterMs: nowMs + (input.ttlMs ?? 86_400_000),
   };
@@ -100,10 +102,11 @@ export async function issueSuiBinding(input: IssueSuiBindingInput): Promise<SuiW
 
 export function verifySuiBinding(
   binding: SuiWalletBinding,
-  expected?: { principalId?: string; suiAddress?: string; nowMs?: number },
+  expected?: { suiAddress?: string; nowMs?: number },
 ): { ok: boolean; reasons: string[] } {
   const reasons: string[] = [];
   if (binding.scheme !== GROOVER_SUI_SCHEME) reasons.push('scheme must be did:groover');
+  if (!binding.did?.startsWith(`${GROOVER_SUI_SCHEME}:`)) reasons.push('DID must be did:groover');
   try {
     const derived = suiAddressFromEd25519PublicKey(binding.publicKey);
     if (derived !== binding.suiAddress) reasons.push('public key does not derive the bound Sui address');
@@ -112,9 +115,6 @@ export function verifySuiBinding(
     }
   } catch {
     reasons.push('invalid public key');
-  }
-  if (expected?.principalId && binding.principalId !== expected.principalId) {
-    reasons.push('binding principalId does not match');
   }
   const now = expected?.nowMs ?? Date.now();
   if (now < binding.issuedAtMs) reasons.push('wallet binding is not yet valid');
