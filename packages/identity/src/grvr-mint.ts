@@ -66,7 +66,8 @@ export function tokenIdFromMintReceipt(
     logs: receipt.logs,
     eventName: 'IdentityMinted',
   });
-  const tokenId = minted[0]?.args && 'tokenId' in minted[0].args ? minted[0].args.tokenId : undefined;
+  const first = minted[0] as { args?: { tokenId?: bigint | number | string } } | undefined;
+  const tokenId = first?.args?.tokenId;
   if (tokenId === undefined || tokenId === null) {
     throw new Error('GRVR mint produced no tokenId');
   }
