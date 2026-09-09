@@ -20,7 +20,9 @@ import {
   getRegistrationChallenge,
   issueRegisteredSuiBinding,
   getSuiBinding,
+  assertRegisteredDid,
 } from './index.js';
+import { mintGrvrIdentity } from '../../identity/src/index.js';
 import { listMcpServers } from '../../xray/src/index.js';
 import { getSession, submitTurn, ChallengeTrace } from './challenge.js';
 import { JsonRpcRequestSchema } from './mcp-schemas.js';
@@ -142,6 +144,27 @@ export const TOOL_DEFINITIONS = [
       required: ['did'],
     },
   },
+  {
+    name: 'mint_suit',
+    description:
+      'Mint a Groover Identity (GRVR) 1/1 on Base for a registered DID. pack selects a DNA adapter (builtin: groover-identity, 0xray-suit). New schemas are Groover PRs under packages/identity/src/packs/. Requires apiKey. dryRun skips chain if no minter key.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        did: { type: 'string' },
+        apiKey: { type: 'string' },
+        pack: { type: 'string', description: 'Registered pack adapter id' },
+        payload: { type: 'object', description: 'Adapter-specific fields for future packs' },
+        to: { type: 'string', description: 'Holder address (0x…)' },
+        inventory: { type: 'object', description: 'foundry-inventory.json for 0xray-suit' },
+        inspect: { type: 'object', description: '{ ok, dna } mill inspect report' },
+        dynamoCitation: { type: 'string' },
+        variant: { type: 'number' },
+        dryRun: { type: 'boolean' },
+      },
+      required: ['did', 'apiKey', 'pack', 'to'],
+    },
+  },
 ];
 
 // ── Tool handlers ──
@@ -244,6 +267,22 @@ export const TOOL_HANDLERS: Record<string, (args: Record<string, unknown>) => Pr
   get_sui_binding(args) {
     const binding = getSuiBinding(args.did as string);
     return { success: Boolean(binding), binding };
+  },
+
+  async mint_suit(args) {
+    assertRegisteredDid(args.did as string, args.apiKey as string);
+    const result = await mintGrvrIdentity({
+      did: args.did as string,
+      pack: args.pack as string,
+      to: args.to as string,
+      inventory: args.inventory as Record<string, unknown> | undefined,
+      inspect: args.inspect as { ok?: boolean; dna?: string | null } | undefined,
+      payload: args.payload as Record<string, unknown> | undefined,
+      dynamoCitation: args.dynamoCitation as string | undefined,
+      variant: typeof args.variant === 'number' ? args.variant : undefined,
+      dryRun: args.dryRun === true,
+    });
+    return { success: true, ...result };
   },
 };
 
@@ -444,6 +483,22 @@ const server = http.createServer(async (req, res) => {
       transport: 'streamable-http',
       tools: TOOL_DEFINITIONS.map((t) => t.name),
     }));
+    return;
+  }
+
+  if (req.method === 'GET' && req.url?.startsWith('/identity/token-image/')) {
+    const tokenId = req.url.split('/').pop() || '0';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<rect width="512" height="512" fill="#05070c"/>
+<text x="256" y="240" text-anchor="middle" fill="#3ec8f5" font-family="monospace" font-size="28">GRVR</text>
+<text x="256" y="290" text-anchor="middle" fill="#f4f7fb" font-family="monospace" font-size="18">#${tokenId.replace(/[^0-9]/g, '') || '0'}</text>
+</svg>`;
+    res.writeHead(200, {
+      'Content-Type': 'image/svg+xml',
+      'Cache-Control': 'public, max-age=60',
+      'Access-Control-Allow-Origin': '*',
+    });
+    res.end(svg);
     return;
   }
 

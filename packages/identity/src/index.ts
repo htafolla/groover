@@ -238,6 +238,27 @@ export function bindForRegistration(pubkeyHex: string, payload: string, metadata
 
 export { didFromEd25519PublicKey, ed25519PublicKeyToRawHex, GROOVER_DID_PREFIX } from './did.js';
 export {
+  GRVR_DEFAULT_CHAIN_ID,
+  GRVR_DEFAULT_CONTRACT,
+  GRVR_DEFAULT_RPC,
+  GRVR_MAX_VARIANT,
+  assertPack,
+  grooverIdentityDna,
+  identityKey,
+  inventoryDna,
+  isCanonicalGrooverDid,
+  listPackIds,
+  prepareMintInput,
+  variantFromKey,
+} from './suit-dna.js';
+export { mintGrvrIdentity, prepareGrvrMint } from './grvr-mint.js';
+export {
+  getPackAdapter,
+  listPackAdapters,
+  registerPackAdapter,
+} from './packs/index.js';
+export type { PackAdapter, PackResolveInput } from './packs/index.js';
+export {
   canonicalSuiBindMessage,
   GROOVER_SUI_SCHEME,
   issueSuiBinding,
