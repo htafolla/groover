@@ -20,6 +20,7 @@
 
 import { frameworkLogger } from '../../xray/src/index.js';
 import * as crypto from 'crypto';
+import { didFromEd25519PublicKey } from './did.js';
 
 export interface IdentityBinding {
   did: string;
@@ -54,8 +55,13 @@ export function generateDID(pubkey: string): string {
   if (!pubkey || typeof pubkey !== 'string') {
     throw new Error('pubkey required for DID generation');
   }
-  const hash = crypto.createHash('sha256').update(pubkey).digest('hex').slice(0, 16);
-  const did = `did:groover:${hash}`;
+  let did: string;
+  try {
+    did = didFromEd25519PublicKey(pubkey);
+  } catch {
+    const hash = crypto.createHash('sha256').update(pubkey).digest('hex').slice(0, 16);
+    did = `did:groover:${hash}`;
+  }
   frameworkLogger.log('identity', 'generate-did', 'success', { did, pubkeyLen: pubkey.length });
   return did;
 }
@@ -230,6 +236,7 @@ export function bindForRegistration(pubkeyHex: string, payload: string, metadata
   return identityEngine.bindForRegistration(pubkeyHex, payload, metadata);
 }
 
+export { didFromEd25519PublicKey, ed25519PublicKeyToRawHex, GROOVER_DID_PREFIX } from './did.js';
 export {
   canonicalSuiBindMessage,
   GROOVER_SUI_SCHEME,

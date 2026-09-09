@@ -8,11 +8,7 @@
  */
 import * as crypto from 'crypto';
 import { blake2b } from '@noble/hashes/blake2b';
-
-function didFromPubkey(publicKey: string): string {
-  const hash = crypto.createHash('sha256').update(publicKey).digest('hex').slice(0, 16);
-  return `did:groover:${hash}`;
-}
+import { didFromEd25519PublicKey } from './did.js';
 
 export const GROOVER_SUI_SCHEME = 'did:groover';
 export const SUI_BIND_VERSION = 'groover-sui-bind:v1';
@@ -82,9 +78,10 @@ export async function issueSuiBinding(input: IssueSuiBindingInput): Promise<SuiW
   const publicKey = normalizeHex(input.publicKeyHex);
   const suiAddress = suiAddressFromEd25519PublicKey(publicKey);
   const nowMs = input.nowMs ?? Date.now();
-  const did = input.did ?? didFromPubkey(publicKey);
-  if (!did.startsWith(`${GROOVER_SUI_SCHEME}:`)) {
-    throw new Error('DID must be did:groover');
+  const derivedDid = didFromEd25519PublicKey(publicKey);
+  const did = input.did ?? derivedDid;
+  if (did !== derivedDid) {
+    throw new Error('DID must be minted from this Ed25519 public key');
   }
   const fields: Omit<SuiWalletBinding, 'signature'> = {
     scheme: GROOVER_SUI_SCHEME,

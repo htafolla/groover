@@ -11,7 +11,15 @@
 import { frameworkLogger } from '../../xray/src/index.js';
 import { coreEngine, CorrelationResult } from '../../core/src/index.js';
 import { xrayBridge, listMcpServers } from '../../xray/src/index.js';
-import { generateDID, generateApiKey, verifyWithPublic } from '../../identity/src/index.js';
+import {
+  generateDID,
+  generateApiKey,
+  verifyWithPublic,
+  ed25519PublicKeyToRawHex,
+  suiAddressFromEd25519PublicKey,
+  verifySuiBinding,
+  type SuiWalletBinding,
+} from '../../identity/src/index.js';
 import {
   createChallengeSession, getSession, validateTrace,
   markSessionCompleted, markSessionFailed, resolveAuthoritativeTrace,
@@ -33,12 +41,15 @@ const TDF_FALLBACK_PLUGIN = 5781027941748;
 export interface PluginRecord {
   did: string;
   pubkey: string;
+  /** 32-byte Ed25519 hex when the registration key is extractable. */
+  ed25519PublicKeyHex?: string;
   signature: string;
   apiKey: string;
   metadata: Record<string, unknown>;
   registeredAt: string;
   reputation: number;
   uiManifest?: import('./agent-ui-manifest.js').AgentUiManifest;
+  suiBinding?: SuiWalletBinding;
 }
 
 function loadRegistry(): Map<string, PluginRecord> {
@@ -349,15 +360,24 @@ export async function registerPlugin(params: {
     }
   }
 
+  let ed25519PublicKeyHex: string | undefined;
+  try {
+    ed25519PublicKeyHex = ed25519PublicKeyToRawHex(params.pubkey);
+  } catch {
+    ed25519PublicKeyHex = undefined;
+  }
+
   const record: PluginRecord = {
     did,
     pubkey: params.pubkey,
+    ed25519PublicKeyHex,
     signature: params.signature,
     apiKey,
     metadata: params.metadata,
     registeredAt: new Date().toISOString(),
     reputation: 1.0,
     uiManifest: storedUiManifest,
+    suiBinding: undefined,
   };
   registry.set(did, record);
   saveRegistry();
@@ -372,6 +392,82 @@ export function getRegistrySnapshot(): PluginRecord[] {
 export function getPluginUiManifest(did: string): import('./agent-ui-manifest.js').AgentUiManifest | undefined {
   const record = registry.get(did);
   return record?.uiManifest;
+}
+
+function apiKeyMatches(stored: string, provided: string): boolean {
+  const a = Buffer.from(stored);
+  const b = Buffer.from(provided);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+export function getSuiBinding(did: string): SuiWalletBinding | null {
+  const record = registry.get(did);
+  return record?.suiBinding ?? null;
+}
+
+export function getPluginRecord(did: string): PluginRecord | undefined {
+  return registry.get(did);
+}
+
+/**
+ * Attach a Sui wallet bind to a registered DID.
+ * Same Ed25519 key as PoA. Caller proves possession with the registry API key
+ * and an Ed25519 signature over groover-sui-bind:v1|…
+ */
+export function issueRegisteredSuiBinding(params: {
+  did: string;
+  apiKey: string;
+  publicKeyHex: string;
+  signature: string;
+  issuedAtMs: number;
+  notAfterMs: number;
+}): SuiWalletBinding {
+  const record = registry.get(params.did);
+  if (!record) throw new Error('DID is not registered');
+  if (!apiKeyMatches(record.apiKey, params.apiKey)) throw new Error('API key does not match DID');
+
+  let registeredHex: string;
+  try {
+    registeredHex = record.ed25519PublicKeyHex ?? ed25519PublicKeyToRawHex(record.pubkey);
+  } catch {
+    throw new Error('registered key is not Ed25519');
+  }
+  const suiHex = ed25519PublicKeyToRawHex(params.publicKeyHex);
+  if (suiHex !== registeredHex) {
+    throw new Error('Sui key must be the registered Ed25519 key');
+  }
+  const expectedDid = generateDID(suiHex);
+  if (expectedDid !== params.did) {
+    throw new Error('DID does not match this Ed25519 key');
+  }
+
+  const nowMs = Date.now();
+  if (params.issuedAtMs > nowMs + 60_000) throw new Error('issuedAtMs is in the future');
+  if (params.issuedAtMs < nowMs - 5 * 60_000) throw new Error('issuedAtMs is too old');
+  if (params.notAfterMs <= nowMs) throw new Error('binding has already expired');
+  const lifetime = params.notAfterMs - params.issuedAtMs;
+  if (lifetime < 60_000) throw new Error('binding lifetime is too short');
+  if (lifetime > 366 * 86_400_000) throw new Error('binding lifetime exceeds 366 days');
+
+  const candidate: SuiWalletBinding = {
+    scheme: 'did:groover',
+    did: params.did,
+    suiAddress: suiAddressFromEd25519PublicKey(suiHex),
+    publicKey: suiHex,
+    issuedAtMs: params.issuedAtMs,
+    notAfterMs: params.notAfterMs,
+    signature: params.signature,
+  };
+  const verified = verifySuiBinding(candidate, { suiAddress: candidate.suiAddress, nowMs });
+  if (!verified.ok) {
+    throw new Error(verified.reasons[0] || 'sui binding is invalid');
+  }
+  record.suiBinding = candidate;
+  record.ed25519PublicKeyHex = suiHex;
+  saveRegistry();
+  frameworkLogger.log('marketplace', 'sui-bind-issued', 'success', { did: params.did });
+  return candidate;
 }
 
 async function runTinyCli() {
@@ -474,7 +570,15 @@ if (isInvokedAsMain) {
     (async () => {
       const mcps = listMcpServers();
       frameworkLogger.log('marketplace', 'mcp-server-tools', 'success', {
-        availableTools: ['register_plugin', 'search_plugins', 'get_plugin_ui_manifest', 'list_mcp_servers', 'get_registration_challenge'],
+        availableTools: [
+          'register_plugin',
+          'search_plugins',
+          'get_plugin_ui_manifest',
+          'list_mcp_servers',
+          'get_registration_challenge',
+          'issue_sui_binding',
+          'get_sui_binding',
+        ],
         mcpServersDiscovered: mcps.length
       });
     })();

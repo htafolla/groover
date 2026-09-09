@@ -69,7 +69,7 @@ const REGISTER_PLUGIN = { maxRequests: 5, windowMs: 3_600_000 };
 
 export function checkMcpToolRateLimit(toolName: string | undefined, clientKey: string): RateLimitResult {
   const key = clientKey || 'unknown';
-  if (toolName === 'register_plugin') {
+  if (toolName === 'register_plugin' || toolName === 'issue_sui_binding') {
     return rateLimit(`register:${key}`, REGISTER_PLUGIN);
   }
   if (toolName === 'get_registration_challenge') {

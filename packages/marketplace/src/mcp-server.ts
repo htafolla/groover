@@ -13,7 +13,14 @@ import * as http from 'http';
 import { EventEmitter } from 'events';
 import * as crypto from 'crypto';
 import { frameworkLogger } from '../../xray/src/index.js';
-import { registerPlugin, searchPlugins, getPluginUiManifest, getRegistrationChallenge } from './index.js';
+import {
+  registerPlugin,
+  searchPlugins,
+  getPluginUiManifest,
+  getRegistrationChallenge,
+  issueRegisteredSuiBinding,
+  getSuiBinding,
+} from './index.js';
 import { listMcpServers } from '../../xray/src/index.js';
 import { getSession, submitTurn, ChallengeTrace } from './challenge.js';
 import { JsonRpcRequestSchema } from './mcp-schemas.js';
@@ -109,6 +116,32 @@ export const TOOL_DEFINITIONS = [
     description: 'List available MCP servers for correlation',
     inputSchema: { type: 'object' },
   },
+  {
+    name: 'issue_sui_binding',
+    description:
+      'After Proof of Autonomy, bind this DID to a Sui address. Same Ed25519 key as registration. Signature over groover-sui-bind:v1|{did}|{suiAddress}|{issuedAtMs}|{notAfterMs}. Requires registry apiKey.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        did: { type: 'string' },
+        apiKey: { type: 'string' },
+        publicKeyHex: { type: 'string', description: '32-byte Ed25519 public key hex (same key as PoA)' },
+        signature: { type: 'string', description: 'Hex Ed25519 signature over the canonical bind message' },
+        issuedAtMs: { type: 'number' },
+        notAfterMs: { type: 'number' },
+      },
+      required: ['did', 'apiKey', 'publicKeyHex', 'signature', 'issuedAtMs', 'notAfterMs'],
+    },
+  },
+  {
+    name: 'get_sui_binding',
+    description: 'Fetch a registered DID’s Sui wallet bind. Public. For relying parties (e.g. Credible at mandate issue).',
+    inputSchema: {
+      type: 'object',
+      properties: { did: { type: 'string' } },
+      required: ['did'],
+    },
+  },
 ];
 
 // ── Tool handlers ──
@@ -194,6 +227,23 @@ export const TOOL_HANDLERS: Record<string, (args: Record<string, unknown>) => Pr
   list_mcp_servers() {
     const servers = listMcpServers();
     return { success: true, count: servers.length, servers };
+  },
+
+  issue_sui_binding(args) {
+    const binding = issueRegisteredSuiBinding({
+      did: args.did as string,
+      apiKey: args.apiKey as string,
+      publicKeyHex: args.publicKeyHex as string,
+      signature: args.signature as string,
+      issuedAtMs: args.issuedAtMs as number,
+      notAfterMs: args.notAfterMs as number,
+    });
+    return { success: true, binding };
+  },
+
+  get_sui_binding(args) {
+    const binding = getSuiBinding(args.did as string);
+    return { success: Boolean(binding), binding };
   },
 };
 
