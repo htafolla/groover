@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { resetRateLimitStore, rateLimit } from './mcp-rate-limit.js';
 import { validateToolArguments } from './mcp-schemas.js';
@@ -76,6 +77,12 @@ describe('MCP HTTP boundary (P0.9)', () => {
 
   it('lists mint_suit on GET /mcp tool names', () => {
     expect(TOOL_DEFINITIONS.map((t) => t.name)).toContain('mint_suit');
+  });
+
+  it('token-image route uses the compositor renderer, not the GRVR stub', () => {
+    const src = readFileSync(new URL('./mcp-server.ts', import.meta.url), 'utf8');
+    expect(src).toContain('renderIdentityTokenImage');
+    expect(src).not.toContain('font-size="28">GRVR');
   });
 
   it('rejects register_plugin with invalid args via tools/call', async () => {

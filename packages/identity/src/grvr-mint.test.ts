@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { mintGrvrIdentity, minterKey, tokenIdFromMintReceipt } from './grvr-mint.js';
+import { mintGrvrIdentity, minterKey, parseTokenIdParam, tokenIdFromMintReceipt } from './grvr-mint.js';
 
 const DID = 'did:groover:aaaaaaaaaaaaaaaa';
 const TO = '0x0000000000000000000000000000000000000001';
@@ -66,5 +66,12 @@ describe('GRVR mint key + receipt', () => {
     expect(() =>
       tokenIdFromMintReceipt({ status: 'success', logs: [] }, []),
     ).toThrow(/no tokenId/);
+  });
+
+  it('parseTokenIdParam requires a positive integer', () => {
+    expect(parseTokenIdParam('2')).toBe(2n);
+    expect(parseTokenIdParam('2?x=1')).toBe(2n);
+    expect(parseTokenIdParam('0')).toBeNull();
+    expect(parseTokenIdParam('nope')).toBeNull();
   });
 });
