@@ -410,6 +410,13 @@ export function getPluginRecord(did: string): PluginRecord | undefined {
   return registry.get(did);
 }
 
+export function assertRegisteredDid(did: string, apiKey: string): PluginRecord {
+  const record = registry.get(did);
+  if (!record) throw new Error('DID is not registered');
+  if (!apiKeyMatches(record.apiKey, apiKey)) throw new Error('API key does not match DID');
+  return record;
+}
+
 /**
  * Attach a Sui wallet bind to a registered DID.
  * Same Ed25519 key as PoA. Caller proves possession with the registry API key

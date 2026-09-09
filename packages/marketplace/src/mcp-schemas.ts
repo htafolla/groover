@@ -77,6 +77,25 @@ export const GetSuiBindingArgsSchema = z.object({
   did: z.string().min(1),
 });
 
+export const MintSuitArgsSchema = z.object({
+  did: z.string().min(1),
+  apiKey: z.string().min(1),
+  pack: z.string().min(1),
+  to: z.string().min(1),
+  inventory: z.record(z.unknown()).optional(),
+  payload: z.record(z.unknown()).optional(),
+  inspect: z
+    .object({
+      ok: z.boolean().optional(),
+      dna: z.string().nullable().optional(),
+    })
+    .passthrough()
+    .optional(),
+  dynamoCitation: z.string().optional(),
+  variant: z.number().optional(),
+  dryRun: z.boolean().optional(),
+});
+
 const TOOL_ARG_SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
   register_plugin: RegisterPluginArgsSchema,
   get_registration_challenge: GetRegistrationChallengeArgsSchema,
@@ -86,6 +105,7 @@ const TOOL_ARG_SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
   list_mcp_servers: ListMcpServersArgsSchema,
   issue_sui_binding: IssueSuiBindingArgsSchema,
   get_sui_binding: GetSuiBindingArgsSchema,
+  mint_suit: MintSuitArgsSchema,
 };
 
 export function validateToolArguments(

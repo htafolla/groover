@@ -61,6 +61,23 @@ describe('MCP HTTP boundary (P0.9)', () => {
     expect(ok.success).toBe(true);
   });
 
+  it('validates mint_suit args at boundary', () => {
+    const bad = validateToolArguments('mint_suit', { did: 'did:groover:aaaaaaaaaaaaaaaa' });
+    expect(bad.success).toBe(false);
+    const ok = validateToolArguments('mint_suit', {
+      did: 'did:groover:aaaaaaaaaaaaaaaa',
+      apiKey: 'groover_test',
+      pack: 'groover-identity',
+      to: '0x0000000000000000000000000000000000000001',
+      dryRun: true,
+    });
+    expect(ok.success).toBe(true);
+  });
+
+  it('lists mint_suit on GET /mcp tool names', () => {
+    expect(TOOL_DEFINITIONS.map((t) => t.name)).toContain('mint_suit');
+  });
+
   it('rejects register_plugin with invalid args via tools/call', async () => {
     const outcome = await processStreamableMcpRequest(
       {
