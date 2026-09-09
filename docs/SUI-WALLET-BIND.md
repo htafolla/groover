@@ -16,8 +16,12 @@ groover-sui-bind:v1|{did}|{suiAddress}|{issuedAtMs}|{notAfterMs}
 
 The signed payload does **not** include a principal, audience, or app role. `scheme` and `publicKey` travel with the proof so verifiers can derive the address; they are not in the message.
 
-Issue: `issueSuiBinding` in `@groover/identity`.
+Issue locally: `issueSuiBinding` in `@groover/identity`.
+
+Issue on the registry (after Proof of Autonomy): MCP `issue_sui_binding` with the DID’s API key. The Sui key **must be the same Ed25519 key** used to register. DID is `sha256(32-byte-hex-pubkey).slice(0,16)` — PEM and hex of that key mint the same DID.
+
+Lookup (public): MCP `get_sui_binding({ did })`. Relying parties may call this at **mandate issue** time. Do not call Groover at raise execute time.
 
 ## Relying party
 
-Authorization is out of band. Example: Credible attaches a principal via a principal-signed mandate (`credible-delegation:v1|…`), then verifies this bind for DID ↔ signer. Credible does not call Groover at execute time.
+Authorization is out of band. Example: Credible attaches a principal via a principal-signed mandate (`credible-delegation:v1|…`), then verifies this bind for DID ↔ signer. Optional: confirm the DID has a registry bind via `get_sui_binding`.

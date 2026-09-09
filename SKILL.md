@@ -25,6 +25,8 @@ All calls use JSON-RPC 2.0:
 | `search_plugins` | `query?: string` | `results[]` |
 | `list_mcp_servers` | (none) | `servers[]` |
 | `get_plugin_ui_manifest` | `did: string` | `manifest` |
+| `issue_sui_binding` | `did, apiKey, publicKeyHex, signature, issuedAtMs, notAfterMs` | `binding` |
+| `get_sui_binding` | `did: string` | `binding` |
 
 ## Registration Flow (7 Steps)
 
@@ -56,6 +58,10 @@ Sign `nonce + "|" + payload` with your private key.
 
 ### 7. Register
 `tools/call` → `register_plugin(pubkey, payload, signature, challengeNonce, challengeTrace)` → `did`, `apiKey`
+
+### 8. Sui bind (optional)
+
+Same Ed25519 key. Sign `groover-sui-bind:v1|{did}|{suiAddress}|{issuedAtMs}|{notAfterMs}`. Then `issue_sui_binding`. Relying parties look up with `get_sui_binding`.
 
 ## Reference
 

@@ -64,6 +64,19 @@ export const GetPluginUiManifestArgsSchema = z.object({
 
 export const ListMcpServersArgsSchema = z.object({}).passthrough();
 
+export const IssueSuiBindingArgsSchema = z.object({
+  did: z.string().min(1),
+  apiKey: z.string().min(1),
+  publicKeyHex: z.string().min(1),
+  signature: z.string().min(1),
+  issuedAtMs: z.number(),
+  notAfterMs: z.number(),
+});
+
+export const GetSuiBindingArgsSchema = z.object({
+  did: z.string().min(1),
+});
+
 const TOOL_ARG_SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
   register_plugin: RegisterPluginArgsSchema,
   get_registration_challenge: GetRegistrationChallengeArgsSchema,
@@ -71,6 +84,8 @@ const TOOL_ARG_SCHEMAS: Record<string, z.ZodType<Record<string, unknown>>> = {
   search_plugins: SearchPluginsArgsSchema,
   get_plugin_ui_manifest: GetPluginUiManifestArgsSchema,
   list_mcp_servers: ListMcpServersArgsSchema,
+  issue_sui_binding: IssueSuiBindingArgsSchema,
+  get_sui_binding: GetSuiBindingArgsSchema,
 };
 
 export function validateToolArguments(

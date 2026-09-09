@@ -13,11 +13,25 @@ vi.mock('../../xray/src/index.js', async (importOriginal) => {
   };
 });
 
-import { registerPlugin, searchPlugins, getRegistrySnapshot, getPluginUiManifest, getRegistrationChallenge } from './index.js';
+import {
+  registerPlugin,
+  searchPlugins,
+  getRegistrySnapshot,
+  getPluginUiManifest,
+  getRegistrationChallenge,
+  issueRegisteredSuiBinding,
+  getSuiBinding,
+} from './index.js';
 import { buildTurn, buildTraceFromTurns, validateTrace, computeTurnHash, PREV_HASH_SEED, createChallengeSession, getSession, submitTurn } from './challenge.js';
 import { listMcpServers, frameworkLogger } from '../../xray/src/index.js';
 import { handleMcpToolCall, handleMCPMessage, mcpResult, mcpError } from './mcp-server.js';
-import { generateKeyPair, signPayload } from '../../identity/src/index.js';
+import {
+  generateKeyPair,
+  signPayload,
+  canonicalSuiBindMessage,
+  ed25519PublicKeyToRawHex,
+  suiAddressFromEd25519PublicKey,
+} from '../../identity/src/index.js';
 
 function buildValidTrace(sessionId: string) {
   const baseTime = Date.now() - 6000;
@@ -83,6 +97,39 @@ describe('@groover/marketplace', () => {
 
     const stored = getPluginUiManifest(did as string);
     expect(stored).toEqual(uiManifest);
+
+    const publicKeyHex = ed25519PublicKeyToRawHex(keys.publicKey);
+    const issuedAtMs = Date.now();
+    const notAfterMs = issuedAtMs + 86_400_000;
+    const unsigned = {
+      scheme: 'did:groover',
+      did,
+      suiAddress: suiAddressFromEd25519PublicKey(publicKeyHex),
+      publicKey: publicKeyHex,
+      issuedAtMs,
+      notAfterMs,
+    };
+    const signature = crypto.sign(null, Buffer.from(canonicalSuiBindMessage(unsigned)), keys.privateKey).toString('hex');
+    const binding = issueRegisteredSuiBinding({
+      did,
+      apiKey: (result as { apiKey: string }).apiKey,
+      publicKeyHex,
+      signature,
+      issuedAtMs,
+      notAfterMs,
+    });
+    expect(binding.did).toBe(did);
+    expect(getSuiBinding(did)).toEqual(binding);
+    expect(() =>
+      issueRegisteredSuiBinding({
+        did,
+        apiKey: 'wrong',
+        publicKeyHex,
+        signature,
+        issuedAtMs,
+        notAfterMs,
+      }),
+    ).toThrow(/API key/);
   });
 
   it('registerPlugin with valid PoP + valid challenge trace succeeds', async () => {
@@ -454,6 +501,8 @@ describe('Session-based MCP message handler', () => {
     expect(names).toContain('get_registration_challenge');
     expect(names).toContain('search_plugins');
     expect(names).toContain('list_mcp_servers');
+    expect(names).toContain('issue_sui_binding');
+    expect(names).toContain('get_sui_binding');
   });
 
   it('tools/call with valid tool returns result', async () => {

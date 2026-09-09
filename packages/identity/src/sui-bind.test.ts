@@ -63,6 +63,6 @@ describe('sui wallet bind', () => {
         did: 'did:example:x',
         sign: (message) => crypto.sign(null, Buffer.from(message), keys.privateKey),
       }),
-    ).rejects.toThrow(/did:groover/);
+    ).rejects.toThrow(/minted from this Ed25519 public key/);
   });
 });
