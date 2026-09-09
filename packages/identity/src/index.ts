@@ -251,7 +251,7 @@ export {
   prepareMintInput,
   variantFromKey,
 } from './suit-dna.js';
-export { mintGrvrIdentity, prepareGrvrMint } from './grvr-mint.js';
+export { mintGrvrIdentity, minterKey, prepareGrvrMint, tokenIdFromMintReceipt } from './grvr-mint.js';
 export {
   getPackAdapter,
   listPackAdapters,

@@ -9,7 +9,9 @@ import {
   createWalletClient,
   defineChain,
   http,
+  parseEventLogs,
   type Hex,
+  type TransactionReceipt,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { frameworkLogger } from '../../xray/src/index.js';
@@ -43,12 +45,32 @@ export function grvrContract(): `0x${string}` {
   return addr;
 }
 
-function minterKey(): Hex | null {
-  const raw = process.env.GRVR_PRIVATE_KEY || process.env.GROOVER_MINTER_KEY || process.env.DEPLOYER_PRIVATE_KEY;
-  if (!raw) return null;
+/** Only GRVR_PRIVATE_KEY. Leftover DEPLOYER_PRIVATE_KEY must not broadcast. */
+export function minterKey(): Hex | null {
+  const raw = process.env.GRVR_PRIVATE_KEY;
+  if (!raw || !raw.trim()) return null;
   const hex = (raw.startsWith('0x') ? raw : `0x${raw}`) as Hex;
   if (!/^0x[0-9a-fA-F]{64}$/.test(hex)) throw new Error('GRVR minter key must be 32-byte hex');
   return hex;
+}
+
+export function tokenIdFromMintReceipt(
+  receipt: Pick<TransactionReceipt, 'status' | 'logs'>,
+  abi: readonly unknown[],
+): string {
+  if (receipt.status !== 'success') {
+    throw new Error('GRVR mint reverted');
+  }
+  const minted = parseEventLogs({
+    abi: abi as never,
+    logs: receipt.logs,
+    eventName: 'IdentityMinted',
+  });
+  const tokenId = minted[0]?.args && 'tokenId' in minted[0].args ? minted[0].args.tokenId : undefined;
+  if (tokenId === undefined || tokenId === null) {
+    throw new Error('GRVR mint produced no tokenId');
+  }
+  return tokenId.toString();
 }
 
 export function prepareGrvrMint(params: {
@@ -133,10 +155,12 @@ export async function mintGrvrIdentity(params: {
     account,
   });
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  const tokenId = tokenIdFromMintReceipt(receipt, abi);
   frameworkLogger.log('identity', 'grvr-minted', 'success', {
     txHash: hash,
     status: receipt.status,
+    tokenId,
     did: prepared.did,
   });
-  return { ...payload, dryRun: false, txHash: hash };
+  return { ...payload, dryRun: false, txHash: hash, tokenId };
 }

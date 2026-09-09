@@ -33,4 +33,8 @@ GRVR_RPC_URL=https://sepolia.base.org
 GRVR_PRIVATE_KEY=
 ```
 
-Minter key is not in git. `dryRun: true` or missing key returns the payload without a tx.
+Live mint reads **only** `GRVR_PRIVATE_KEY`. `DEPLOYER_PRIVATE_KEY` / `GROOVER_MINTER_KEY` are ignored. Missing or empty `GRVR_PRIVATE_KEY` dry-runs (no tx). `dryRun: true` also dry-runs.
+
+Reverted chain mints (`AlreadyMinted`, wrong minter) throw; MCP does not return `success: true`.
+
+New schemas: add `packages/identity/src/packs/<id>.ts` implementing `PackAdapter`, then `registerPackAdapter` in `packs/index.ts`.

@@ -1,9 +1,4 @@
-/**
- * Builtin GRVR pack adapters. A new schema is a Groover PR:
- *   1. packages/identity/src/packs/<id>.ts implementing PackAdapter
- *   2. registerPackAdapter(...) in this file
- * MCP mint_suit then accepts that pack id. No contract change.
- */
+/** Builtin pack adapters. Register additional packs here. */
 import { grooverIdentityPack } from './groover-identity.js';
 import { registerPackAdapter } from './registry.js';
 import { xraySuitPack } from './xray-suit.js';

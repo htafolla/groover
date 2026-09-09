@@ -22,19 +22,11 @@ describe('GRVR suit DNA', () => {
   });
 
   it('hashes inventory without mintedAt or dna', () => {
-    const a = inventoryDna({
-      consumer: { name: 'acme', version: '1.0.0' },
-      suit: 'overlay',
-      mintedAt: '2026-01-01T00:00:00.000Z',
-    });
-    const b = inventoryDna({
-      mintedAt: '2099-01-01T00:00:00.000Z',
-      dna: '0xdead',
-      suit: 'overlay',
-      consumer: { name: 'acme', version: '1.0.0' },
-    });
+    const fixture = { consumer: { name: 'acme', version: '1.0.0' }, suit: 'overlay' };
+    const a = inventoryDna({ ...fixture, mintedAt: '2026-01-01T00:00:00.000Z' });
+    const b = inventoryDna({ ...fixture, mintedAt: '2099-01-01T00:00:00.000Z', dna: '0xdead' });
     expect(a).toBe(b);
-    expect(a).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(a).toBe('0x8e4801128164478c23726a44b13e6b5bebb9187050ad484495a0ea4718b44424');
   });
 
   it('identityKey is keccak256(abi.encode(did, dna)) via viem', () => {

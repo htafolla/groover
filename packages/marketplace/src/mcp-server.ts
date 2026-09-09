@@ -147,7 +147,7 @@ export const TOOL_DEFINITIONS = [
   {
     name: 'mint_suit',
     description:
-      'Mint a Groover Identity (GRVR) 1/1 on Base for a registered DID. pack selects a DNA adapter (builtin: groover-identity, 0xray-suit). New schemas are Groover PRs under packages/identity/src/packs/. Requires apiKey. dryRun skips chain if no minter key.',
+      'Mint a Groover Identity (GRVR) 1/1 on Base for a registered DID. pack selects a DNA adapter (builtin: groover-identity, 0xray-suit). New schemas are Groover PRs under packages/identity/src/packs/. Requires apiKey. Live mint only with GRVR_PRIVATE_KEY; otherwise dry-run.',
     inputSchema: {
       type: 'object',
       properties: {

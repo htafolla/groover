@@ -51,7 +51,7 @@ Leave those running.
 ## 3. Product rules (locked)
 
 1. **Organ:** Groover identity mint. Any agent with a Groover DID may receive a token. 0xray is impl #1 (`pack`).
-2. **Uniqueness (on-chain, always):** one token per `(did, dna)`. `bytes32 id = keccak256(abi.encodePacked(did, dna))`. Second mint of the same pair **reverts**.
+2. **Uniqueness (on-chain, always):** one token per `(did, dna)`. `bytes32 id = keccak256(abi.encode(did, dna))`. Second mint of the same pair **reverts**.
 3. **Not** one token per mill recipe. Two agents fastening the same overlay each get a token. Same DID + same DNA cannot.
 4. **Variant:** `uint8 variant` with `variant < MAX_VARIANT`. `MAX_VARIANT = 16`. Class look comes from DNA/pack off-chain; variant is the wearer slot `0..15`.
 5. **Images:** contract stores `tokenURI` image URL pointing at **Groover Railway**, not Dynamo:
@@ -128,7 +128,7 @@ contract GrooverIdentityToken is ERC721Enumerable, AccessControl {
     }
 
     function identityKey(string calldata did, bytes32 dna) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(did, dna));
+        return keccak256(abi.encode(did, dna));
     }
 
     function mint(
@@ -308,7 +308,7 @@ address:          0x…
 admin:            0x…
 minter:           0x…          # GROOVER_MINTER
 MAX_VARIANT:      16
-identityKey:      keccak256(abi.encodePacked(did, dna))
+identityKey:      keccak256(abi.encode(did, dna))
 imageBase:        https://registry-production-e2c4.up.railway.app/identity/token-image/
 explorer:         https://sepolia.basescan.org/address/0x…  (or basescan.org)
 abi:              contracts/out/GrooverIdentityToken.sol/GrooverIdentityToken.json
