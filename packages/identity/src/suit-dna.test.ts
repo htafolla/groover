@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { keccak_256 } from '@noble/hashes/sha3';
 import { bytesToHex } from '@noble/hashes/utils';
 import {
+  GRVR_DEFAULT_CHAIN_ID,
+  GRVR_DEFAULT_CONTRACT,
   grooverIdentityDna,
   identityKey,
   inventoryDna,
@@ -14,6 +16,13 @@ import { registerPackAdapter } from './packs/index.js';
 
 describe('GRVR suit DNA', () => {
   const did = 'did:groover:aaaaaaaaaaaaaaaa';
+
+  it('defaults to Base mainnet GRVR', () => {
+    expect(GRVR_DEFAULT_CHAIN_ID).toBe(8453);
+    expect(GRVR_DEFAULT_CONTRACT.toLowerCase()).toBe(
+      '0x0abcd80c929ff2f6c308958b112b7925801750d7',
+    );
+  });
 
   it('accepts canonical 28-byte DIDs only', () => {
     expect(isCanonicalGrooverDid(did)).toBe(true);

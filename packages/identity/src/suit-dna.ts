@@ -7,9 +7,11 @@ import { getPackAdapter, listPackIds } from './packs/index.js';
 import { millInventoryDna } from './packs/xray-suit.js';
 
 export const GRVR_MAX_VARIANT = 16;
-export const GRVR_DEFAULT_CONTRACT = '0xFc644D08cd98f11BB952a4E9b04f5Ad0b312D683';
-export const GRVR_DEFAULT_CHAIN_ID = 84532;
-export const GRVR_DEFAULT_RPC = 'https://sepolia.base.org';
+export const GRVR_DEFAULT_CONTRACT = '0x0abcd80C929Ff2f6c308958B112b7925801750D7';
+export const GRVR_DEFAULT_CHAIN_ID = 8453;
+export const GRVR_DEFAULT_RPC = 'https://mainnet.base.org';
+/** Sepolia collection. Env GRVR_* overrides if still pointed here. */
+export const GRVR_SEPOLIA_CONTRACT = '0xFc644D08cd98f11BB952a4E9b04f5Ad0b312D683';
 
 const DID_RE = /^did:groover:[0-9a-fA-F]{16}$/;
 

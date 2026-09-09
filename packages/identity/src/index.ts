@@ -242,6 +242,7 @@ export {
   GRVR_DEFAULT_CONTRACT,
   GRVR_DEFAULT_RPC,
   GRVR_MAX_VARIANT,
+  GRVR_SEPOLIA_CONTRACT,
   assertPack,
   grooverIdentityDna,
   identityKey,
