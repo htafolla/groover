@@ -22,7 +22,7 @@ Builtin:
 
 - `0xFc644D08cd98f11BB952a4E9b04f5Ad0b312D683`
 - ABI: `packages/identity/abi/GrooverIdentityToken.json`
-- Image stub: `GET /identity/token-image/{tokenId}`
+- Image compositor: `GET /identity/token-image/{tokenId}` — pack class + variant `0..15` (4 hats × 4 colorways). Reads on-chain `getTokenData`. Not Imagine.
 
 ## Railway env
 

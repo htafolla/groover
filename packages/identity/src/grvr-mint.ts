@@ -15,6 +15,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { frameworkLogger } from '../../xray/src/index.js';
+import { composeIdentitySvg, type TokenView } from './compositor.js';
 import {
   GRVR_DEFAULT_CHAIN_ID,
   GRVR_DEFAULT_CONTRACT,
@@ -164,4 +165,66 @@ export async function mintGrvrIdentity(params: {
     did: prepared.did,
   });
   return { ...payload, dryRun: false, txHash: hash, tokenId };
+}
+
+export function parseTokenIdParam(raw: string): bigint | null {
+  const id = (raw || '').split('?')[0].replace(/[^0-9]/g, '');
+  if (!id || id === '0') return null;
+  try {
+    return BigInt(id);
+  } catch {
+    return null;
+  }
+}
+
+export async function loadGrvrTokenView(tokenId: bigint): Promise<TokenView | null> {
+  const chain = grvrChain();
+  const publicClient = createPublicClient({
+    chain,
+    transport: http(process.env.GRVR_RPC_URL || GRVR_DEFAULT_RPC),
+  });
+  const abi = loadAbi();
+  try {
+    const data = (await publicClient.readContract({
+      address: grvrContract(),
+      abi: abi as never,
+      functionName: 'getTokenData',
+      args: [tokenId],
+    })) as {
+      did: string;
+      dna: `0x${string}`;
+      pack: string;
+      variant: number;
+    };
+    if (!data?.did || !data?.pack) return null;
+    return {
+      tokenId: tokenId.toString(),
+      did: data.did,
+      pack: data.pack,
+      variant: Number(data.variant),
+      dna: data.dna,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function renderIdentityTokenImage(raw: string): Promise<{
+  status: number;
+  body: string;
+  contentType: string;
+}> {
+  const tokenId = parseTokenIdParam(raw);
+  if (tokenId === null) {
+    return { status: 400, body: 'invalid tokenId', contentType: 'text/plain' };
+  }
+  const view = await loadGrvrTokenView(tokenId);
+  if (!view) {
+    return { status: 404, body: 'token not minted', contentType: 'text/plain' };
+  }
+  return {
+    status: 200,
+    body: composeIdentitySvg(view),
+    contentType: 'image/svg+xml',
+  };
 }
