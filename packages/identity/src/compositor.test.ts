@@ -69,27 +69,28 @@ describe('GRVR compositor', () => {
 
     expect(mill).toContain('data-hat="mill-cap"');
     expect(mill).toContain('data-mesh="hud-plate"');
-    expect(mill).toContain('M120 44H392L404 168H108Z');
-    expect(mill).toContain('M140 92H372L360 148H152Z');
+    expect(mill).toContain('data-cavity="1"');
+    expect(mill).toContain('M108 40H404L416 164H96Z');
+    expect(mill).toContain('M140 88H372L360 144H152Z');
     expect(mill).not.toContain('data-mesh="brim-cap"');
     expect(mill).not.toContain('M124 184H388L372 208H140Z');
     expect(mill).toContain('id="collar"');
 
     expect(constitution).toContain('data-hat="constitution-visor"');
     expect(constitution).toContain('data-mesh="chevron"');
-    expect(constitution).toContain('M256 32L376 92L360 176H152L136 92Z');
-    expect(constitution).toContain('M256 32L308 88L256 104L204 88Z');
+    expect(constitution).toContain('M256 28L384 88L368 168H144L128 88Z');
+    expect(constitution).toContain('M256 28L312 84L256 100L200 84Z');
 
     expect(job).toContain('data-hat="job-helm"');
     expect(job).toContain('data-mesh="dome"');
-    expect(job).toContain('M112 168L132 64Q256 24 380 64L400 168Z');
-    expect(job).toContain('M148 88Q256 52 364 88L364 144Q256 172 148 144Z');
+    expect(job).toContain('M104 168L124 52Q256 12 388 52L408 168Z');
+    expect(job).toContain('M148 84Q256 48 364 84L364 136Q256 164 148 136Z');
 
     expect(inspect).toContain('data-hat="inspect-visor"');
     expect(inspect).toContain('data-mesh="twin-slits"');
-    expect(inspect).toContain('M128 48H384L400 168H112Z');
-    expect(inspect).toContain('M188 72H228V148H188Z');
-    expect(inspect).toContain('M284 72H324V148H284Z');
+    expect(inspect).toContain('M116 44H396L412 164H100Z');
+    expect(inspect).toContain('M176 76H224V144H176Z');
+    expect(inspect).toContain('M288 76H336V144H288Z');
 
     const visors = [mill, constitution, job, inspect].map((svg) => {
       const block = svg.match(/<g id="hat"[\s\S]*?<\/g>/)?.[0] ?? '';
@@ -111,10 +112,12 @@ describe('GRVR compositor', () => {
     const identity = composeIdentitySvg({ ...base, pack: 'groover-identity', variant: 0 });
     expect(suit).toContain('id="mill-inspect-cores"');
     expect(suit).toContain('data-armor="ribbed"');
-    expect(suit).toContain('y="308" width="144" height="16"');
+    expect(suit).toContain('y="308" width="144" height="14"');
+    expect(suit).toContain('M64 244L128 220L160 236V328L80 352Z');
     expect(identity).not.toContain('id="mill-inspect-cores"');
     expect(identity).toContain('data-armor="hex-gem"');
-    expect(identity).toContain('M256 272L322 310L294 368L218 368L190 310Z');
+    expect(identity).toContain('M60 248L132 216L164 236V332L76 356Z');
+    expect(identity).toContain('M256 308L318 348L292 400L220 400L194 348Z');
     expect(identity).not.toContain('data-armor="ribbed"');
   });
 
@@ -137,10 +140,10 @@ describe('GRVR compositor', () => {
     for (let v = 0; v < 4; v += 1) {
       const svg = composeIdentitySvg({ ...base, pack: 'groover-identity', variant: v });
       const plate = svg.match(
-        /M120 44H392L404 168H108Z" fill="(#[0-9a-fA-F]{6})"/,
+        /M108 40H404L416 164H96Z" fill="(#[0-9a-fA-F]{6})"/,
       );
       const glass = svg.match(
-        /M140 92H372L360 148H152Z" fill="(#[0-9a-fA-F]{6})"/,
+        /M140 88H372L360 144H152Z" fill="(#[0-9a-fA-F]{6})"/,
       );
       const bay = svg.match(/id="bay"[^>]*>\s*<rect width="512" height="512" fill="(#[0-9a-fA-F]{6})"/);
       expect(plate?.[1]).toBeDefined();
@@ -184,8 +187,8 @@ describe('GRVR compositor', () => {
     for (let v = 0; v < 4; v += 1) {
       const svg = composeIdentitySvg({ ...base, pack: 'groover-identity', variant: v });
       const bay = svg.match(/id="bay"[^>]*>.*?width="512" height="512" fill="(#[0-9a-fA-F]{6})"/)?.[1];
-      const plate = svg.match(/data-armor="hex-gem"[\s\S]*?L256 240L364 256[\s\S]*?fill="(#[0-9a-fA-F]{6})"/)?.[1]
-        ?? svg.match(/L256 240L364 256L380 324L256 396L132 324Z" fill="(#[0-9a-fA-F]{6})"/)?.[1];
+      const plate = svg.match(/data-armor="hex-gem"[\s\S]*?M160 248H352L376 316[\s\S]*?fill="(#[0-9a-fA-F]{6})"/)?.[1]
+        ?? svg.match(/M160 248H352L376 316L340 404H172L136 316Z" fill="(#[0-9a-fA-F]{6})"/)?.[1];
       expect(bay).toMatch(/^#/);
       expect(plate).toMatch(/^#/);
       expect(plate).not.toBe(bay);
