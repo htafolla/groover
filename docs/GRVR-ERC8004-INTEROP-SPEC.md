@@ -246,9 +246,11 @@ boot with backoff (in-process state dies with Railway deploys, which already dro
 registered DIDs — a memory-only queue would silently drop mints). Caller contract,
 exact: the MCP call blocks to completion or error — there is no `queued: true`
 return and no polling. The journal is a write-ahead log (intent appended before any
-chain write) so a crash mid-flight resumes on boot; callers simply retry, and chain
-idempotency (`AlreadyMinted` on duplicate mint + `tokenURI` existence checks before
-mirror retry) makes retries safe against doubles. Sepolia proving may exercise the
+chain write) so a crash mid-flight resumes on boot; callers simply retry, and the
+retry path first reads the step-6 index (or chain `minted`/`tokenByIdentity`) and
+returns the existing token as success — a retry of an already-minted pair never
+surfaces `AlreadyMinted` as a tool failure (live `mint_suit` throws MCP 500 on it
+today). Doubles stay impossible and the caller still gets an id. Sepolia proving may exercise the
 degraded path explicitly and label it as such in the file (`"degraded": true`,
 never on mainnet).
 
