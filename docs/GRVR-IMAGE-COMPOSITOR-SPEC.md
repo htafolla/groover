@@ -8,7 +8,7 @@ and tests. No Solidity. No mint-flow change. No Imagine.
 
 | Layer | What it holds |
 |---|---|
-| Chain (`GrooverIdentityToken`) | Tiny on-chain `tokenURI` JSON + `image` URL. Recipe: `did`, `pack`, `variant`, `dna`, `dynamoCitation` (`TokenData` also has `mintedAt`). |
+| Chain (`GrooverIdentityToken`) | Tiny on-chain `tokenURI` JSON + `image` URL. Recipe: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level` (`TokenData` also has `mintedAt`). Level is OpenSea `Level` (not visor). |
 | `IMAGE_BASE` | `https://registry-production-e2c4.up.railway.app/identity/token-image/` (constant on the frozen contract). |
 | Railway | `GET /identity/token-image/{tokenId}` → `getTokenData` → `composeIdentitySvg`. Deterministic SVG. |
 

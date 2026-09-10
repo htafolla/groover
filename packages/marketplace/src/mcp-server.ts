@@ -160,6 +160,8 @@ export const TOOL_DEFINITIONS = [
         inspect: { type: 'object', description: '{ ok, dna } mill inspect report' },
         dynamoCitation: { type: 'string' },
         variant: { type: 'number' },
+        level: { type: 'number', description: '0 Dissonant, 1 Unstable, 2 Resonant, 3 Celestial' },
+        fullBox7D: { type: 'number', description: 'Dynamo 7D composite; sets Level if level omitted' },
         dryRun: { type: 'boolean' },
       },
       required: ['did', 'apiKey', 'pack', 'to'],
@@ -280,6 +282,8 @@ export const TOOL_HANDLERS: Record<string, (args: Record<string, unknown>) => Pr
       payload: args.payload as Record<string, unknown> | undefined,
       dynamoCitation: args.dynamoCitation as string | undefined,
       variant: typeof args.variant === 'number' ? args.variant : undefined,
+      level: typeof args.level === 'number' ? args.level : undefined,
+      fullBox7D: typeof args.fullBox7D === 'number' ? args.fullBox7D : undefined,
       dryRun: args.dryRun === true,
     });
     return { success: true, ...result };

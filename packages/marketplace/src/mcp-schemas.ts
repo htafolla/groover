@@ -93,6 +93,8 @@ export const MintSuitArgsSchema = z.object({
     .optional(),
   dynamoCitation: z.string().optional(),
   variant: z.number().optional(),
+  level: z.number().int().min(0).max(3).optional(),
+  fullBox7D: z.number().optional(),
   dryRun: z.boolean().optional(),
 });
 

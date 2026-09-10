@@ -84,6 +84,8 @@ export function prepareGrvrMint(params: {
   payload?: Record<string, unknown>;
   dynamoCitation?: string;
   variant?: number;
+  level?: number;
+  fullBox7D?: number;
 }) {
   const prepared = prepareMintInput(params);
   const to = params.to;
@@ -100,6 +102,8 @@ export async function mintGrvrIdentity(params: {
   payload?: Record<string, unknown>;
   dynamoCitation?: string;
   variant?: number;
+  level?: number;
+  fullBox7D?: number;
   dryRun?: boolean;
 }): Promise<{
   dryRun: boolean;
@@ -110,6 +114,7 @@ export async function mintGrvrIdentity(params: {
   identityKey: `0x${string}`;
   contract: `0x${string}`;
   to: `0x${string}`;
+  level: number;
   txHash?: `0x${string}`;
   tokenId?: string;
 }> {
@@ -124,6 +129,7 @@ export async function mintGrvrIdentity(params: {
     identityKey: prepared.identityKey,
     contract: prepared.contract,
     to: prepared.to,
+    level: prepared.level,
   };
   if (payload.dryRun) {
     frameworkLogger.log('identity', 'grvr-mint-dry-run', 'info', {
@@ -152,6 +158,7 @@ export async function mintGrvrIdentity(params: {
       prepared.pack,
       prepared.variant,
       prepared.dynamoCitation,
+      prepared.level,
     ],
     chain,
     account,

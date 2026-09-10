@@ -32,7 +32,11 @@ Builtin:
 
 `https://registry-production-e2c4.up.railway.app/identity/token-image/{tokenId}`
 
-Pixels are **not** on Base. Contract frozen. Recipe on-chain: `did`, `pack`, `variant`, `dna`, `dynamoCitation`.
+Pixels are **not** on Base. `IMAGE_BASE` is frozen. Recipe on-chain: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level`.
+
+**Level** (OpenSea trait `Level`): 0 Dissonant, 1 Unstable, 2 Resonant, 3 Celestial. From Dynamo 7D at mint (`fullBox7D` or explicit `level`). ≥0.95 Celestial, ≥0.78 Resonant, ≥0.50 Unstable, else Dissonant. Missing 7D → Dissonant. Variant is still visor (`hash(did,dna)%16`), not Level.
+
+This ABI is a **new GRVR deploy**. Live `0x0abcd80C…` has no Level; do not mint 7-arg ABI against it.
 
 Railway `GET /identity/token-image/{tokenId}` reads `getTokenData` and returns deterministic SVG (`composeIdentitySvg`). Unique visor meshes (4 hats) × unique chassis (2 packs) × 4 colorway palettes. Banner follows hat. MILL+INSPECT cores only on `0xray-suit`. Not Imagine. Not 1024 PNG plates. Not `sharp`. Tiny SVG (<12KB), sharp at any scale.
 

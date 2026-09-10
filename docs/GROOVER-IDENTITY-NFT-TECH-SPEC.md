@@ -88,6 +88,7 @@ contract GrooverIdentityToken is ERC721Enumerable, AccessControl {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     uint8   public constant MAX_VARIANT = 16;
+    uint8   public constant MAX_LEVEL = 4; // 0 Dissonant .. 3 Celestial
     string  public constant IMAGE_BASE =
         "https://registry-production-e2c4.up.railway.app/identity/token-image/";
 
@@ -97,6 +98,7 @@ contract GrooverIdentityToken is ERC721Enumerable, AccessControl {
         string  pack;            // "0xray-suit" | "groover-identity" | future
         uint8   variant;         // 0 .. MAX_VARIANT-1
         bytes32 dynamoCitation;  // optional; bytes32(0) if none
+        uint8   level;           // 0 .. MAX_LEVEL-1 (OpenSea "Level")
         uint256 mintedAt;
     }
 
@@ -137,7 +139,8 @@ contract GrooverIdentityToken is ERC721Enumerable, AccessControl {
         bytes32 dna,
         string  calldata pack,
         uint8   variant,
-        bytes32 dynamoCitation
+        bytes32 dynamoCitation,
+        uint8   level
     ) external onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
         if (to == address(0)) revert ZeroAddress();
         if (bytes(did).length < 20) revert InvalidDid(); // "did:groover:" is 13; require prefix+hex
@@ -155,6 +158,7 @@ contract GrooverIdentityToken is ERC721Enumerable, AccessControl {
             pack: pack,
             variant: variant,
             dynamoCitation: dynamoCitation,
+            level: level,
             mintedAt: block.timestamp
         });
         _idToToken[key] = tokenId;
@@ -182,6 +186,7 @@ Mirror V41’s `data:application/json;base64,` pattern. Exact fields:
     { "trait_type": "DID", "value": "<did>" },
     { "trait_type": "Pack", "value": "<pack>" },
     { "trait_type": "Variant", "value": "<variant as decimal>" },
+    { "trait_type": "Level", "value": "Dissonant|Unstable|Resonant|Celestial" },
     { "trait_type": "DNA", "value": "<dna 0x-hex>" },
     { "trait_type": "Dynamo citation", "value": "<dynamoCitation 0x-hex or none>" },
     { "display_type": "date", "trait_type": "Minted", "value": <mintedAt * 1000> }

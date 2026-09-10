@@ -9,6 +9,8 @@ import {
   inventoryDna,
   isCanonicalGrooverDid,
   listPackIds,
+  levelFromComposite,
+  levelName,
   prepareMintInput,
   variantFromKey,
 } from './suit-dna.js';
@@ -94,5 +96,32 @@ describe('GRVR suit DNA', () => {
     const prepared = prepareMintInput({ did, pack: 'test-schema' });
     expect(prepared.pack).toBe('test-schema');
     expect(prepared.dna).toBe(grooverIdentityDna(did));
+  });
+
+  it('maps 7D composite to Level buckets', () => {
+    expect(levelFromComposite(0.95)).toBe(3);
+    expect(levelFromComposite(0.94)).toBe(2);
+    expect(levelFromComposite(0.78)).toBe(2);
+    expect(levelFromComposite(0.77)).toBe(1);
+    expect(levelFromComposite(0.50)).toBe(1);
+    expect(levelFromComposite(0.49)).toBe(0);
+    expect(levelName(3)).toBe('Celestial');
+    expect(levelName(2)).toBe('Resonant');
+    expect(levelName(1)).toBe('Unstable');
+    expect(levelName(0)).toBe('Dissonant');
+  });
+
+  it('prepareMintInput Level from fullBox7D, explicit level wins', () => {
+    const fromScore = prepareMintInput({ did, pack: 'groover-identity', fullBox7D: 0.91 });
+    expect(fromScore.level).toBe(2);
+    const explicit = prepareMintInput({
+      did,
+      pack: 'groover-identity',
+      fullBox7D: 0.91,
+      level: 3,
+    });
+    expect(explicit.level).toBe(3);
+    const unset = prepareMintInput({ did, pack: 'groover-identity' });
+    expect(unset.level).toBe(0);
   });
 });
