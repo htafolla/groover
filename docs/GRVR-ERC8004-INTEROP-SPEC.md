@@ -201,3 +201,72 @@ the governance decision that authorized it (citation), and a visual identity der
 from the same DNA — all resolvable from the registration file, all anchored on-chain.
 That is the grounded subset, and it is the only subset whose contents survive the
 study's critique.
+
+## 10. Parity: mutual anchoring with Dynamo governance (directional, policy-level)
+
+The mirror makes Groover identity legible to the market. Parity makes it
+mutually anchored with Dynamo: temporal memory authorizes identity memory, and
+every identity mark cites its temporal receipt.
+
+**The closed loop (to be implemented in `mint_suit`, no contract changes):**
+
+1. Groover identifies the agent → DID + DNA via pack adapter (exists).
+2. For `0xray-suit`: mill inspect attestation (exists — Groover-side fitness proof).
+3. Dynamo `govern_with_solar` approval → decision recorded as a container ID on
+   `TemporalContainerRegistry` (new step: `mint_suit` calls govern as an
+   attestation input, exactly like the inspect check).
+4. Mint with `dynamoCitation = bytes32(containerId)` (field exists on-chain,
+   currently always zero; no contract change needed).
+5. Mirror to 8004 per §§2–3, carrying the citation in the `groover` block.
+6. Verification runs both ways: token → citation → container → decision;
+   container → (registry index, §2.1 step 6) → token.
+
+**Why policy-level, not cryptographic:** the GRVR contract deliberately keeps
+`dynamoCitation` optional with no registry lookup (decoupling the contracts was an
+explicit spec decision). Enforcement therefore lives in `mint_suit` code + audit:
+citation-less mainnet mints are publicly visible and reviewable. This is also what
+distinguishes approval-gating from the banned auto-mint pattern — governance
+attests, Groover still signs; neither side mints alone.
+
+**Transponder framing (shared vocabulary, decided):** a transponder is any canonical
+fixed point that answers interrogation. `T_c` is the temporal transponder (memory
+of the resonance field); the GRVR mark is the identity transponder (memory of the
+agent). One line per repo states this; the shared word is architecture, not collision.
+
+**Liveness coupling (accepted risk):** governed mints depend on Dynamo MCP uptime.
+Posture: queue, never bypass — a mint that cannot get its citation waits; it does
+not mint citation-less on mainnet. Sepolia proving may exercise the degraded path
+explicitly and label it as such in the file (`"degraded": true`, never on mainnet).
+
+## 11. Long-term view (staged; this PR is stage 1)
+
+- **Stage 1 — Identity mirror (this spec):** every GRVR mint mirrored to 8004 with
+  proofs in the file. Success = Groover agents resolvable in every 8004 indexer
+  with strictly more evidence than the surrounding population.
+- **Stage 2 — Validation mirror:** when `ValidationRegistry` deploys on Base mainnet,
+  post validation requests citing `identityKey` + DNA, with responses carrying
+  inspect/dynamo evidence. Re-entry criterion: canonical address published by the
+  8004 working group + `cast code` verified. Until then, the registration file IS
+  the validation surface — do not fake it with reputation posts.
+- **Stage 3 — Earned reputation:** when Groover agents transact as clients (x402 or
+  otherwise), post `giveFeedback` with real interaction proofs. Never synthesize
+  feedback; the study's core finding is that ungrounded feedback is worthless, and
+  manufacturing it would collapse the distinction this whole design exists to create.
+- **Structural (ordered by leverage):**
+  1. **Dogfood the population** — every mill agent gets a mainnet GRVR with real
+     inspect citations. A grounded subset of zero is a null set.
+  2. **Agent-held keys** — Ed25519 DIDs the agent controls (signing, rotation),
+     replacing minter-assigned DIDs; aligns with VAIP/APS/OpenA2A and unlocks
+     `setAgentWallet` proofs.
+  3. **Revocation story** — compromised-agent invalidation path (on-chain flag or
+     registry-level revocation list + `active: false` propagation to mirrored files
+     via `setAgentURI`).
+  4. **Decentralize issuance** — replace the hot-wallet minter with governance-vote
+     or TEE-attested issuance; the audit trail built in stages 1–3 is what makes
+     the decentralization claim checkable.
+  5. **Cross-chain mirrors** — same vanity 8004 registries exist per chain; mirror
+     where agents operate, keeping GRVR Base canonical and cross-referencing via
+     the `registrations[]` array (designed for exactly this).
+- **What does not change:** GRVR contract (frozen), URL shapes (frozen by on-chain
+  metadata), the minter-signs/governance-attests separation, single-signing-key
+  custody until stage 4.
