@@ -88,7 +88,7 @@ Versioned immutable files (never rewrite a served URL).
     "grvrContract": "0x0abcd80C929Ff2f6c308958B112b7925801750D7",
     "grvrTokenId": "<tokenId>",
     "dynamoCitation": "<0x-64hex-or-none>",
-    "level": "<Dissonant|Unstable|Resonant|Celestial>",
+    "level": "<Unknown|Dissonant|Unstable|Resonant|Celestial>",
     "grvrChainId": 8453,
     "solar": {
       "isotope": "<C-12|C-14|Trinitarium-166|Chronovium-865|Vortexite-528>",

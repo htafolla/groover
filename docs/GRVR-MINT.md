@@ -34,7 +34,7 @@ Builtin:
 
 Pixels are **not** on Base. `IMAGE_BASE` is frozen. Recipe on-chain: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level`.
 
-**Level** (OpenSea trait `Level`): 0 Dissonant, 1 Unstable, 2 Resonant, 3 Celestial. From Dynamo 7D at mint (`fullBox7D` or explicit `level`). ≥0.95 Celestial, ≥0.78 Resonant, ≥0.50 Unstable, else Dissonant. Missing 7D → Dissonant. Variant is still visor (`hash(did,dna)%16`), not Level.
+**Level** (OpenSea trait `Level`): 0 Unknown, 1 Dissonant, 2 Unstable, 3 Resonant, 4 Celestial. From Dynamo 7D at mint (`fullBox7D` or explicit `level`). ≥0.95 Celestial, ≥0.78 Resonant, ≥0.50 Unstable, scored else Dissonant. **No Dynamo / no 7D → Unknown** (not Dissonant — that is a scored miss). Variant is still visor (`hash(did,dna)%16`), not Level.
 
 This ABI is a **new GRVR deploy**. Live `0x0abcd80C…` has no Level; do not mint 7-arg ABI against it.
 

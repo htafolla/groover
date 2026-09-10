@@ -7,9 +7,9 @@ import { getPackAdapter, listPackIds } from './packs/index.js';
 import { millInventoryDna } from './packs/xray-suit.js';
 
 export const GRVR_MAX_VARIANT = 16;
-/** 0 Dissonant, 1 Unstable, 2 Resonant, 3 Celestial */
-export const GRVR_MAX_LEVEL = 4;
-export const GRVR_LEVEL_NAMES = ['Dissonant', 'Unstable', 'Resonant', 'Celestial'] as const;
+/** 0 Unknown (no Dynamo), 1 Dissonant, 2 Unstable, 3 Resonant, 4 Celestial */
+export const GRVR_MAX_LEVEL = 5;
+export const GRVR_LEVEL_NAMES = ['Unknown', 'Dissonant', 'Unstable', 'Resonant', 'Celestial'] as const;
 export type GrvrLevelName = (typeof GRVR_LEVEL_NAMES)[number];
 export const GRVR_DEFAULT_CONTRACT = '0x0abcd80C929Ff2f6c308958B112b7925801750D7';
 export const GRVR_DEFAULT_CHAIN_ID = 8453;
@@ -50,10 +50,10 @@ export function variantFromKey(key: `0x${string}`): number {
 /** Dynamo 7D composite → GRVR Level id. Same buckets as Vortex UI. */
 export function levelFromComposite(composite: number): number {
   if (!Number.isFinite(composite)) throw new Error('fullBox7D must be a finite number');
-  if (composite >= 0.95) return 3;
-  if (composite >= 0.78) return 2;
-  if (composite >= 0.50) return 1;
-  return 0;
+  if (composite >= 0.95) return 4;
+  if (composite >= 0.78) return 3;
+  if (composite >= 0.50) return 2;
+  return 1;
 }
 
 export function levelName(level: number): GrvrLevelName {

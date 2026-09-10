@@ -160,7 +160,7 @@ export const TOOL_DEFINITIONS = [
         inspect: { type: 'object', description: '{ ok, dna } mill inspect report' },
         dynamoCitation: { type: 'string' },
         variant: { type: 'number' },
-        level: { type: 'number', description: '0 Dissonant, 1 Unstable, 2 Resonant, 3 Celestial' },
+        level: { type: 'number', description: '0 Unknown (no Dynamo), 1 Dissonant, 2 Unstable, 3 Resonant, 4 Celestial' },
         fullBox7D: { type: 'number', description: 'Dynamo 7D composite; sets Level if level omitted' },
         dryRun: { type: 'boolean' },
       },

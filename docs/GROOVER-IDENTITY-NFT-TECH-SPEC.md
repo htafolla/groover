@@ -88,7 +88,7 @@ contract GrooverIdentityToken is ERC721Enumerable, AccessControl {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     uint8   public constant MAX_VARIANT = 16;
-    uint8   public constant MAX_LEVEL = 4; // 0 Dissonant .. 3 Celestial
+    uint8   public constant MAX_LEVEL = 5; // 0 Unknown, 1 Dissonant .. 4 Celestial
     string  public constant IMAGE_BASE =
         "https://registry-production-e2c4.up.railway.app/identity/token-image/";
 
@@ -186,7 +186,7 @@ Mirror V41’s `data:application/json;base64,` pattern. Exact fields:
     { "trait_type": "DID", "value": "<did>" },
     { "trait_type": "Pack", "value": "<pack>" },
     { "trait_type": "Variant", "value": "<variant as decimal>" },
-    { "trait_type": "Level", "value": "Dissonant|Unstable|Resonant|Celestial" },
+    { "trait_type": "Level", "value": "Unknown|Dissonant|Unstable|Resonant|Celestial" },
     { "trait_type": "DNA", "value": "<dna 0x-hex>" },
     { "trait_type": "Dynamo citation", "value": "<dynamoCitation 0x-hex or none>" },
     { "display_type": "date", "trait_type": "Minted", "value": <mintedAt * 1000> }
