@@ -1,25 +1,27 @@
 # GRVR Identity Image Compositor — SVG uniqueness
 
-**Status:** shipped architecture. Contract frozen. Image URL frozen. Pixels are
-**not** on Base. This spec changes only `composeIdentitySvg` (unique meshes)
-and tests. No Solidity. No mint-flow change. No Imagine.
+**Status:** compositor is the drawing. Live v2 still serves it at `IMAGE_BASE + tokenId`.
+v3 (pending deploy) stores the same SVG in `tokenURI.image` as a data URI. Not Imagine.
 
-**Split (locked):**
+**Split:**
 
 | Layer | What it holds |
 |---|---|
-| Chain (`GrooverIdentityToken`) | Tiny on-chain `tokenURI` JSON + `image` URL. Recipe: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level` (`TokenData` also has `mintedAt`). Level is OpenSea `Level` (not visor). |
-| `IMAGE_BASE` | `https://registry-production-e2c4.up.railway.app/identity/token-image/` (constant on the frozen contract). |
-| Railway | `GET /identity/token-image/{tokenId}` → `getTokenData` → `composeIdentitySvg`. Deterministic SVG. |
+| Chain v2 (`0x7b184bf7…`) | On-chain JSON recipe + `image` URL. Recipe: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level`. Pixels not on Base. |
+| Chain v3 (new deploy) | Same recipe + `imageSvg`. `tokenURI.image` is `data:image/svg+xml;base64,…`. `IMAGE_BASE` becomes `external_url`. |
+| `IMAGE_BASE` | `https://registry-production-e2c4.up.railway.app/identity/token-image/` (string frozen; v3 does not change it). |
+| Railway | `GET /identity/token-image/{tokenId}` → `getTokenData` → `composeIdentitySvg`. Fixes v2 pictures without a new contract. |
 
-Contract: Base mainnet v2 `0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3` (8453). v1 `0x0abcd80C…` superseded. Sepolia v2 `0x6C61feb8…` (`docs/GRVR-MINT.md`).
+Live v2: `0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3`. v1 `0x0abcd80C…` superseded. Sepolia v2 `0x6C61feb8…`. See `docs/GRVR-MINT.md`.
+
+Scene: front-on headless collar. Visor is the face (four meshes, no brim/fedora). Torso lights against the bay. MILL/JOB/INSPECT/CONSTITUTION is a collar transponder mark, not a stamp on a cap.
 
 ---
 
 ## 1. Chain vs render
 
 `tokenURI` is Base64 JSON (`name`, `description`, `image`, `external_url`, attributes).
-`image` is `IMAGE_BASE + tokenId`. Marketplaces fetch Railway. The contract never stores pixels.
+v2: `image` is `IMAGE_BASE + tokenId` (Railway). v3: `image` is on-chain SVG data URI; `external_url` is `IMAGE_BASE + tokenId`.
 
 Render input is `TokenView` (`packages/identity/src/compositor.ts`): `tokenId`, `did`, `pack`, `variant`, `dna`.
 Loaded by `loadGrvrTokenView` from `getTokenData`. Citation stays in the JSON recipe; it is not painted.
@@ -59,12 +61,12 @@ Keep the URL, `TokenView`, and 16-look variant. Replace schematic primitives wit
 
 | # | Group | Driven by | Rule |
 |---|---|---|---|
-| 0 | Backdrop | colorway palette `bg` | Flat (or light SVG grain from palette). No bay PNGs. |
-| 1 | Chassis mesh | `pack` | **Two unique chassis**, not one hexagon recolored. `groover-identity` ≠ `0xray-suit`. Unknown pack → 500 `unknown pack "<id>"`, never substitute. |
-| 2 | Visor mesh | `hat` | **Four unique visor meshes** (`data-hat`). Distinct path topology, not a recolor of one hat. Branding on the visor plate: `GRVR` on identity, `0xRay` on suit. |
-| 3 | Banner | `hat` only | `mill-cap` → `MILL`; `constitution-visor` → `CONSTITUTION`; `job-helm` → `JOB`; `inspect-visor` → `INSPECT`. Never pack name. Do not stamp every `0xray-suit` as `CONSTITUTION ON`. |
-| 4 | Cores | `pack` | **MILL + INSPECT only on `0xray-suit`**. Two named organs in the torso, accent from palette. `groover-identity`: none. Never DNA-scattered blobs. |
-| 5 | HUD | `TokenView` | Line 1 `#${tokenId} ${pack}`; line 2 `${did} · 0x${dna.slice(2, 10)} · v${variant}`. XML-escape with existing `xml()` (provenance, no strip). |
+| 0 | Backdrop | colorway palette `bg` / `bay` | High-contrast bay. Plate fills must not equal bay (inspect-amber plate `#d4a03a` on bay `#1a1208`). |
+| 1 | Visor mesh (the face) | `hat` | **Four unique visor meshes**, ymax ≤ 184. No brim. No fedora. Distinct path topology. |
+| 2 | Collar | `hat` banner | Headless neck ring. Transponder mark: `MILL` / `CONSTITUTION` / `JOB` / `INSPECT`. Not stamped on a cap. |
+| 3 | Chassis (torso) | `pack` | **Two unique chassis** below the collar, ymin ≥ 224. `groover-identity` hex-gem ≠ `0xray-suit` ribbed. Plate `GRVR` / `EXO`. |
+| 4 | Cores | `pack` | **MILL + INSPECT only on `0xray-suit`**. `groover-identity`: none. |
+| 5 | HUD | `TokenView` | Line 1 `#${tokenId} ${pack}` (+ Level when set); line 2 `${did} · ${dna slice} · v${variant}`. XML-escape. Compact (no control chars) for on-chain mint. |
 
 Paint every mesh from the colorway palette. Do not raster-tint.
 
@@ -91,7 +93,7 @@ Same `TokenView` → same SVG bytes. No `Math.random`, no `Date.now`, no network
 | `packages/identity/src/compositor.test.ts` | 16 looks; 4 distinct hat geometries; 2 distinct chassis; cores only on `0xray-suit`; banner-from-hat; determinism + XML escape; size < 12KB. |
 | `packages/identity/src/grvr-mint.ts` | **Untouched** (already SVG from `getTokenData`). |
 | `packages/marketplace/src/mcp-server.ts` | **Untouched** (`image/svg+xml`). |
-| `*.sol` / `contracts/` | **Forbidden.** |
+| `*.sol` / groover `contracts/` | **Forbidden in groover.** v3 `imageSvg` lives in chrono-warp-drive. |
 
 Dropped (do not build): `compositor-png.ts`, pinned `sharp`, 1024 PNG plates, SHA256SUMS art pack, per-mint Imagine, `image/png` route flip.
 
@@ -111,4 +113,4 @@ Dropped (do not build): `compositor-png.ts`, pinned `sharp`, 1024 PNG plates, SH
 
 ## 6. Out of scope
 
-Contract changes; `IMAGE_BASE` / URL shape (`/identity/token-image/{tokenId}` is frozen); `?size` / `?format`; mill inventory / job plates / suit state in `TokenView`; new env vars; changing `traitsFromVariant` / `HATS` / `COLORWAYS`; PNG plates; `sharp`; per-mint Imagine; CDN/auth; new chains.
+Groover-side Solidity; changing the `IMAGE_BASE` string; `?size` / `?format`; mill inventory / job plates / suit state in `TokenView`; new env vars; changing `traitsFromVariant` / `HATS` / `COLORWAYS`; PNG plates; `sharp`; per-mint Imagine; CDN/auth; new chains. v3 mint ABI is chrono, not this compositor file.

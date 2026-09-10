@@ -29,13 +29,17 @@ Builtin:
 - ABI: `packages/identity/abi/GrooverIdentityToken.json`
 - v1 `0x0abcd80C929Ff2f6c308958B112b7925801750D7` is superseded. Do not mint there.
 
-## Image (Railway SVG, not Base pixels)
+## Image
 
-`tokenURI` is tiny on-chain JSON. `image` is frozen `IMAGE_BASE + tokenId`:
+**v2 live** (`0x7b184bf7…`): `tokenURI.image` is `IMAGE_BASE + tokenId` (Railway). Recipe on-chain: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level`. Pixels are **not** on Base.
 
 `https://registry-production-e2c4.up.railway.app/identity/token-image/{tokenId}`
 
-Pixels are **not** on Base. `IMAGE_BASE` is frozen. Recipe on-chain: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level`.
+**v3 (pending other-agent deploy):** mint 8th arg `imageSvg`. `tokenURI.image` is on-chain `data:image/svg+xml;base64,...`. `IMAGE_BASE` is `external_url` (same Railway URL — do not change the string). Railway still serves `GET /identity/token-image/{tokenId}` for v2 tokens and as `external_url`.
+
+This CLI cannot deploy (no `DEPLOYER_PRIVATE_KEY`). After v3 deploy, set Railway `GRVR_CONTRACT` to the new address so `mint_suit` uses 8-arg (`GrooverIdentityToken.v3.json`). Until then live v2 mint stays 7-arg (`packages/identity/abi/GrooverIdentityToken.json`).
+
+`IMAGE_BASE` is frozen. Recipe on-chain: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level` (+ `imageSvg` on v3).
 
 **Level** (OpenSea trait `Level`): 0 Unknown, 1 Dissonant, 2 Unstable, 3 Resonant, 4 Celestial. From Dynamo 7D at mint (`fullBox7D` or explicit `level`). ≥0.95 Celestial, ≥0.78 Resonant, ≥0.50 Unstable, scored else Dissonant. **No Dynamo / no 7D → Unknown** (not Dissonant — that is a scored miss). Variant is still visor (`hash(did,dna)%16`), not Level.
 

@@ -20,13 +20,38 @@ import {
   GRVR_DEFAULT_CHAIN_ID,
   GRVR_DEFAULT_CONTRACT,
   GRVR_DEFAULT_RPC,
+  GRVR_SEPOLIA_CONTRACT,
   prepareMintInput,
 } from './suit-dna.js';
 
-const abiPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '../abi/GrooverIdentityToken.json');
+const abiDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../abi');
 
-function loadAbi(): readonly unknown[] {
-  return JSON.parse(readFileSync(abiPath, 'utf8')) as unknown[];
+/** v1 mainnet — superseded. Do not mint. Treated as 7-arg (not on-chain SVG). */
+const GRVR_V1_MAINNET = '0x0abcd80C929Ff2f6c308958B112b7925801750D7';
+
+const LEGACY_SEVEN_ARG_CONTRACTS = new Set([
+  GRVR_DEFAULT_CONTRACT.toLowerCase(),
+  GRVR_SEPOLIA_CONTRACT.toLowerCase(),
+  GRVR_V1_MAINNET.toLowerCase(),
+]);
+
+/** False for live v2, Sepolia v2, and superseded v1 (case-insensitive). True for a new v3 address. */
+export function mintWantsOnchainSvg(contract: string): boolean {
+  return !LEGACY_SEVEN_ARG_CONTRACTS.has(contract.toLowerCase());
+}
+
+/** Strip control chars (< 0x20) so on-chain imageSvg passes InvalidImage. */
+export function compactSvg(svg: string): string {
+  let out = '';
+  for (let i = 0; i < svg.length; i += 1) {
+    if (svg.charCodeAt(i) >= 0x20) out += svg[i];
+  }
+  return out;
+}
+
+function loadAbi(onchainSvg: boolean): readonly unknown[] {
+  const file = onchainSvg ? 'GrooverIdentityToken.v3.json' : 'GrooverIdentityToken.json';
+  return JSON.parse(readFileSync(path.join(abiDir, file), 'utf8')) as unknown[];
 }
 
 export function grvrChain() {
@@ -146,20 +171,42 @@ export async function mintGrvrIdentity(params: {
   const transport = http(process.env.GRVR_RPC_URL || GRVR_DEFAULT_RPC);
   const wallet = createWalletClient({ account, chain, transport });
   const publicClient = createPublicClient({ chain, transport });
-  const abi = loadAbi();
+  const onchainSvg = mintWantsOnchainSvg(prepared.contract);
+  const abi = loadAbi(onchainSvg);
+  const seven: readonly (string | number | `0x${string}`)[] = [
+    prepared.to,
+    prepared.did,
+    prepared.dna,
+    prepared.pack,
+    prepared.variant,
+    prepared.dynamoCitation,
+    prepared.level,
+  ];
+  let mintArgs = seven;
+  if (onchainSvg) {
+    const supply = (await publicClient.readContract({
+      address: prepared.contract,
+      abi: abi as never,
+      functionName: 'totalSupply',
+    })) as bigint;
+    const nextId = supply + 1n;
+    const imageSvg = compactSvg(
+      composeIdentitySvg({
+        tokenId: String(nextId),
+        did: prepared.did,
+        pack: prepared.pack,
+        variant: prepared.variant,
+        dna: prepared.dna,
+        level: prepared.level,
+      }),
+    );
+    mintArgs = [...seven, imageSvg];
+  }
   const hash = await wallet.writeContract({
     address: prepared.contract,
     abi: abi as never,
     functionName: 'mint',
-    args: [
-      prepared.to,
-      prepared.did,
-      prepared.dna,
-      prepared.pack,
-      prepared.variant,
-      prepared.dynamoCitation,
-      prepared.level,
-    ],
+    args: mintArgs as never,
     chain,
     account,
   });
@@ -190,10 +237,11 @@ export async function loadGrvrTokenView(tokenId: bigint): Promise<TokenView | nu
     chain,
     transport: http(process.env.GRVR_RPC_URL || GRVR_DEFAULT_RPC),
   });
-  const abi = loadAbi();
+  const contract = grvrContract();
+  const abi = loadAbi(mintWantsOnchainSvg(contract));
   try {
     const data = (await publicClient.readContract({
-      address: grvrContract(),
+      address: contract,
       abi: abi as never,
       functionName: 'getTokenData',
       args: [tokenId],
@@ -202,6 +250,7 @@ export async function loadGrvrTokenView(tokenId: bigint): Promise<TokenView | nu
       dna: `0x${string}`;
       pack: string;
       variant: number;
+      level?: number;
     };
     if (!data?.did || !data?.pack) return null;
     return {
@@ -210,6 +259,7 @@ export async function loadGrvrTokenView(tokenId: bigint): Promise<TokenView | nu
       pack: data.pack,
       variant: Number(data.variant),
       dna: data.dna,
+      level: Number(data.level ?? 0),
     };
   } catch {
     return null;

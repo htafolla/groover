@@ -61,38 +61,38 @@ describe('GRVR compositor', () => {
     expect(svgs.size).toBe(16);
   });
 
-  it('four hats contain distinct mesh markers', () => {
+  it('four visors contain distinct mesh markers and no fedora brim', () => {
     const mill = composeIdentitySvg({ ...base, pack: 'groover-identity', variant: 0 });
     const constitution = composeIdentitySvg({ ...base, pack: 'groover-identity', variant: 4 });
     const job = composeIdentitySvg({ ...base, pack: 'groover-identity', variant: 8 });
     const inspect = composeIdentitySvg({ ...base, pack: 'groover-identity', variant: 12 });
 
     expect(mill).toContain('data-hat="mill-cap"');
-    expect(mill).toContain('data-mesh="brim-cap"');
-    expect(mill).toContain('M92 168C92 156 124 148 160 148H352C388 148 420 156 420 168');
-    expect(mill).toContain('M176 148C176 102 204 90 256 90C308 90 336 102 336 148Z');
-    expect(mill).toContain('M196 118C196 110 316 110 316 118V136C316 144 196 144 196 136Z');
+    expect(mill).toContain('data-mesh="hud-plate"');
+    expect(mill).toContain('M120 44H392L404 168H108Z');
+    expect(mill).toContain('M140 92H372L360 148H152Z');
+    expect(mill).not.toContain('data-mesh="brim-cap"');
+    expect(mill).not.toContain('M124 184H388L372 208H140Z');
+    expect(mill).toContain('id="collar"');
 
     expect(constitution).toContain('data-hat="constitution-visor"');
     expect(constitution).toContain('data-mesh="chevron"');
-    expect(constitution).toContain('M256 44L338 92L318 168L256 148L194 168L174 92Z');
-    expect(constitution).toContain('M256 44L286 88L256 100L226 88Z');
+    expect(constitution).toContain('M256 32L376 92L360 176H152L136 92Z');
+    expect(constitution).toContain('M256 32L308 88L256 104L204 88Z');
 
     expect(job).toContain('data-hat="job-helm"');
     expect(job).toContain('data-mesh="dome"');
-    expect(job).toContain('M164 176C164 64 348 64 348 176Z');
-    expect(job).toContain('M194 124C194 92 318 92 318 124C318 156 194 156 194 124Z');
+    expect(job).toContain('M112 168L132 64Q256 24 380 64L400 168Z');
+    expect(job).toContain('M148 88Q256 52 364 88L364 144Q256 172 148 144Z');
 
     expect(inspect).toContain('data-hat="inspect-visor"');
     expect(inspect).toContain('data-mesh="twin-slits"');
-    expect(inspect).toContain('M184 76H328L348 176H164Z');
-    expect(inspect).toContain('M214 100H232V156H214Z');
-    expect(inspect).toContain('M280 100H298V156H280Z');
-    expect(inspect).toContain('M164 108C148 108 140 124 148 140C156 156 168 148 168 132V116Z');
+    expect(inspect).toContain('M128 48H384L400 168H112Z');
+    expect(inspect).toContain('M188 72H228V148H188Z');
+    expect(inspect).toContain('M284 72H324V148H284Z');
 
     const visors = [mill, constitution, job, inspect].map((svg) => {
       const block = svg.match(/<g id="hat"[\s\S]*?<\/g>/)?.[0] ?? '';
-      expect(block).not.toContain('<rect');
       expect(block).not.toContain('<ellipse');
       return block;
     });
@@ -102,7 +102,7 @@ describe('GRVR compositor', () => {
     const meshes = [mill, constitution, job, inspect].map(
       (svg) => svg.match(/data-mesh="([^"]+)"/)?.[1],
     );
-    expect(meshes).toEqual(['brim-cap', 'chevron', 'dome', 'twin-slits']);
+    expect(meshes).toEqual(['hud-plate', 'chevron', 'dome', 'twin-slits']);
     expect(new Set(meshes).size).toBe(4);
   });
 
@@ -111,10 +111,10 @@ describe('GRVR compositor', () => {
     const identity = composeIdentitySvg({ ...base, pack: 'groover-identity', variant: 0 });
     expect(suit).toContain('id="mill-inspect-cores"');
     expect(suit).toContain('data-armor="ribbed"');
-    expect(suit).toContain('y="248" width="136" height="14"');
+    expect(suit).toContain('y="308" width="144" height="16"');
     expect(identity).not.toContain('id="mill-inspect-cores"');
     expect(identity).toContain('data-armor="hex-gem"');
-    expect(identity).toContain('M256 210 L300 236 L282 286 L230 286 L212 236 Z');
+    expect(identity).toContain('M256 272L322 310L294 368L218 368L190 310Z');
     expect(identity).not.toContain('data-armor="ribbed"');
   });
 
@@ -127,7 +127,7 @@ describe('GRVR compositor', () => {
       if (accent) accents.add(accent);
     }
     expect(accents.size).toBe(4);
-    expect(accents).toEqual(new Set(['#3ec8f5', '#f5b63e', '#9b7dff', '#7aa0b8']));
+    expect(accents).toEqual(new Set(['#3ec8f5', '#ffcc55', '#c4b0ff', '#c8d8e4']));
   });
 
   it('colorways recolor plate, visor glass, and bay — not only an accent stroke', () => {
@@ -137,10 +137,10 @@ describe('GRVR compositor', () => {
     for (let v = 0; v < 4; v += 1) {
       const svg = composeIdentitySvg({ ...base, pack: 'groover-identity', variant: v });
       const plate = svg.match(
-        /M176 148C176 102 204 90 256 90C308 90 336 102 336 148Z" fill="(#[0-9a-fA-F]{6})"/,
+        /M120 44H392L404 168H108Z" fill="(#[0-9a-fA-F]{6})"/,
       );
       const glass = svg.match(
-        /M196 118C196 110 316 110 316 118V136C316 144 196 144 196 136Z" fill="(#[0-9a-fA-F]{6})"/,
+        /M140 92H372L360 148H152Z" fill="(#[0-9a-fA-F]{6})"/,
       );
       const bay = svg.match(/id="bay"[^>]*>\s*<rect width="512" height="512" fill="(#[0-9a-fA-F]{6})"/);
       expect(plate?.[1]).toBeDefined();
@@ -178,5 +178,38 @@ describe('GRVR compositor', () => {
   it('typical SVG byte length is under 12000', () => {
     const typical = composeIdentitySvg({ ...base, pack: '0xray-suit', variant: 0 });
     expect(Buffer.byteLength(typical, 'utf8')).toBeLessThan(12000);
+  });
+
+  it('chassis plate fill is not the bay fill (contrast)', () => {
+    for (let v = 0; v < 4; v += 1) {
+      const svg = composeIdentitySvg({ ...base, pack: 'groover-identity', variant: v });
+      const bay = svg.match(/id="bay"[^>]*>.*?width="512" height="512" fill="(#[0-9a-fA-F]{6})"/)?.[1];
+      const plate = svg.match(/data-armor="hex-gem"[\s\S]*?L256 240L364 256[\s\S]*?fill="(#[0-9a-fA-F]{6})"/)?.[1]
+        ?? svg.match(/L256 240L364 256L380 324L256 396L132 324Z" fill="(#[0-9a-fA-F]{6})"/)?.[1];
+      expect(bay).toMatch(/^#/);
+      expect(plate).toMatch(/^#/);
+      expect(plate).not.toBe(bay);
+    }
+  });
+
+  it('HUD shows Level when provided', () => {
+    const svg = composeIdentitySvg({ ...base, pack: 'groover-identity', variant: 0, level: 3 });
+    expect(svg).toContain('Resonant');
+  });
+
+  it('emits compact SVG with no control chars (on-chain mint)', () => {
+    const svg = composeIdentitySvg({ ...base, pack: '0xray-suit', variant: 1, level: 3 });
+    expect(/[\u0000-\u001f]/.test(svg)).toBe(false);
+    expect(svg.startsWith('<?xml')).toBe(true);
+    expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
+  });
+
+  it('inspect-amber plate is not the bay (token-1 fail class)', () => {
+    const svg = composeIdentitySvg({ ...base, pack: 'groover-identity', variant: 1 });
+    expect(svg).toContain('data-colorway="inspect-amber"');
+    expect(svg).toContain('fill="#d4a03a"');
+    expect(svg).toContain('fill="#1a1208"');
+    expect(svg).toContain('fill="#ffe08a"');
+    expect(svg).not.toContain('fill="#2a1c08"');
   });
 });
