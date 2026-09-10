@@ -42,6 +42,7 @@ const config: Config = {
       },
       items: [
         {type: 'docSidebar', sidebarId: 'docsSidebar', position: 'left', label: 'Docs'},
+        {to: '/suit', label: 'Factory', position: 'left'},
         {to: '/docs/verification-challenge', label: 'Verification', position: 'left'},
         {to: '/docs/api/mcp-endpoints', label: 'API', position: 'left'},
         {

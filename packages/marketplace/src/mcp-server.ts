@@ -346,7 +346,7 @@ function writeStreamableOutcome(
 ): void {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    ...CORS_HEADERS,
     'X-Request-Id': outcome.requestId,
   };
   if (outcome.kind === 'notification') {
@@ -362,7 +362,19 @@ function writeStreamableOutcome(
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 const server = http.createServer(async (req, res) => {
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, { ...CORS_HEADERS, 'Access-Control-Max-Age': '86400' });
+    res.end();
+    return;
+  }
+
   if (req.method === 'GET' && req.url === '/sse') {
     const sessionId = crypto.randomUUID();
     const channel = `session:${sessionId}`;
@@ -480,6 +492,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, {
       'Content-Type': 'application/json',
       'X-Request-Id': requestId,
+      ...CORS_HEADERS,
     });
     res.end(JSON.stringify({
       protocol: 'mcp',

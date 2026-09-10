@@ -1,10 +1,9 @@
 /**
- * Closed GRVR trait compositor. Pack = chassis class. Variant 0..15 = visor mesh × colorway.
- * Railway (and on-chain tokenURI image) render this SVG. Not Imagine. Not PNG.
- *
- * Scene: front-on headless collar. Visor is the face. Torso sits below the neck.
+ * Browser copy of packages/identity/src/compositor.ts (no suit-dna / viem).
+ * Keep in sync. SSOT is the identity package.
  */
-import { GRVR_MAX_VARIANT, GRVR_LEVEL_NAMES } from './suit-dna.js';
+const GRVR_MAX_VARIANT = 16;
+const GRVR_LEVEL_NAMES = ['Unknown', 'Dissonant', 'Unstable', 'Resonant', 'Celestial'] as const;
 
 export const HATS = ['mill-cap', 'constitution-visor', 'job-helm', 'inspect-visor'] as const;
 export const COLORWAYS = ['mill-cyan', 'inspect-amber', 'groover-violet', 'overlay-steel'] as const;

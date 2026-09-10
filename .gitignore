@@ -16,6 +16,9 @@ data/
 *.tsbuildinfo
 website/.docusaurus/
 website/build/
+website/docusaurus.config.js
+website/sidebars.js
+website/src/**/*.js
 .moltbot/heartbeat-state.json
 
 # --- 0xray suit (postinstall) ---
