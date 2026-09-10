@@ -212,7 +212,7 @@ every identity mark cites its temporal receipt.
 **The closed loop (to be implemented in `mint_suit`, no contract changes):**
 
 1. Groover identifies the agent → DID + DNA via pack adapter (exists).
-2. For `0xray-suit`: mill inspect attestation (exists — Groover-side fitness proof).
+2. For `0xray-suit`: mill inspect object (caller-supplied `ok` + DNA match; not re-run).
 3. Dynamo `govern_with_solar` approval → decision recorded as a container ID on
    `TemporalContainerRegistry` (new step: Groover invokes the Dynamo MCP itself and
    REQUIRES a PASS — the returned container ID becomes `dynamoCitation`; missing
@@ -243,9 +243,14 @@ Posture: queue, never bypass — a mint that cannot get its citation waits; it d
 not mint citation-less on mainnet. The queue is durable, not in-process:
 append-only `pending-citations.jsonl` next to the §2.1-step-6 index file, reaped on
 boot with backoff (in-process state dies with Railway deploys, which already drop
-registered DIDs — a memory-only queue would silently drop mints). Sepolia proving
-may exercise the degraded path explicitly and label it as such in the file
-(`"degraded": true`, never on mainnet).
+registered DIDs — a memory-only queue would silently drop mints). Caller contract,
+exact: the MCP call blocks to completion or error — there is no `queued: true`
+return and no polling. The journal is a write-ahead log (intent appended before any
+chain write) so a crash mid-flight resumes on boot; callers simply retry, and chain
+idempotency (`AlreadyMinted` on duplicate mint + `tokenURI` existence checks before
+mirror retry) makes retries safe against doubles. Sepolia proving may exercise the
+degraded path explicitly and label it as such in the file (`"degraded": true`,
+never on mainnet).
 
 ## 11. Long-term view (staged; this PR is stage 1)
 
