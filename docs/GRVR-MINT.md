@@ -18,32 +18,31 @@ Builtin:
 | `groover-identity` | keccak256(did) |
 | `0xray-suit` | keccak256(canonical mill inventory without `mintedAt`/`dna`); requires `inspect.ok` |
 
-## Base mainnet (live) — v2 + Level
+## Base mainnet (live) — v3 on-chain SVG
 
-- `0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3`
-- chain 8453 · https://basescan.org/address/0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3
-- deploy: `0x838645d2790a8f02385b07c296d17e72f00874037b8387f9ef5eeebf2bc66965`
+- `0x6F955cA006E2FE951750cac25372e098D6E89743`
+- chain 8453 · https://basescan.org/address/0x6F955cA006E2FE951750cac25372e098D6E89743
+- deploy: `0x9a5e1eb6bdaa1cd43a0181e27e59c5f0e1a820952508e6f77d1a5a8f1d6d47cf`
 - MINTER_ROLE: `0x77E7A48609e9c8A77C7639172af9EEA0e5E80DF7` (Railway `GRVR_PRIVATE_KEY`)
 - Admin: `0xd45CcF98D6db5A36E7CdD10ffae0b685BF27CE43`
-- `MAX_LEVEL` = 5 · mint is 7 args (`…, dynamoCitation, level`)
-- ABI: `packages/identity/abi/GrooverIdentityToken.json`
-- v1 `0x0abcd80C929Ff2f6c308958B112b7925801750D7` is superseded. Do not mint there.
+- `MAX_LEVEL` = 5 · mint is 8 args (`…, dynamoCitation, level, imageSvg`)
+- ABI: `packages/identity/abi/GrooverIdentityToken.v3.json`
+- v2 `0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3` superseded (tokens 1–2 stay there). Do not mint there.
+- v1 `0x0abcd80C929Ff2f6c308958B112b7925801750D7` superseded. Do not mint there.
 
 ## Image
 
-**v2 live** (`0x7b184bf7…`): `tokenURI.image` is `IMAGE_BASE + tokenId` (Railway). Recipe on-chain: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level`. Pixels are **not** on Base.
+**v3 live** (`0x6F955cA0…`): mint 8th arg `imageSvg`. `tokenURI.image` is on-chain `data:image/svg+xml;base64,...`. `IMAGE_BASE` is `external_url` (same Railway URL — do not change the string).
 
 `https://registry-production-e2c4.up.railway.app/identity/token-image/{tokenId}`
 
-**v3 (pending other-agent deploy):** mint 8th arg `imageSvg`. `tokenURI.image` is on-chain `data:image/svg+xml;base64,...`. `IMAGE_BASE` is `external_url` (same Railway URL — do not change the string). Railway still serves `GET /identity/token-image/{tokenId}` for v2 tokens and as `external_url`.
+Railway `GRVR_CONTRACT` is this v3 address. `mint_suit` sends compact compositor SVG. v3 `totalSupply` starts at 0 — `/identity/token-image/1` 404s until the first v3 mint. v2 pictures stay on `0x7b184bf7…`.
 
-This CLI cannot deploy (no `DEPLOYER_PRIVATE_KEY`). After v3 deploy, set Railway `GRVR_CONTRACT` to the new address so `mint_suit` uses 8-arg (`GrooverIdentityToken.v3.json`). Until then live v2 mint stays 7-arg (`packages/identity/abi/GrooverIdentityToken.json`).
-
-`IMAGE_BASE` is frozen. Recipe on-chain: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level` (+ `imageSvg` on v3).
+`IMAGE_BASE` is frozen. Recipe on-chain: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level`, `imageSvg`.
 
 **Level** (OpenSea trait `Level`): 0 Unknown, 1 Dissonant, 2 Unstable, 3 Resonant, 4 Celestial. From Dynamo 7D at mint (`fullBox7D` or explicit `level`). ≥0.95 Celestial, ≥0.78 Resonant, ≥0.50 Unstable, scored else Dissonant. **No Dynamo / no 7D → Unknown** (not Dissonant — that is a scored miss). Variant is still visor (`hash(did,dna)%16`), not Level.
 
-Live v2 is `0x7b184bf7…`. Railway must set `GRVR_CONTRACT` to that address or env still wins with v1.
+Live v3 is `0x6F955cA0…`. Railway `GRVR_CONTRACT` must be that address (env wins over the code default).
 
 Railway `GET /identity/token-image/{tokenId}` reads `getTokenData` and returns deterministic SVG (`composeIdentitySvg`). Unique visor meshes (4 hats) × unique chassis (2 packs) × 4 colorway palettes. Banner follows hat. MILL+INSPECT cores only on `0xray-suit`. Not Imagine. Not 1024 PNG plates. Not `sharp`. Tiny SVG (<12KB), sharp at any scale.
 
@@ -128,16 +127,16 @@ Do **not** remap GRVR `variant` 0..15 from isotope — that slot is `hash(did, d
 
 Future (Dynamo-side, not GRVR): pass `isotopeType` into Kuramoto from NOAA or from mill DNA hash so the hammer can actually select C-14 / Blurrn species. Until that exists, copied `isotope` will read `C-12` and the real isotopic story is the C-12/C-14 wave comparison + 7D rarity.
 
-## Sepolia (v2 proving)
+## Sepolia (v3 proving)
 
-- `0x6C61feb8389c99EBf00576E7A110140866C5D9fF` (Level). v1 `0xFc644D08…` is history.
+- `0x0CEb73b07E1fdF3305cE4d3f6AC3BC28F8Ff8670` (on-chain SVG). v2 `0x6C61feb8…` and v1 `0xFc644D08…` are history.
 
 ## Railway env
 
-Code defaults are mainnet. If these vars are still Sepolia they **win** — flip them on the Groover Railway box:
+Code defaults are mainnet v3. Env **wins**:
 
 ```
-GRVR_CONTRACT=0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3
+GRVR_CONTRACT=0x6F955cA006E2FE951750cac25372e098D6E89743
 GRVR_CHAIN_ID=8453
 GRVR_RPC_URL=https://mainnet.base.org
 GRVR_PRIVATE_KEY=

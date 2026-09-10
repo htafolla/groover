@@ -7,12 +7,12 @@ v3 (pending deploy) stores the same SVG in `tokenURI.image` as a data URI. Not I
 
 | Layer | What it holds |
 |---|---|
-| Chain v2 (`0x7b184bf7…`) | On-chain JSON recipe + `image` URL. Recipe: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level`. Pixels not on Base. |
-| Chain v3 (new deploy) | Same recipe + `imageSvg`. `tokenURI.image` is `data:image/svg+xml;base64,…`. `IMAGE_BASE` becomes `external_url`. |
-| `IMAGE_BASE` | `https://registry-production-e2c4.up.railway.app/identity/token-image/` (string frozen; v3 does not change it). |
-| Railway | `GET /identity/token-image/{tokenId}` → `getTokenData` → `composeIdentitySvg`. Fixes v2 pictures without a new contract. |
+| Chain v3 (`0x6F955cA0…`) | Recipe + `imageSvg`. `tokenURI.image` is `data:image/svg+xml;base64,…`. `IMAGE_BASE` is `external_url`. |
+| Chain v2 (`0x7b184bf7…`) | Superseded. On-chain JSON recipe + `image` URL. Tokens 1–2 stay here. |
+| `IMAGE_BASE` | `https://registry-production-e2c4.up.railway.app/identity/token-image/` (string frozen). |
+| Railway | `GET /identity/token-image/{tokenId}` → `getTokenData` → `composeIdentitySvg`. |
 
-Live v2: `0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3`. v1 `0x0abcd80C…` superseded. Sepolia v2 `0x6C61feb8…`. See `docs/GRVR-MINT.md`.
+Live v3: `0x6F955cA006E2FE951750cac25372e098D6E89743`. v2 `0x7b184bf7…` superseded. Sepolia v3 `0x0CEb73b0…`. See `docs/GRVR-MINT.md`.
 
 Scene: front-on headless collar. Visor is the face (four meshes, no brim/fedora). Torso lights against the bay. MILL/JOB/INSPECT/CONSTITUTION is a collar transponder mark, not a stamp on a cap.
 

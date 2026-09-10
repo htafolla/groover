@@ -11,11 +11,16 @@ export const GRVR_MAX_VARIANT = 16;
 export const GRVR_MAX_LEVEL = 5;
 export const GRVR_LEVEL_NAMES = ['Unknown', 'Dissonant', 'Unstable', 'Resonant', 'Celestial'] as const;
 export type GrvrLevelName = (typeof GRVR_LEVEL_NAMES)[number];
-export const GRVR_DEFAULT_CONTRACT = '0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3';
+/** Live v3 (on-chain SVG). Railway GRVR_CONTRACT must match. */
+export const GRVR_DEFAULT_CONTRACT = '0x6F955cA006E2FE951750cac25372e098D6E89743';
 export const GRVR_DEFAULT_CHAIN_ID = 8453;
 export const GRVR_DEFAULT_RPC = 'https://mainnet.base.org';
-/** Sepolia v2 (Level). Env GRVR_* overrides if still pointed here. */
-export const GRVR_SEPOLIA_CONTRACT = '0x6C61feb8389c99EBf00576E7A110140866C5D9fF';
+/** Sepolia v3 (on-chain SVG). Env GRVR_* overrides. */
+export const GRVR_SEPOLIA_CONTRACT = '0x0CEb73b07E1fdF3305cE4d3f6AC3BC28F8Ff8670';
+/** 7-arg collections. Do not mint here. */
+export const GRVR_V2_MAINNET = '0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3';
+export const GRVR_V2_SEPOLIA = '0x6C61feb8389c99EBf00576E7A110140866C5D9fF';
+export const GRVR_V1_MAINNET = '0x0abcd80C929Ff2f6c308958B112b7925801750D7';
 
 const DID_RE = /^did:groover:[0-9a-fA-F]{16}$/;
 
