@@ -122,10 +122,16 @@ export default function Home(): JSX.Element {
               </p>
             </div>
           ) : (
+            <>
             <p className={styles.description}>
               Cryptographic proof-of-possession + adaptive 4-turn behavioral challenge.
               {' '}<strong>12 anti-gaming gates. No backdoors. No exceptions.</strong>
             </p>
+            <p className={styles.suitCta}>
+              <Link to="/suit">Build a 0xray factory</Link>
+              {' — mill params, download mill+inspect, load it in the CLI, mint.'}
+            </p>
+            </>
           )}
         </div>
       </header>

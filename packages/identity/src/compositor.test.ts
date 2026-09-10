@@ -4,6 +4,7 @@ import {
   HATS,
   composeIdentitySvg,
   traitsFromVariant,
+  variantFromTraits,
 } from './compositor.js';
 import { GRVR_MAX_VARIANT } from './suit-dna.js';
 
@@ -24,6 +25,14 @@ describe('GRVR compositor', () => {
     }
     expect(looks.size).toBe(16);
     expect(() => traitsFromVariant(16)).toThrow(/0\.\.15/);
+  });
+
+  it('variantFromTraits is the inverse of traitsFromVariant', () => {
+    for (let v = 0; v < GRVR_MAX_VARIANT; v += 1) {
+      const t = traitsFromVariant(v);
+      expect(variantFromTraits(t.hat, t.colorway)).toBe(v);
+    }
+    expect(variantFromTraits('constitution-visor', 'inspect-amber')).toBe(5);
   });
 
   it('is deterministic and XML-escapes DID/pack', () => {

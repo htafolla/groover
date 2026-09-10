@@ -85,6 +85,13 @@ describe('MCP HTTP boundary (P0.9)', () => {
     expect(src).not.toContain('font-size="28">GRVR');
   });
 
+  it('answers CORS preflight on OPTIONS (browser mint_suit)', () => {
+    const src = readFileSync(new URL('./mcp-server.ts', import.meta.url), 'utf8');
+    expect(src).toContain("req.method === 'OPTIONS'");
+    expect(src).toContain("'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'");
+    expect(src).toContain("'Access-Control-Allow-Headers': 'Content-Type'");
+  });
+
   it('rejects register_plugin with invalid args via tools/call', async () => {
     const outcome = await processStreamableMcpRequest(
       {

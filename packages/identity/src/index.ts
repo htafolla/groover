@@ -277,7 +277,13 @@ export {
   armorFromPack,
   composeIdentitySvg,
   traitsFromVariant,
+  variantFromTraits,
 } from './compositor.js';
+export {
+  buildFoundryInventory,
+  lockedMillPlantSkills,
+  receiptInspect,
+} from './mill-inventory.js';
 export type { Armor, Colorway, Hat, TokenView } from './compositor.js';
 export {
   getPackAdapter,
