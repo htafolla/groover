@@ -108,9 +108,25 @@ describe('mint_suit MCP', () => {
       pack: 'groover-identity',
       to,
       dryRun: true,
-    })) as { success: boolean; dryRun: boolean; txHash?: string };
+    })) as { success: boolean; dryRun: boolean; txHash?: string; level: number };
     expect(result.success).toBe(true);
     expect(result.dryRun).toBe(true);
     expect(result.txHash).toBeUndefined();
+    expect(result.level).toBe(0);
+  });
+
+  it('sets Level from fullBox7D on dry-run', async () => {
+    const rec = await registerFixture();
+    delete process.env.GRVR_PRIVATE_KEY;
+    const result = (await TOOL_HANDLERS.mint_suit({
+      did: rec.did,
+      apiKey: rec.apiKey,
+      pack: 'groover-identity',
+      to,
+      fullBox7D: 0.91,
+      dryRun: true,
+    })) as { success: boolean; level: number };
+    expect(result.success).toBe(true);
+    expect(result.level).toBe(3);
   });
 });

@@ -43,6 +43,19 @@
   },
   {
     "type": "function",
+    "name": "MAX_LEVEL",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MAX_VARIANT",
     "inputs": [],
     "outputs": [
@@ -184,6 +197,11 @@
             "internalType": "bytes32"
           },
           {
+            "name": "level",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
             "name": "mintedAt",
             "type": "uint256",
             "internalType": "uint256"
@@ -285,6 +303,25 @@
   },
   {
     "type": "function",
+    "name": "levelName",
+    "inputs": [
+      {
+        "name": "level",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
     "name": "mint",
     "inputs": [
       {
@@ -316,6 +353,11 @@
         "name": "dynamoCitation",
         "type": "bytes32",
         "internalType": "bytes32"
+      },
+      {
+        "name": "level",
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "outputs": [
@@ -995,6 +1037,17 @@
     "type": "error",
     "name": "InvalidDid",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidLevel",
+    "inputs": [
+      {
+        "name": "level",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
   },
   {
     "type": "error",
