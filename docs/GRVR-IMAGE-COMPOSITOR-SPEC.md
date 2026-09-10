@@ -56,10 +56,10 @@ Replace the schematic SVG with a **deterministic layered raster (PNG)** composit
 |---|---|---|---|
 | 0 | Backdrop: factory bay, dim servers + crane rails | Pre-rendered asset, 3 variants `bay-0.png`, `bay-1.png`, `bay-2.png` | `dna[0] % 3` where `dna[i]` = byte `i` of the 32-byte dna (`parseInt(dna.slice(2+2*i, 4+2*i), 16)`, `dna` is `0x` + 64 hex) |
 | 1 | Chassis: exoskeleton torso plates, transparent midriff with circuit conduits | Pre-rendered asset per pack class: `chassis-groover-identity.png`, `chassis-0xray-suit.png`. Future packs add one file + adapter hook; no code change to the stack. Unknown pack → **500** body `unknown pack "<pack-id>"` per §5; never silently substitute | `pack` |
-| 2 | Helmet: full helm + dark visor + branding plate + visor banner | Pre-rendered asset per hat, exact mapping: `mill-cap` → `helm-mill-cap.png`, `constitution-visor` → `helm-constitution-visor.png`, `job-helm` → `helm-job-helm.png`, `inspect-visor` → `helm-inspect-visor.png`. Loader throws `UnknownHatError` on missing file; no fallback. Branding plate baked into asset (`0xRay` on suit helms, `GRVR` on identity helms). Banner composited as SVG text overlay: text = `pack === '0xray-suit' ? 'CONSTITUTION ON' : pack.toUpperCase()`, DejaVu Sans Mono Bold 48px `#FFFFFF`, centered `x=512, y=310`, max width 700 (shrink-to-fit, never wrap). Rationale for pack-rule over inspect-bit: the chain view carries no inspect flag, so render-time inspect state is unknowable; pack is the only inspect proxy available | `hat = HATS[variant >> 2]` (existing math, unchanged) |
-| 3 | Cores: 3–7 glowing nodes + conduit strokes over torso box `{x:312, y:380, w:400, h:420}` | Procedural via sharp: per node, blurred circle (`sigma 12`, opacity `0.85`) composited with `blend: 'screen'`; if the libvips build lacks `screen`, the build-time test fails — do not silently substitute `over`. Conduits: 2px polyline connecting nodes in index order, `#67E8F9`, opacity `0.7`. Count `= 3 + (dna[1] % 5)`. For node `i` in `0..count-1`: `px = x + (u16be(dna, 2+2*(i%4)) / 65535) * w`, `py = y + (u16be(dna, 3+2*(i%4)) / 65535) * h` where `u16be(dna, o)` = big-endian uint16 of bytes at offsets `o, o+1`; radius `= 18 + (dna[(2+i) % 10] % 20)` px; color `= [accent, '#9b7dff', '#f5b63e'][(dna[10] + i) % 3]` with accent per colorway: `mill-cyan #3ec8f5`, `inspect-amber #f5b63e`, `groover-violet #9b7dff`, `overlay-steel #7aa0b8` | `dna` bytes as specified; all procedural randomness for nodes comes from these direct byte reads (positions/count/colors are pure functions of dna — the PRNG stream §3.2 is reserved for wear jitter) |
+| 2 | Helmet: full helm + dark visor + branding plate + visor banner | Pre-rendered asset per hat, exact mapping: `mill-cap` → `helm-mill-cap.png`, `constitution-visor` → `helm-constitution-visor.png`, `job-helm` → `helm-job-helm.png`, `inspect-visor` → `helm-inspect-visor.png`. Loader throws `UnknownHatError` on missing file; no fallback. Branding plate baked into asset (`0xRay` on suit helms, `GRVR` on identity helms). Banner follows **hat**, never pack: `mill-cap` → `MILL`, `constitution-visor` → `CONSTITUTION`, `job-helm` → `JOB`, `inspect-visor` → `INSPECT`. DejaVu Sans Mono Bold 48px `#FFFFFF`, centered `x=512, y=310`, max width 700 (shrink-to-fit, never wrap). Do not stamp every `0xray-suit` as `CONSTITUTION ON`. Render does not re-gate hats; mill inspect is the gate; compositor trusts on-chain variant | `hat = HATS[variant >> 2]` (existing math, unchanged) |
+| 3 | Cores: two named organs on `0xray-suit` only | `0xray-suit`: two fixed nodes in torso box `{x:312, y:380, w:400, h:420}` — left **MILL** (`cx = x + w*0.28`, `cy = y + h*0.48`), right **INSPECT** (`cx = x + w*0.72`, `cy = y + h*0.48`). Each is a blurred circle (`sigma 12`, opacity `0.85`, `blend: 'screen'`; if libvips lacks `screen`, the build-time test fails — do not silently substitute `over`) plus a 2px conduit between them, `#67E8F9`, opacity `0.7`. DNA may jitter radius (`18 + (dna[2] % 8)` px MILL, `18 + (dna[3] % 8)` px INSPECT) and glow, not count or identity. Color = colorway accent: `mill-cyan #3ec8f5`, `inspect-amber #f5b63e`, `groover-violet #9b7dff`, `overlay-steel #7aa0b8`. `groover-identity` (and unknown-but-valid future packs until they declare cores): **no** mill/inspect cores. Never 3–7 DNA-scattered blobs | `pack` selects presence; `dna` jitter only |
 | 4 | Wear: scratches/edge highlights, per-stroke alpha ≤ 0.25 | Procedural strokes from the PRNG stream §3.2: count `= [0, 12, 30, 60][variant & 3]`; each stroke length `20 + nextInt(120)` px, width `1 + nextInt(2)` px, `#FFFFFF`, alpha `0.10 + 0.05 * (variant & 3)`, position/angle from sequential `nextInt` calls | PRNG stream only |
-| 5 | HUD plate: bottom strip, two lines | SVG text overlay: line1 = `#${tokenId} ${pack}`, line2 = `${did} · 0x${dna.slice(2, 10)} · v${variant}` (`dna` in hex-string form), XML-escaped with existing `xml()` (no stripping — HUD is provenance, escape-only). Geometry: DejaVu Sans Mono 24px `#E8F6FF` on `rgba(0,0,0,0.65)` strip `x=0, y=944, w=1024, h=80`, 16px padding | `TokenView` verbatim |
+| 5 | HUD plate: bottom strip, two lines | SVG text overlay: line1 = `#${tokenId} ${pack}`, line2 = `${did} · 0x${dna.slice(2, 10)} · v${variant}` (`dna` in hex-string form), XML-escaped with existing `xml()` (no stripping — HUD is provenance, escape-only). Geometry: DejaVu Sans Mono 24px `#E8F6FF` on `rgba(0,0,0,0.65)` strip `x=0, y=944, w=1024, h=80`, 16px padding. Job plates, suit state (`fastened`/`overlay`/`costume`), and mill job line are **out**: they live on mill inventory, not `getTokenData` / `TokenView`. Do not imply the painted exo shows mill plates it cannot see | `TokenView` verbatim |
 | 6 | Colorway grade: global tint, applied after layers 0–4 and **before** text layers 2-banner/5 | `sharp(base).tint(accentHex).toBuffer()` with the §3.1 accent table; never tint banner/HUD text | `colorway = COLORWAYS[variant & 3]` (existing math, unchanged) |
 
 Assets live in `packages/identity/assets/layers/` (committed PNGs, 1024×1024) plus
@@ -73,7 +73,7 @@ else is deterministic procedure.
 **Honest uniqueness note:** ledger-level 1/1 per `(did, dna)` is inherited from the
 contract and is real. *Visual* distinctness is combinatorial, not perceptual, until
 measured: only 96 coarse buckets (16 variants × 2 packs × 3 bays) drive large-area
-structure; dna drives nodes/conduits/wear/tint. `groover-identity` dna is
+structure; dna drives bay/core-glow/wear/tint, not organ count. `groover-identity` dna is
 `keccak256(did)` (1:1 with did, fine); `0xray-suit` dna derives from canonical
 inventory, so two DIDs sharing an inventory share dna and differ only in HUD text.
 §9.1 includes a perceptual gate (median pairwise MAD) so this claim is measured,
@@ -81,7 +81,7 @@ not asserted.
 
 ### 3.2 Determinism (normative, exact)
 
-- Entropy sources, exhaustive: (a) direct `dna[i]` reads per §3.1 rows 0/3;
+- Entropy sources, exhaustive: (a) direct `dna[i]` reads per §3.1 rows 0 (bay) and 3 (core radius jitter);
   (b) the PRNG stream below for wear jitter (§3.1 row 4). **Nothing else.**
   No `Math.random`, no `Date.now`, no network at render time. `dna[11..18]` is
   reserved, not a second seed.
@@ -112,7 +112,8 @@ not asserted.
 
 - `traitsFromVariant` math, `HATS`/`COLORWAYS` tables, `TokenView` shape (imported
   from `./compositor.js`), `composeIdentitySvg` (kept + tested; route no longer calls
-  it by default), XML-escaping discipline, pack-cores concept (now glowing nodes).
+  it by default), XML-escaping discipline, pack-cores as two named organs (MILL +
+  INSPECT on `0xray-suit`; none on `groover-identity`).
 
 ## 4. Render pipeline (normative)
 
