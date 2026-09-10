@@ -42,7 +42,7 @@ Job plates, suit state, and mill job line stay off-chain (not in `TokenView`). S
 
 Read from **chrono-warp-drive code**, not the Codex gloss. Repo path is `chrono-warp-drive` (not "chronos").
 
-A transponder is a fixed point that answers interrogation. Codex name in code: **Temporal Photonic Transpondent Transporter** (`tPTT`). `T_c` is the time constant: in `TemporalCalculatorV4.integrateA_m()` it is the mean of spectral intensities (`∫ A_m` as a discrete average). In the solar hammer, `T_c` is derived from proposal word-count / character diversity vs NOAA activity (`deriveProposalCodexParams` / `deriveSolarCodexParams`). tPTT = `T_c × (P_s / E_t) × PHI × (C / Δt)`. Shared **word**, two collections, two contracts. Do **not** pour mill exo / visor / DNA into VRTX.
+A transponder is a fixed point that answers interrogation. Codex name in code: **Temporal Photonic Transpondent Transporter** (`tPTT`). Codex writes `T_c = ∫ A_m dt` (memory of the field). Production does **not** integrate: `TemporalCalculatorV4.integrateA_m()` is the mean of spectrum intensities; the solar hammer maps `T_c` from proposal word-count / character diversity vs NOAA activity (`deriveProposalCodexParams` / `deriveSolarCodexParams`). tPTT = `T_c × (P_s / E_t) × PHI × (C / Δt)`. Shared **word**, two collections, two contracts. Do **not** pour mill exo / visor / DNA into VRTX.
 
 | Transponder | Answers | On-chain today |
 |---|---|---|
@@ -84,7 +84,12 @@ The PASS that matters is the **hammer** verdict in `dynamoSolarGovernance.enhanc
 - `getSolarContextForGovernance` catch → activity `moderate`, "Unable to fetch solar data".
 - `getProposalSolarIsotopicResonance` catch → **fallback `hybridVerdict: PASS`, 7D PASS, isotope `C-12`, scores 0.80**.
 
-If Groover only checks `recommendation === 'PASS'`, a hammer exception looks like the sun said yes. Gate must also require a real NOAA snapshot (activity present, `neuralContextUsed` / fetch not in the catch path) and reject the 0.80 C-12 fallback. Queue, never bypass.
+If Groover only checks `recommendation === 'PASS'`, a hammer exception looks like the sun said yes. Gate must also require a real NOAA snapshot (activity present, fetch not in the catch path) and reject the 0.80 C-12 fallback. Queue, never bypass.
+
+Two more holes from the same files:
+
+- **Quiet-outage bias:** `solarDataFetcher` channel failure synthesizes quiet-ish xray/kp (`1e-8` / 0) → activity `quiet` → **easier** PASS (strong 0.86). Storm closes the gate; a NOAA outage *opens* it. Do not treat quiet-from-missing-flux as sun-approved.
+- **Temporal nonce:** proposal TDF XORs `Date.now()/1000` with xray micro-variation. The same mill DNA is a different vortex every second. PASS is a *moment*, not a property of the suit. Citation records that instant; it does not freeze the DNA's weather forever.
 
 ### Isotopes — what the code actually has
 
