@@ -262,12 +262,14 @@ export {
   tokenIdFromMintReceipt,
 } from './grvr-mint.js';
 export {
+  BANNERS,
   COLORWAYS,
   HATS,
+  armorFromPack,
   composeIdentitySvg,
   traitsFromVariant,
 } from './compositor.js';
-export type { Colorway, Hat, TokenView } from './compositor.js';
+export type { Armor, Colorway, Hat, TokenView } from './compositor.js';
 export {
   getPackAdapter,
   listPackAdapters,
