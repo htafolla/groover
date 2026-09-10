@@ -38,6 +38,23 @@ Railway `GET /identity/token-image/{tokenId}` reads `getTokenData` and returns d
 
 Job plates, suit state, and mill job line stay off-chain (not in `TokenView`). Spec: `docs/GRVR-IMAGE-COMPOSITOR-SPEC.md`.
 
+## Transponders (Groover + Dynamo)
+
+A transponder is a fixed point that answers interrogation. Two collections. Do not pour the exo into VRTX.
+
+| Transponder | Answers | On-chain |
+|---|---|---|
+| **VRTX** (Dynamo) | Did the sun + field accept this *decision*? | Container + vortex traits (verdict, 7D, TMO, phase, source). Image URL on Dynamo Railway. |
+| **GRVR** (Groover) | Who is wearing what mill DNA? | `did`, `pack`, `variant`, `dna`, `dynamoCitation`. Image URL on Groover Railway. |
+
+`T_c = ∫ A_m dt` is the temporal transponder (memory of the resonance field). GRVR is the identity transponder (memory of the agent). Shared word, not a shared contract.
+
+**Forcing Dynamo on `mint_suit`:** Groover calls `govern_with_solar` itself and requires PASS. NOAA solar + isotopic resonance vs the proposal. Container id → `dynamoCitation`. Groover still signs. Missing sun → no mainnet mint (queue, never bypass). This is not Dynamo auto-mint (`autoMintVortex` stays off).
+
+**Isotopes** live in the hammer, not on VRTX `tokenURI` today. `list_isotopes`: C-12 (1.0), C-14 (0.8), Trinitarium-166 (PHI 1.666), Chronovium-865 (TAU 0.865), Vortexite-528. Essences: grounded/slow, swift/bright, etc. **Rarity chips** on Vortex UI (Celestial / Resonant / Unstable / Dissonant) are thresholds on 7D composite, not a separate ERC trait.
+
+**Leverage without a new GRVR contract:** copy isotope + phase + rarity from the cited container into the 8004 registration file (and optionally HUD). Do **not** remap GRVR `variant` 0..15 from isotope — that slot is `hash(did, dna) % 16` (4 visor meshes × 4 colorways). Citation is the solar receipt; visor/color stay mill identity.
+
 ## Sepolia (history)
 
 - `0xFc644D08cd98f11BB952a4E9b04f5Ad0b312D683`
