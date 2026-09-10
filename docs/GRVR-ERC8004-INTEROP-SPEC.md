@@ -88,7 +88,15 @@ Versioned immutable files (never rewrite a served URL).
     "grvrContract": "0x0abcd80C929Ff2f6c308958B112b7925801750D7",
     "grvrTokenId": "<tokenId>",
     "dynamoCitation": "<0x-64hex-or-none>",
-    "grvrChainId": 8453
+    "grvrChainId": 8453,
+    "solar": {
+      "isotope": "<C-12|C-14|Trinitarium-166|Chronovium-865|Vortexite-528>",
+      "phaseType": "<push|pull>",
+      "solarActivity": "<quiet|moderate|active|storm>",
+      "fullBox7D": "<0..1>",
+      "rarityTier": "<Celestial|Resonant|Unstable|Dissonant>",
+      "hammerReason": "<string>"
+    }
   }
 }
 ```
@@ -104,6 +112,9 @@ registry/contract.
 `supportedTrust: ["groover-provenance"]` is declared and defined here: trust grounded
 in on-chain GRVR proofs (DNA, citation), not in 8004 feedback — honest advertising,
 indexers that don't recognize the string ignore it harmlessly.
+`groover.solar` is omitted until the §10 citation gate ships; once a PASS is cited,
+copy isotope / phase / activity / 7D / rarity / hammerReason from that result. Omit
+rather than invent. Live hammer isotope is C-12 until Dynamo accepts `isotopeType`.
 
 ### 2.3 Costs and custody
 
@@ -222,7 +233,8 @@ every identity mark cites its temporal receipt.
    honor-system field).
 4. Mint with `dynamoCitation = bytes32(containerId)` (field exists on-chain,
    currently always zero; no contract change needed).
-5. Mirror to 8004 per §§2–3, carrying the citation in the `groover` block.
+5. Mirror to 8004 per §§2–3, carrying the citation and `groover.solar` in the
+   `groover` block.
 6. Verification runs both ways: token → citation → container → decision;
    container → (registry index, §2.1 step 6) → token.
 
@@ -234,9 +246,25 @@ distinguishes approval-gating from the banned auto-mint pattern — governance
 attests, Groover still signs; neither side mints alone.
 
 **Transponder framing (shared vocabulary, decided):** a transponder is any canonical
-fixed point that answers interrogation. `T_c` is the temporal transponder (memory
-of the resonance field); the GRVR mark is the identity transponder (memory of the
-agent). One line per repo states this; the shared word is architecture, not collision.
+fixed point that answers interrogation. Codex name in chrono-warp-drive code is
+Temporal Photonic Transpondent Transporter (`tPTT`); `T_c` is the time constant
+(`integrateA_m` / hammer Codex params). The GRVR mark is the identity transponder
+(memory of the agent). One line per repo states this; the shared word is
+architecture, not collision. VRTX stays the decision NFT. Do not pour mill exo
+into VRTX.
+
+**Isotopic copy (8004 file, not GRVR `variant`):** live `govern_with_solar` always
+reports Kuramoto isotope `C-12` (no `isotopeType` arg). The wave box still
+cross-correlates C-12 vs C-14. Rarity chips are UI thresholds on 7D composite
+(Celestial ≥ 0.95, Resonant ≥ 0.78, Unstable ≥ 0.50, else Dissonant) — not a VRTX
+trait. Copy `solar` (§2.2) from the cited result. Do not remap `variant` 0..15
+from isotope (`hash(did, dna) % 16` is visor × colorway).
+
+**Gate is hammer PASS, not 7D PASS.** Storm override in
+`dynamoSolarGovernance.ts` forces hammer PASS → NEEDS_REVISION. Hammer exception
+fallback is fake PASS at 0.80 / C-12 — treat as missing sun, queue, never bypass.
+`persistToChain: true` is required for `containerId`; Dynamo then fire-and-forgets
+`autoMintVortex` (decision token, not identity).
 
 **Liveness coupling (accepted risk):** governed mints depend on Dynamo MCP uptime.
 Posture: queue, never bypass — a mint that cannot get its citation waits; it does
