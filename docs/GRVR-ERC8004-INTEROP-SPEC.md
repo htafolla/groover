@@ -189,7 +189,8 @@ No changes to existing `GRVR_*` vars. Mirror reads the same `GRVR_PRIVATE_KEY`
   deploys on Base mainnet — then: validation request citing `identityKey` + DNA,
   response carrying inspect/dynamo evidence).
 - `setAgentWallet` proofs, x402 integration, ENS names, cross-chain mirrors,
-  changing the GRVR mint flow beyond the post-warm mirror call, new signing keys.
+  changing the GRVR mint flow beyond the post-warm mirror call and the §10 citation
+  gate, new signing keys.
 
 ## 9. Why this wins (for the skeptic)
 
@@ -213,8 +214,12 @@ every identity mark cites its temporal receipt.
 1. Groover identifies the agent → DID + DNA via pack adapter (exists).
 2. For `0xray-suit`: mill inspect attestation (exists — Groover-side fitness proof).
 3. Dynamo `govern_with_solar` approval → decision recorded as a container ID on
-   `TemporalContainerRegistry` (new step: `mint_suit` calls govern as an
-   attestation input, exactly like the inspect check).
+   `TemporalContainerRegistry` (new step: Groover invokes the Dynamo MCP itself and
+   REQUIRES a PASS — the returned container ID becomes `dynamoCitation`; missing
+   response or non-PASS means no mainnet mint. This is deliberately stricter than
+   today's inspect path, which trusts caller-provided `inspect.ok` + DNA match
+   without re-running inspection; the citation must never become another
+   honor-system field).
 4. Mint with `dynamoCitation = bytes32(containerId)` (field exists on-chain,
    currently always zero; no contract change needed).
 5. Mirror to 8004 per §§2–3, carrying the citation in the `groover` block.
@@ -235,8 +240,12 @@ agent). One line per repo states this; the shared word is architecture, not coll
 
 **Liveness coupling (accepted risk):** governed mints depend on Dynamo MCP uptime.
 Posture: queue, never bypass — a mint that cannot get its citation waits; it does
-not mint citation-less on mainnet. Sepolia proving may exercise the degraded path
-explicitly and label it as such in the file (`"degraded": true`, never on mainnet).
+not mint citation-less on mainnet. The queue is durable, not in-process:
+append-only `pending-citations.jsonl` next to the §2.1-step-6 index file, reaped on
+boot with backoff (in-process state dies with Railway deploys, which already drop
+registered DIDs — a memory-only queue would silently drop mints). Sepolia proving
+may exercise the degraded path explicitly and label it as such in the file
+(`"degraded": true`, never on mainnet).
 
 ## 11. Long-term view (staged; this PR is stage 1)
 
@@ -255,12 +264,15 @@ explicitly and label it as such in the file (`"degraded": true`, never on mainne
 - **Structural (ordered by leverage):**
   1. **Dogfood the population** — every mill agent gets a mainnet GRVR with real
      inspect citations. A grounded subset of zero is a null set.
-  2. **Agent-held keys** — Ed25519 DIDs the agent controls (signing, rotation),
-     replacing minter-assigned DIDs; aligns with VAIP/APS/OpenA2A and unlocks
-     `setAgentWallet` proofs.
-  3. **Revocation story** — compromised-agent invalidation path (on-chain flag or
-     registry-level revocation list + `active: false` propagation to mirrored files
-     via `setAgentURI`).
+  2. **Agent-held keys** — custody of the Ed25519 key behind the DID moves to the
+     agent (key rotation, `setAgentWallet` proofs). No DID-scheme change is needed:
+     `did:groover:` already derives via `didFromEd25519PublicKey`; the minter EOA
+     signs GRVR/`register`, it never mints the DID string. The work is wallet
+     custody + rotation, and it unlocks `setAgentWallet` proofs.
+  3. **Revocation story** — 8004-side only: flip `active: false` and propagate via
+     `setAgentURI`, plus an optional registry denylist. No on-chain GRVR flag: the
+     contract is frozen, and a flag would be a new contract version — called out
+     here as a freeze exception if ever pursued, not a silent option.
   4. **Decentralize issuance** — replace the hot-wallet minter with governance-vote
      or TEE-attested issuance; the audit trail built in stages 1–3 is what makes
      the decentralization claim checkable.
