@@ -40,6 +40,8 @@ Railway `GRVR_CONTRACT` is this v3 address. `mint_suit` sends compact compositor
 
 `IMAGE_BASE` is frozen. Recipe on-chain: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level`, `imageSvg`.
 
+**OpenSea traits (v4+):** Visor, Colorway, Chassis, Mark, Level — the picture. DID, pack, variant, DNA, citation, minted are description metadata, not traits. Live v3 `0x6F955cA0…` still emits recipe traits; do not mint token 2 there. Mint ABI is unchanged.
+
 **Level** (OpenSea trait `Level`): 0 Unknown, 1 Dissonant, 2 Unstable, 3 Resonant, 4 Celestial. From Dynamo 7D at mint (`fullBox7D` or explicit `level`). ≥0.95 Celestial, ≥0.78 Resonant, ≥0.50 Unstable, scored else Dissonant. **No Dynamo / no 7D → Unknown** (not Dissonant — that is a scored miss). Variant is still visor (`hash(did,dna)%16`), not Level.
 
 Live v3 is `0x6F955cA0…`. Railway `GRVR_CONTRACT` must be that address (env wins over the code default).
