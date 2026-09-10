@@ -1,5 +1,12 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { mintGrvrIdentity, minterKey, parseTokenIdParam, tokenIdFromMintReceipt } from './grvr-mint.js';
+import {
+  compactSvg,
+  mintGrvrIdentity,
+  mintWantsOnchainSvg,
+  minterKey,
+  parseTokenIdParam,
+  tokenIdFromMintReceipt,
+} from './grvr-mint.js';
 
 const DID = 'did:groover:aaaaaaaaaaaaaaaa';
 const TO = '0x0000000000000000000000000000000000000001';
@@ -73,5 +80,22 @@ describe('GRVR mint key + receipt', () => {
     expect(parseTokenIdParam('2?x=1')).toBe(2n);
     expect(parseTokenIdParam('0')).toBeNull();
     expect(parseTokenIdParam('nope')).toBeNull();
+  });
+});
+
+describe('on-chain SVG mint helpers', () => {
+  it('compactSvg strips newlines and tabs', () => {
+    expect(compactSvg('<svg>\n\t<rect/>\n</svg>')).toBe('<svg><rect/></svg>');
+  });
+
+  it('mintWantsOnchainSvg is false for known 7-arg contracts', () => {
+    expect(mintWantsOnchainSvg('0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3')).toBe(false);
+    expect(mintWantsOnchainSvg('0x6C61feb8389c99EBf00576E7A110140866C5D9fF')).toBe(false);
+    expect(mintWantsOnchainSvg('0x0abcd80C929Ff2f6c308958B112b7925801750D7')).toBe(false);
+    expect(mintWantsOnchainSvg('0x7B184BF7B7054A7328A1D7851465C6001BB2AFB3')).toBe(false);
+  });
+
+  it('mintWantsOnchainSvg is true for a new v3 address', () => {
+    expect(mintWantsOnchainSvg('0x1234567890abcdef1234567890abcdef12345678')).toBe(true);
   });
 });

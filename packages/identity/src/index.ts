@@ -257,8 +257,10 @@ export {
   variantFromKey,
 } from './suit-dna.js';
 export {
+  compactSvg,
   loadGrvrTokenView,
   mintGrvrIdentity,
+  mintWantsOnchainSvg,
   minterKey,
   parseTokenIdParam,
   prepareGrvrMint,
