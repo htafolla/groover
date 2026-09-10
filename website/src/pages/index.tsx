@@ -127,10 +127,15 @@ export default function Home(): JSX.Element {
               Cryptographic proof-of-possession + adaptive 4-turn behavioral challenge.
               {' '}<strong>12 anti-gaming gates. No backdoors. No exceptions.</strong>
             </p>
-            <p className={styles.suitCta}>
-              <Link to="/suit">Build a 0xray factory</Link>
-              {' — mill params, download mill+inspect, load it in the CLI, mint.'}
-            </p>
+            <div className={styles.factoryCta}>
+              <Link className={styles.factoryBtn} to="/suit">
+                Build a 0xray factory
+                <span className={styles.factoryArrow}>→</span>
+              </Link>
+              <p className={styles.factorySub}>
+                mill params · download mill+inspect · load it in the CLI · mint
+              </p>
+            </div>
             </>
           )}
         </div>

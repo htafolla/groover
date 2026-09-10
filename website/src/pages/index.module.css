@@ -26,9 +26,43 @@
   width: 100%;
 }
 
-.suitCta {
-  margin-top: 1rem;
-  font-size: 0.95rem;
+.factoryCta {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.factoryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #030508;
+  text-decoration: none;
+  padding: 0.9rem 2.2rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7ae8ff 0%, #3ec8f5 45%, #2a8ab0 100%);
+  box-shadow: 0 0 28px rgba(62, 200, 245, 0.45), 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.factoryBtn:hover {
+  color: #030508;
+  text-decoration: none;
+  transform: translateY(-2px);
+  box-shadow: 0 0 44px rgba(62, 200, 245, 0.65), 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+.factoryArrow {
+  font-size: 1.3em;
+  line-height: 1;
+}
+
+.factorySub {
+  margin-top: 0.7rem;
+  font-size: 0.9rem;
+  color: #8ab4c4;
 }
 
 /* ---- hero (mill bay) ---- */
