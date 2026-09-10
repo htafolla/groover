@@ -22,7 +22,7 @@ describe('GRVR suit DNA', () => {
   it('defaults to Base mainnet GRVR', () => {
     expect(GRVR_DEFAULT_CHAIN_ID).toBe(8453);
     expect(GRVR_DEFAULT_CONTRACT.toLowerCase()).toBe(
-      '0x0abcd80c929ff2f6c308958b112b7925801750d7',
+      '0x7b184bf7b7054a7328a1d7851465c6001bb2afb3',
     );
   });
 

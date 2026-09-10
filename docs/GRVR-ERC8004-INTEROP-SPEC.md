@@ -23,7 +23,7 @@ re-entry criteria.
 | 8004 IdentityRegistry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | `cast code` non-empty; `name()` → `AgentIdentity`; vanity CREATE2, same on all mainnets |
 | 8004 ReputationRegistry | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` | `cast code` non-empty |
 | 8004 ValidationRegistry | **not deployed on mainnet** | working-group table lists testnets only; no mainnet address published |
-| GRVR token | `0x0abcd80C929Ff2f6c308958B112b7925801750D7` | chrono-warp-drive handoff; live-verified 2026-09-10 via cast (`totalSupply == 0` then) |
+| GRVR token | `0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3` | v2 + Level; chrono handoff 2026-09-10; v1 `0x0abcd80C…` superseded |
 | GRVR minter (Railway) | `0x77E7A48609e9c8A77C7639172af9EEA0e5E80DF7` | holds `MINTER_ROLE` on GRVR (verified on-chain 2026-09-10 via cast) |
 | 8004 `register` | `register(string agentURI)` → `uint256 agentId` (plus `register()` and `register(string, MetadataEntry[])` overloads); mints ERC-721 to `msg.sender`; emits `Registered(agentId, agentURI, owner)`; `agentWallet` defaults to owner. **Measured:** `eth_call` simulation on Base returns next agentId without revert (observed `85540`; ~85k agents registered) | canonical EIP + reference contracts + live simulation |
 | 8004 `setAgentURI` | `setAgentURI(agentId, newURI)` → emits `URIUpdated(agentId, newURI, updatedBy)`; authorized to owner **or** approved operators (`isApprovedForAll`/`getApproved`) — safety holds while the minter grants no approvals (never grant any) | canonical EIP + reference source |
@@ -73,7 +73,7 @@ Versioned immutable files (never rewrite a served URL).
   "image": "https://registry-production-e2c4.up.railway.app/identity/token-image/<grvrTokenId>",
   "services": [
     { "name": "DID", "endpoint": "<did>", "version": "v1" },
-    { "name": "GRVR", "endpoint": "eip155:8453:0x0abcd80C929Ff2f6c308958B112b7925801750D7/<grvrTokenId>", "version": "v1" }
+    { "name": "GRVR", "endpoint": "eip155:8453:0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3/<grvrTokenId>", "version": "v1" }
   ],
   "x402Support": false,
   "active": true,
@@ -85,7 +85,7 @@ Versioned immutable files (never rewrite a served URL).
     "pack": "<pack>",
     "variant": "<0-15>",
     "identityKey": "<0x-64hex>",
-    "grvrContract": "0x0abcd80C929Ff2f6c308958B112b7925801750D7",
+    "grvrContract": "0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3",
     "grvrTokenId": "<tokenId>",
     "dynamoCitation": "<0x-64hex-or-none>",
     "level": "<Unknown|Dissonant|Unstable|Resonant|Celestial>",
@@ -108,7 +108,7 @@ visual identity across both systems); `did-short`/URLs XML/JSON-safe by construc
 (DID charset is hex+colon); v1 omits `registrations` (unknown until step 3), v2 adds it.
 All chain-specific values (`GRVR` endpoint prefix, `agentRegistry`, `grvrChainId`,
 `grvrContract`) follow the ACTIVE chain — template shows mainnet
-(`eip155:8453`, `0x0abcd80C…`); Sepolia proving uses `eip155:84532`, the §3 Sepolia
+(`eip155:8453`, `0x7b184bf7…`); Sepolia proving uses `eip155:84532`, the §3 Sepolia
 registry/contract.
 `supportedTrust: ["groover-provenance"]` is declared and defined here: trust grounded
 in on-chain GRVR proofs (DNA, citation), not in 8004 feedback — honest advertising,

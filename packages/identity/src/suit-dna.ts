@@ -11,11 +11,11 @@ export const GRVR_MAX_VARIANT = 16;
 export const GRVR_MAX_LEVEL = 5;
 export const GRVR_LEVEL_NAMES = ['Unknown', 'Dissonant', 'Unstable', 'Resonant', 'Celestial'] as const;
 export type GrvrLevelName = (typeof GRVR_LEVEL_NAMES)[number];
-export const GRVR_DEFAULT_CONTRACT = '0x0abcd80C929Ff2f6c308958B112b7925801750D7';
+export const GRVR_DEFAULT_CONTRACT = '0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3';
 export const GRVR_DEFAULT_CHAIN_ID = 8453;
 export const GRVR_DEFAULT_RPC = 'https://mainnet.base.org';
-/** Sepolia collection. Env GRVR_* overrides if still pointed here. */
-export const GRVR_SEPOLIA_CONTRACT = '0xFc644D08cd98f11BB952a4E9b04f5Ad0b312D683';
+/** Sepolia v2 (Level). Env GRVR_* overrides if still pointed here. */
+export const GRVR_SEPOLIA_CONTRACT = '0x6C61feb8389c99EBf00576E7A110140866C5D9fF';
 
 const DID_RE = /^did:groover:[0-9a-fA-F]{16}$/;
 

@@ -12,7 +12,7 @@ and tests. No Solidity. No mint-flow change. No Imagine.
 | `IMAGE_BASE` | `https://registry-production-e2c4.up.railway.app/identity/token-image/` (constant on the frozen contract). |
 | Railway | `GET /identity/token-image/{tokenId}` → `getTokenData` → `composeIdentitySvg`. Deterministic SVG. |
 
-Contract: Base mainnet `0x0abcd80C929Ff2f6c308958B112b7925801750D7` (8453). Sepolia is history (`docs/GRVR-MINT.md`).
+Contract: Base mainnet v2 `0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3` (8453). v1 `0x0abcd80C…` superseded. Sepolia v2 `0x6C61feb8…` (`docs/GRVR-MINT.md`).
 
 ---
 
