@@ -9,7 +9,7 @@ Contract is on chrono-warp-drive. Groover is the minter. Pack DNA is an **adapte
 1. Add `<id>.ts` implementing `PackAdapter` (`pack`, `description`, `resolveDna`).
 2. `registerPackAdapter(...)` in `packs/index.ts`.
 
-MCP `mint_suit` then accepts that `pack` id. Chain stores `pack` + `bytes32 dna` only.
+MCP `mint_suit` then accepts that `pack` id. Chain stores `pack` + `bytes32 dna` + `level`.
 
 Builtin:
 
@@ -18,13 +18,16 @@ Builtin:
 | `groover-identity` | keccak256(did) |
 | `0xray-suit` | keccak256(canonical mill inventory without `mintedAt`/`dna`); requires `inspect.ok` |
 
-## Base mainnet (live)
+## Base mainnet (live) — v2 + Level
 
-- `0x0abcd80C929Ff2f6c308958B112b7925801750D7`
-- chain 8453 · https://basescan.org/address/0x0abcd80C929Ff2f6c308958B112b7925801750D7
+- `0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3`
+- chain 8453 · https://basescan.org/address/0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3
+- deploy: `0x838645d2790a8f02385b07c296d17e72f00874037b8387f9ef5eeebf2bc66965`
 - MINTER_ROLE: `0x77E7A48609e9c8A77C7639172af9EEA0e5E80DF7` (Railway `GRVR_PRIVATE_KEY`)
 - Admin: `0xd45CcF98D6db5A36E7CdD10ffae0b685BF27CE43`
+- `MAX_LEVEL` = 5 · mint is 7 args (`…, dynamoCitation, level`)
 - ABI: `packages/identity/abi/GrooverIdentityToken.json`
+- v1 `0x0abcd80C929Ff2f6c308958B112b7925801750D7` is superseded. Do not mint there.
 
 ## Image (Railway SVG, not Base pixels)
 
@@ -36,7 +39,7 @@ Pixels are **not** on Base. `IMAGE_BASE` is frozen. Recipe on-chain: `did`, `pac
 
 **Level** (OpenSea trait `Level`): 0 Unknown, 1 Dissonant, 2 Unstable, 3 Resonant, 4 Celestial. From Dynamo 7D at mint (`fullBox7D` or explicit `level`). ≥0.95 Celestial, ≥0.78 Resonant, ≥0.50 Unstable, scored else Dissonant. **No Dynamo / no 7D → Unknown** (not Dissonant — that is a scored miss). Variant is still visor (`hash(did,dna)%16`), not Level.
 
-This ABI is a **new GRVR deploy**. Live `0x0abcd80C…` has no Level; do not mint 7-arg ABI against it.
+Live v2 is `0x7b184bf7…`. Railway must set `GRVR_CONTRACT` to that address or env still wins with v1.
 
 Railway `GET /identity/token-image/{tokenId}` reads `getTokenData` and returns deterministic SVG (`composeIdentitySvg`). Unique visor meshes (4 hats) × unique chassis (2 packs) × 4 colorway palettes. Banner follows hat. MILL+INSPECT cores only on `0xray-suit`. Not Imagine. Not 1024 PNG plates. Not `sharp`. Tiny SVG (<12KB), sharp at any scale.
 
@@ -51,7 +54,7 @@ A transponder is a fixed point that answers interrogation. Codex name in code: *
 | Transponder | Answers | On-chain today |
 |---|---|---|
 | **VRTX** (`VortexTokenV41`, "Dynamo Vortex") | Did the sun + field accept this *decision*? | Verdict, 7D Composite, TMO, Fusion, Moral Tension, Source, Wave/Phase/Calibrated/Neural axes, Gematria/Virtue/Moral Safety/Intent, Minted, optional Proposal. Image: `https://mcp-production-80e2.up.railway.app/vortex/token-image/{id}`. **No isotope trait.** |
-| **GRVR** (`GrooverIdentityToken`) | Who is wearing what mill DNA? | DID, Pack, Variant, DNA, Dynamo citation, Minted. Image: Groover `IMAGE_BASE + tokenId`. Citation field exists; live mints write `bytes32(0)` (`suit-dna.ts` default). |
+| **GRVR** (`GrooverIdentityToken`) | Who is wearing this mill DNA, locked at this instant? | DID, Pack, Variant, DNA, Dynamo citation, **Level**, Minted. Image: Groover `IMAGE_BASE + tokenId`. Level is the rarity of that lock. No Dynamo → Unknown. |
 | **TemporalContainerRegistry** | The receipt VRTX is minted from | Solar snapshot (activity, xray, kp, proton, magnetometer, solarTdf) + 7D profile + TMO. **No isotope field on the container either.** |
 
 `tokenByContainerId` / `getContainerData` exist on VRTX. GRVR `dynamoCitation` is optional and does **not** `require` a registry lookup (decoupling was deliberate).
@@ -121,16 +124,16 @@ Do **not** remap GRVR `variant` 0..15 from isotope — that slot is `hash(did, d
 
 Future (Dynamo-side, not GRVR): pass `isotopeType` into Kuramoto from NOAA or from mill DNA hash so the hammer can actually select C-14 / Blurrn species. Until that exists, copied `isotope` will read `C-12` and the real isotopic story is the C-12/C-14 wave comparison + 7D rarity.
 
-## Sepolia (history)
+## Sepolia (v2 proving)
 
-- `0xFc644D08cd98f11BB952a4E9b04f5Ad0b312D683`
+- `0x6C61feb8389c99EBf00576E7A110140866C5D9fF` (Level). v1 `0xFc644D08…` is history.
 
 ## Railway env
 
 Code defaults are mainnet. If these vars are still Sepolia they **win** — flip them on the Groover Railway box:
 
 ```
-GRVR_CONTRACT=0x0abcd80C929Ff2f6c308958B112b7925801750D7
+GRVR_CONTRACT=0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3
 GRVR_CHAIN_ID=8453
 GRVR_RPC_URL=https://mainnet.base.org
 GRVR_PRIVATE_KEY=
