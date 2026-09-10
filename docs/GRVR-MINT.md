@@ -25,7 +25,18 @@ Builtin:
 - MINTER_ROLE: `0x77E7A48609e9c8A77C7639172af9EEA0e5E80DF7` (Railway `GRVR_PRIVATE_KEY`)
 - Admin: `0xd45CcF98D6db5A36E7CdD10ffae0b685BF27CE43`
 - ABI: `packages/identity/abi/GrooverIdentityToken.json`
-- Image compositor: `GET /identity/token-image/{tokenId}` — pack class + variant `0..15` (4 hats × 4 colorways). Reads on-chain `getTokenData`. Not Imagine.
+
+## Image (Railway SVG, not Base pixels)
+
+`tokenURI` is tiny on-chain JSON. `image` is frozen `IMAGE_BASE + tokenId`:
+
+`https://registry-production-e2c4.up.railway.app/identity/token-image/{tokenId}`
+
+Pixels are **not** on Base. Contract frozen. Recipe on-chain: `did`, `pack`, `variant`, `dna`, `dynamoCitation`.
+
+Railway `GET /identity/token-image/{tokenId}` reads `getTokenData` and returns deterministic SVG (`composeIdentitySvg`). Unique visor meshes (4 hats) × unique chassis (2 packs) × 4 colorway palettes. Banner follows hat. MILL+INSPECT cores only on `0xray-suit`. Not Imagine. Not 1024 PNG plates. Not `sharp`. Tiny SVG (<12KB), sharp at any scale.
+
+Job plates, suit state, and mill job line stay off-chain (not in `TokenView`). Spec: `docs/GRVR-IMAGE-COMPOSITOR-SPEC.md`.
 
 ## Sepolia (history)
 
