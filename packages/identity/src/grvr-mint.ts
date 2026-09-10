@@ -20,18 +20,17 @@ import {
   GRVR_DEFAULT_CHAIN_ID,
   GRVR_DEFAULT_CONTRACT,
   GRVR_DEFAULT_RPC,
-  GRVR_SEPOLIA_CONTRACT,
+  GRVR_V1_MAINNET,
+  GRVR_V2_MAINNET,
+  GRVR_V2_SEPOLIA,
   prepareMintInput,
 } from './suit-dna.js';
 
 const abiDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../abi');
 
-/** v1 mainnet — superseded. Do not mint. Treated as 7-arg (not on-chain SVG). */
-const GRVR_V1_MAINNET = '0x0abcd80C929Ff2f6c308958B112b7925801750D7';
-
 const LEGACY_SEVEN_ARG_CONTRACTS = new Set([
-  GRVR_DEFAULT_CONTRACT.toLowerCase(),
-  GRVR_SEPOLIA_CONTRACT.toLowerCase(),
+  GRVR_V2_MAINNET.toLowerCase(),
+  GRVR_V2_SEPOLIA.toLowerCase(),
   GRVR_V1_MAINNET.toLowerCase(),
 ]);
 

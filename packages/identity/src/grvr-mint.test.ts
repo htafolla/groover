@@ -95,7 +95,9 @@ describe('on-chain SVG mint helpers', () => {
     expect(mintWantsOnchainSvg('0x7B184BF7B7054A7328A1D7851465C6001BB2AFB3')).toBe(false);
   });
 
-  it('mintWantsOnchainSvg is true for a new v3 address', () => {
+  it('mintWantsOnchainSvg is true for v3 mainnet, Sepolia v3, and a new address', () => {
+    expect(mintWantsOnchainSvg('0x6F955cA006E2FE951750cac25372e098D6E89743')).toBe(true);
+    expect(mintWantsOnchainSvg('0x0CEb73b07E1fdF3305cE4d3f6AC3BC28F8Ff8670')).toBe(true);
     expect(mintWantsOnchainSvg('0x1234567890abcdef1234567890abcdef12345678')).toBe(true);
   });
 });
