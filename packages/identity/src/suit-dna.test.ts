@@ -26,8 +26,9 @@ describe('GRVR suit DNA', () => {
     );
   });
 
-  it('accepts canonical 28-byte DIDs only', () => {
+  it('accepts legacy 16-hex and full-width 64-hex DIDs', () => {
     expect(isCanonicalGrooverDid(did)).toBe(true);
+    expect(isCanonicalGrooverDid(`did:groover:${'ab'.repeat(32)}`)).toBe(true);
     expect(isCanonicalGrooverDid('did:groover:test0000000001')).toBe(false);
     expect(isCanonicalGrooverDid('did:groover:zzzzzzzzzzzzzzzz')).toBe(false);
   });

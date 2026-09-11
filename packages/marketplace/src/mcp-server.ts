@@ -20,7 +20,7 @@ import {
   getRegistrationChallenge,
   issueRegisteredSuiBinding,
   getSuiBinding,
-  assertRegisteredDid,
+  assertMintAuthorization,
 } from './index.js';
 import { mintGrvrIdentity, renderIdentityTokenImage } from '../../identity/src/index.js';
 import { listMcpServers } from '../../xray/src/index.js';
@@ -56,7 +56,8 @@ const activeSessions = new Map<string, true>();
 export const TOOL_DEFINITIONS = [
   {
     name: 'register_plugin',
-    description: 'Register agent with Proof of Autonomy (ed25519 PoP + adaptive MCP challenge trace)',
+    description:
+      'Register agent with Proof of Autonomy. Ed25519 signature over groover-register:v1|{nonce}|{pubkeyHex}|{payload}|{stableJson(metadata)} plus adaptive MCP challenge trace. HMAC is rejected.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -147,7 +148,7 @@ export const TOOL_DEFINITIONS = [
   {
     name: 'mint_suit',
     description:
-      'Mint a Groover Identity (GRVR) 1/1 on Base for a registered DID. pack selects a DNA adapter (builtin: groover-identity, 0xray-suit). New schemas are Groover PRs under packages/identity/src/packs/. Requires apiKey. Live mint only with GRVR_PRIVATE_KEY; otherwise dry-run.',
+      'Mint a Groover Identity (GRVR) 1/1 on Base for a registered DID. pack selects a DNA adapter (builtin: groover-identity, 0xray-suit). Requires apiKey plus Ed25519 signature over groover-mint:v1|{did}|{pack}|{to}|{issuedAtMs}. Live mint only with GRVR_PRIVATE_KEY; otherwise dry-run.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -163,8 +164,13 @@ export const TOOL_DEFINITIONS = [
         level: { type: 'number', description: '0 Unknown (no Dynamo), 1 Dissonant, 2 Unstable, 3 Resonant, 4 Celestial' },
         fullBox7D: { type: 'number', description: 'Dynamo 7D composite; sets Level if level omitted' },
         dryRun: { type: 'boolean' },
+        issuedAtMs: { type: 'number', description: 'Unix ms; must be within 5 minutes' },
+        mintSignature: {
+          type: 'string',
+          description: 'Ed25519 signature (hex) of groover-mint:v1|{did}|{pack}|{to}|{issuedAtMs}',
+        },
       },
-      required: ['did', 'apiKey', 'pack', 'to'],
+      required: ['did', 'apiKey', 'pack', 'to', 'issuedAtMs', 'mintSignature'],
     },
   },
 ];
@@ -278,7 +284,14 @@ export const TOOL_HANDLERS: Record<string, (args: Record<string, unknown>) => Pr
   },
 
   async mint_suit(args) {
-    assertRegisteredDid(args.did as string, args.apiKey as string);
+    assertMintAuthorization({
+      did: args.did as string,
+      apiKey: args.apiKey as string,
+      pack: args.pack as string,
+      to: args.to as string,
+      issuedAtMs: args.issuedAtMs as number,
+      signature: args.mintSignature as string,
+    });
     const result = await mintGrvrIdentity({
       did: args.did as string,
       pack: args.pack as string,

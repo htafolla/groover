@@ -12,7 +12,13 @@ vi.mock('../../xray/src/index.js', async (importOriginal) => {
   };
 });
 
-import { generateKeyPair, signPayload } from '../../identity/src/index.js';
+import {
+  generateKeyPair,
+  signPayload,
+  canonicalRegisterMessage,
+  canonicalMintMessage,
+  ed25519PublicKeyToRawHex,
+} from '../../identity/src/index.js';
 import { getRegistrationChallenge, registerPlugin } from './index.js';
 import {
   PREV_HASH_SEED,
@@ -60,15 +66,36 @@ async function registerFixture() {
   const challenge = getRegistrationChallenge(keys.publicKey);
   const trace = submitValidTraceFlow(challenge.session.sessionId);
   const payload = 'mint-suit-' + Date.now();
-  const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
-  return registerPlugin({
+  const metadata = { name: 'mint-suit-test' };
+  const sig = signPayload(
+    keys.privateKey,
+    canonicalRegisterMessage({
+      nonce: challenge.nonce,
+      publicKeyHex: ed25519PublicKeyToRawHex(keys.publicKey),
+      payload,
+      metadata,
+    }),
+  );
+  const rec = (await registerPlugin({
     pubkey: keys.publicKey,
     payload,
     signature: sig,
     challengeNonce: challenge.nonce,
     challengeTrace: trace,
-    metadata: { name: 'mint-suit-test' },
-  }) as Promise<{ did: string; apiKey: string }>;
+    metadata,
+  })) as { did: string; apiKey: string };
+  return { ...rec, keys };
+}
+
+function mintAuth(rec: { did: string; apiKey: string; keys: { privateKey: string } }, pack: string, to: string) {
+  const issuedAtMs = Date.now();
+  return {
+    issuedAtMs,
+    mintSignature: signPayload(
+      rec.keys.privateKey,
+      canonicalMintMessage({ did: rec.did, pack, to, issuedAtMs }),
+    ),
+  };
 }
 
 describe('mint_suit MCP', () => {
@@ -88,6 +115,7 @@ describe('mint_suit MCP', () => {
 
   it('rejects bad apiKey', async () => {
     const rec = await registerFixture();
+    const auth = mintAuth(rec, 'groover-identity', to);
     await expect(
       TOOL_HANDLERS.mint_suit({
         did: rec.did,
@@ -95,19 +123,38 @@ describe('mint_suit MCP', () => {
         pack: 'groover-identity',
         to,
         dryRun: true,
+        ...auth,
       }),
     ).rejects.toThrow(/API key/);
+  });
+
+  it('rejects mint without Ed25519 proof', async () => {
+    const rec = await registerFixture();
+    const issuedAtMs = Date.now();
+    await expect(
+      TOOL_HANDLERS.mint_suit({
+        did: rec.did,
+        apiKey: rec.apiKey,
+        pack: 'groover-identity',
+        to,
+        dryRun: true,
+        issuedAtMs,
+        mintSignature: '00'.repeat(64),
+      }),
+    ).rejects.toThrow(/proof-of-possession/);
   });
 
   it('dry-runs a registered DID without broadcasting', async () => {
     const rec = await registerFixture();
     delete process.env.GRVR_PRIVATE_KEY;
+    const auth = mintAuth(rec, 'groover-identity', to);
     const result = (await TOOL_HANDLERS.mint_suit({
       did: rec.did,
       apiKey: rec.apiKey,
       pack: 'groover-identity',
       to,
       dryRun: true,
+      ...auth,
     })) as { success: boolean; dryRun: boolean; txHash?: string; level: number };
     expect(result.success).toBe(true);
     expect(result.dryRun).toBe(true);
@@ -118,6 +165,7 @@ describe('mint_suit MCP', () => {
   it('sets Level from fullBox7D on dry-run', async () => {
     const rec = await registerFixture();
     delete process.env.GRVR_PRIVATE_KEY;
+    const auth = mintAuth(rec, 'groover-identity', to);
     const result = (await TOOL_HANDLERS.mint_suit({
       did: rec.did,
       apiKey: rec.apiKey,
@@ -125,6 +173,7 @@ describe('mint_suit MCP', () => {
       to,
       fullBox7D: 0.91,
       dryRun: true,
+      ...auth,
     })) as { success: boolean; level: number };
     expect(result.success).toBe(true);
     expect(result.level).toBe(3);

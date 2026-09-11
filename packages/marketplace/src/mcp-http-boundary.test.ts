@@ -71,6 +71,8 @@ describe('MCP HTTP boundary (P0.9)', () => {
       pack: 'groover-identity',
       to: '0x0000000000000000000000000000000000000001',
       dryRun: true,
+      issuedAtMs: Date.now(),
+      mintSignature: 'aa'.repeat(64),
     });
     expect(ok.success).toBe(true);
   });

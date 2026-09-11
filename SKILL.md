@@ -31,7 +31,7 @@ All calls use JSON-RPC 2.0:
 ## Registration Flow (7 Steps)
 
 ### 1. Keypair
-Generate ed25519 (Node: `crypto.generateKeyPairSync('ed25519', ...)`) or HMAC (Python stdlib `hmac`, SHA-256 hex key).
+Generate Ed25519 (Node: `crypto.generateKeyPairSync('ed25519', ...)`). HMAC is not proof-of-possession and is rejected.
 
 ### 2. Get Challenge
 `tools/call` → `get_registration_challenge(pubkey)` → `nonce`, `sessionId`
@@ -66,7 +66,7 @@ Same Ed25519 key. Sign `groover-sui-bind:v1|{did}|{suiAddress}|{issuedAtMs}|{not
 ## Reference
 
 - Node.js ed25519: `deploy/register-agent.cjs` (291 lines, full 4-turn flow)
-- Python HMAC: `<repo_root>/docs/AGENT-REGISTRATION-GUIDE.md`
+- Python Ed25519: `<repo_root>/docs/AGENT-REGISTRATION-GUIDE.md`
 - Architecture: `ARCHITECTURE.md`
 
 ## Verification

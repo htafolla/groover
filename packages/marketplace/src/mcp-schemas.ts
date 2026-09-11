@@ -82,6 +82,8 @@ export const MintSuitArgsSchema = z.object({
   apiKey: z.string().min(1),
   pack: z.string().min(1),
   to: z.string().min(1),
+  issuedAtMs: z.number(),
+  mintSignature: z.string().min(1),
   inventory: z.record(z.unknown()).optional(),
   payload: z.record(z.unknown()).optional(),
   inspect: z

@@ -220,6 +220,7 @@ export default function SuitFactoryPage(): JSX.Element {
   const [holder, setHolder] = useState('');
   const [did, setDid] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [mintSignature, setMintSignature] = useState('');
   const [hat, setHat] = useState<Hat | ''>('mill-cap');
   const [colorway, setColorway] = useState<Colorway | ''>('mill-cyan');
   const [dynamoCitation, setDynamoCitation] = useState('');
@@ -352,6 +353,7 @@ export default function SuitFactoryPage(): JSX.Element {
     holder.trim().length > 0 &&
     did.trim().length > 0 &&
     apiKey.trim().length > 0 &&
+    mintSignature.trim().length > 0 &&
     !jsonGate &&
     (!needsMillInspect || inspect.ok);
 
@@ -364,6 +366,8 @@ export default function SuitFactoryPage(): JSX.Element {
         apiKey: apiKey.trim(),
         pack: packId,
         to: holder.trim(),
+        issuedAtMs: Date.now(),
+        mintSignature: mintSignature.trim(),
       };
       if (needsMillInspect) {
         args.inventory = inventory;
@@ -688,9 +692,18 @@ export default function SuitFactoryPage(): JSX.Element {
                   />
                 </label>
                 <label>
+                  mintSignature
+                  <input
+                    value={mintSignature}
+                    onChange={(e) => setMintSignature(e.target.value)}
+                    placeholder="Ed25519 over groover-mint:v1|did|pack|to|issuedAtMs"
+                    autoComplete="off"
+                  />
+                </label>
+                <label>
                   Visor look
                   <span className={styles.fieldHint}>Empty = picked from DNA.</span>
-                  <select
+                  <select>
                     value={hat}
                     onChange={(e) => setHat(e.target.value as Hat | '')}
                   >
