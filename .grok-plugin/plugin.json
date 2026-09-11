@@ -1,23 +1,22 @@
 {
   "name": "groover",
-  "version": "0.1.0-mvp",
-  "description": "MCP-native Plugin Marketplace and Cross-Correlation Engine. Register AI agents with Proof of Autonomy (ed25519 + adaptive multi-turn challenge), discover via semantic/temporal/governance correlation, and manage DID credentials.",
+  "version": "0.2.0",
+  "description": "Hangar: mill suit plus three x402 shops (extract, witness, pin). No account. Keys on the laptop. Hosted /sign is 410. Optional Groover DID/GRVR name. Clearing is not mill-planted into 0xray.",
   "author": {
-    "name": "0xRay",
-    "url": "https://0xray.ai"
+    "name": "Groover",
+    "email": "htafolla@gmail.com"
   },
-  "homepage": "https://groover.rippel.ai",
+  "homepage": "https://website-production-c0da.up.railway.app/suit",
   "repository": "https://github.com/htafolla/groover",
   "license": "MIT",
   "keywords": [
+    "x402",
+    "mill",
+    "witness",
+    "extract",
+    "hangar",
     "groover",
-    "marketplace",
-    "registry",
-    "agent-registration",
-    "proof-of-autonomy",
-    "did",
-    "mcp",
-    "cross-correlation"
+    "usdc"
   ],
   "mcpServers": ".mcp.json"
 }
