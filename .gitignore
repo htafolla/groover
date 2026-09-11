@@ -14,6 +14,7 @@ scripts
 data/
 *.tmp
 *.tsbuildinfo
+hangar/groover-hangar-*.tgz
 website/.docusaurus/
 website/build/
 website/docusaurus.config.js
