@@ -1,6 +1,6 @@
 {
   "name": "groover-hangar",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "x402 USDC shops for Grok, Hermes, OpenClaw, and OpenCode — extract, witness, pin. No Groover login. Pay from a funded local OWS wallet (or awal). Mill is 0xray; these are the shops.",
   "readme": "README.md",
   "license": "MIT",
