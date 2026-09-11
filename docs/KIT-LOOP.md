@@ -39,7 +39,7 @@ In the project `.mcp.json` (already this shape):
 
 - **zigzag** — `node --import tsx ../zigzag/ows-server/src/mcp.ts` (from the groover repo root)  
   Keys: `~/.ows`. Loopback rail: `127.0.0.1:8789`.  
-  Create: [OWS docs](https://docs.openwallet.sh) — `ows wallet create --name agent-treasury-1` then fund USDC on Base.
+  Create: [OWS docs](https://docs.openwallet.sh) — `ows wallet create --name agent-treasury-1`. Send USDC on Base (not Ethereum) from another wallet or exchange to that address.
 - **clearing** — `node --import tsx ../clearing/mcp/src/server.ts` + `--env-file ../clearing/kit.env`  
   extract URL = hosted shop, signer = zigzag @ loopback.
 - **0xray-*** — `npx -y 0xray mcp …`

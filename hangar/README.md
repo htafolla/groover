@@ -23,9 +23,14 @@ ZigZag hangar kit looks for wallet name `agent-treasury-1` in `~/.ows`. Hosted Z
 curl -fsSL https://docs.openwallet.sh/install.sh | bash
 
 ows wallet create --name "agent-treasury-1"
-ows fund deposit --wallet agent-treasury-1 --chain base
+ows wallet list
+# copy the Base (eip155:8453) address
 ows fund balance --wallet agent-treasury-1 --chain base
 ```
+
+**Fund it.** The new wallet is empty. Send **USDC on Base** (chain id 8453) from another wallet or an exchange withdrawal. Pick the **Base** network, not Ethereum. Token: native USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`. Shops are $0.02 (extract/witness) or $0.01 (pin). x402 exact / EIP-3009: you sign; you do not need ETH for gas on this path.
+
+Optional on-ramp in OWS (MoonPay): `ows fund deposit --wallet agent-treasury-1 --chain base`.
 
 Or Node: `npm install @open-wallet-standard/core`. Browser setup (ZigZag web wallet): [zigzag-two.vercel.app/wallet/setup](https://zigzag-two.vercel.app/wallet/setup).
 

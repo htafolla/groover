@@ -20,7 +20,7 @@ Unpaid GET → HTTP 402. Never twice on the same paymentId. Hosted ZigZag /sign 
 ## Related
 
 - mill/suit: npm 0xray and @0xray/foundry (not this package)
-- kit: local OWS https://docs.openwallet.sh — ows wallet create --name agent-treasury-1 ; fund USDC on Base. Or CLEARING_SIGNER=awal
+- kit: local OWS https://docs.openwallet.sh — ows wallet create --name agent-treasury-1 ; send USDC on Base (8453) from another wallet or exchange. Or CLEARING_SIGNER=awal
 - do not mill-plant Clearing into 0xray
 - do not dump 45-skill 0xray costume
 
