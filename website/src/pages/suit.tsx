@@ -271,6 +271,27 @@ export default function SuitFactoryPage(): JSX.Element {
             and the other mill config. Download mill+inspect. Run the install script.
             Mint <code>0xray-suit</code> and see the token.
           </p>
+          <p>
+            Prefab agents are <strong>free to start</strong> — download, load the skill, dry-run.
+            Mint later if you want a Groover name. They operate in Groover + Clearing + ZigZag:
+            local keys, independent caps, hosted 402 shops.
+          </p>
+          <div className={styles.prefabs}>
+            <a className={styles.prefab} href="/mill-plant.tgz">
+              lean mill-plant.tgz
+              <span>mill + inspect only. Free. Not the 45-skill costume. npm i -D 0xray@4.0.9</span>
+            </a>
+            <a className={styles.prefab} href="/prefabs/lean/README.md">
+              lean clerk
+              <span>
+                Pay for proof of a GET: extract + witness ($0.02). Idempotent paymentId. Not a coworker.
+              </span>
+            </a>
+            <a className={styles.prefab} href="/prefabs/8004-pin/README.md">
+              8004-pin
+              <span>Optional. Pin a live ERC-8004 card. Not required to use extract/witness.</span>
+            </a>
+          </div>
         </header>
 
         <div className={styles.grid}>

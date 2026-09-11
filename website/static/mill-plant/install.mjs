@@ -130,13 +130,13 @@ function writeConfigs(bundle) {
 }
 
 function installCli() {
-  process.stdout.write('npm i -D @0xray/foundry\n');
-  const result = spawnSync('npm', ['i', '-D', '@0xray/foundry'], {
+  process.stdout.write('npm i -D 0xray@4.0.9\n');
+  const result = spawnSync('npm', ['i', '-D', '0xray@4.0.9'], {
     cwd: root,
     stdio: 'inherit',
     shell: process.platform === 'win32',
   });
-  if (result.status !== 0) fail('npm i -D @0xray/foundry failed');
+  if (result.status !== 0) fail('npm i -D 0xray@4.0.9 failed');
 }
 
 function runMill(cmd) {

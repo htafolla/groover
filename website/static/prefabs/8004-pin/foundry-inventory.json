@@ -1,0 +1,10 @@
+{
+  "consumerName": "8004-pin",
+  "consumerVersion": "0.1.0",
+  "millName": "groover-prefab",
+  "millVersion": "0.1.0",
+  "suit": "fastened",
+  "costume": false,
+  "pack": "0xray-suit",
+  "freeToStart": true
+}

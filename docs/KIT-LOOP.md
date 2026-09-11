@@ -48,6 +48,15 @@ zigzag sign_x402  approved=false
 
 Hosted extract: `https://clearing-production-9968.up.railway.app/v1/extract?url=…`
 
+Lean prefab (free): [mill-plant.tgz](https://website-production-c0da.up.railway.app/mill-plant.tgz) + [lean clerk](https://website-production-c0da.up.railway.app/prefabs/lean/README.md).
+
+Clerks (pay for a GET receipt, not a summary):
+
+- extract `https://clearing-production-9968.up.railway.app/v1/extract?url=`
+- witness `https://clearing-production-9968.up.railway.app/v1/witness?url=`
+
+Same `paymentId` → `replayed: true`, no second signature. Clearing is its own MCP — not mill-planted into 0xray.
+
 ## 4. Optional Coinbase custody
 
 ```
