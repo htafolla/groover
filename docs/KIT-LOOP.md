@@ -2,13 +2,25 @@
 
 This is the product path. Not a Railway wallet.
 
+**Grok (the door):**
+
+```bash
+grok plugin marketplace add htafolla/groover
+grok plugin install mill --trust
+grok plugin install shop-extract --trust
+grok plugin install shop-witness --trust
+grok plugin install shop-pin --trust
+```
+
+**npm / Hermes / OpenClaw:** `npx groover-hangar` from a project root.
+
 ```
 factory /suit
-  → DID + GRVR mint
+  → mill plugin + three shops
+  → DID + GRVR mint (optional name)
   → ERC-8004 register (same mill)
   → local ZigZag stdio (OWS keys)
-  → local Clearing stdio (policy)
-  → hosted extract 402 (shop)
+  → hosted extract / witness / pin 402
 ```
 
 ## 1. Name the agent (hosted mill)
@@ -50,10 +62,11 @@ Hosted extract: `https://clearing-production-9968.up.railway.app/v1/extract?url=
 
 Lean prefab (free): [mill-plant.tgz](https://website-production-c0da.up.railway.app/mill-plant.tgz) + [lean clerk](https://website-production-c0da.up.railway.app/prefabs/lean/README.md).
 
-Clerks (pay for a GET receipt, not a summary):
+Shops (pay for a GET receipt, not a summary):
 
 - extract `https://clearing-production-9968.up.railway.app/v1/extract?url=`
 - witness `https://clearing-production-9968.up.railway.app/v1/witness?url=`
+- pin `https://clearing-production-9968.up.railway.app/v1/pin?agentId=`
 
 Same `paymentId` → `replayed: true`, no second signature. Clearing is its own MCP — not mill-planted into 0xray.
 

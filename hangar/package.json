@@ -1,0 +1,33 @@
+{
+  "name": "groover-hangar",
+  "version": "0.1.0",
+  "description": "Three 402 shops (extract, witness, pin) plus plant for Grok, Hermes, OpenClaw. No account. Keys on the laptop.",
+  "type": "module",
+  "bin": {
+    "groover-hangar": "./plant.mjs"
+  },
+  "files": [
+    "plant.mjs",
+    "plugins",
+    "README.md"
+  ],
+  "scripts": {
+    "plant": "node plant.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/htafolla/groover.git",
+    "directory": "hangar"
+  },
+  "keywords": [
+    "x402",
+    "grok",
+    "plugin",
+    "mcp",
+    "hangar"
+  ]
+}

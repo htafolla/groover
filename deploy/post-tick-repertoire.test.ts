@@ -68,6 +68,7 @@ describe('runPostTickRepertoire', () => {
       SIBLING_REPERTOIRE_ROOT,
       'research/repertoire-brain/curated_signals.json',
     );
+    if (!existsSync(productionSignals)) return;
     const productionBefore = readFileSync(productionSignals, 'utf8');
     const result = await runPostTickRepertoire(BASE_INPUT);
     if (result.skipped === 'repertoire-provider-unavailable') {
