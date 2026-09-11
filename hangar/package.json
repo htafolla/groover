@@ -1,6 +1,6 @@
 {
   "name": "groover-hangar",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "x402 USDC shops for Grok, Hermes, OpenClaw, OpenCode: extract, witness, pin. No account. grok plugin + npx groover-hangar.",
   "type": "module",
   "bin": {
