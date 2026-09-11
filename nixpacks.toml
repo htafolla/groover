@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["rm -f package-lock.json && npm install --include=dev --ignore-scripts"]
+
+[phases.build]
+cmds = ["echo skip-tsc"]

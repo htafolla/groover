@@ -25,7 +25,6 @@
     "start:registry": "npx tsx packages/marketplace/src/mcp-server.ts"
   },
   "devDependencies": {
-    "@0xray/repertoire": "^0.1.6",
     "@types/node": "^20.14.0",
     "tsx": "^4.16.0",
     "turbo": "^2.0.0",
@@ -37,7 +36,7 @@
   },
   "dependencies": {
     "@noble/hashes": "^1.8.0",
-    "0xray": "^3.4.8",
+    "0xray": "^4.0.8",
     "agentuimanifest": "file:packages/agentuimanifest",
     "viem": "^2.56.3",
     "zod": "^3.25.76"

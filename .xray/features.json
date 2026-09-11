@@ -1,7 +1,17 @@
 {
   "$schema": "./features.schema.json",
-  "version": "3.5.4",
+  "version": "4.0.8",
   "description": "0xRay Framework - Unified Feature Configuration",
+  "suit_temperament": {
+    "profile": "guided",
+    "host_defaults": {
+      "grok": "frontier",
+      "hermes": "guided",
+      "opencode": "guided",
+      "openclaw": "guided",
+      "generic": "guided"
+    }
+  },
   "token_optimization": {
     "enabled": true,
     "max_context_tokens": 20000,
@@ -36,7 +46,19 @@
     "phased_plan_threshold": 25,
     "auto_consult_major_work": true,
     "no_new_surface": true,
-    "auto_chain_delegations": true
+    "auto_chain_delegations": true,
+    "plan_stale_hours": 8,
+    "plan_archive_marker_hours": 24,
+    "user_asides": {
+      "enabled": true,
+      "auto_provision_worktree": false
+    }
+  },
+  "grok_postprocessor_light": true,
+  "inference_session_capture": {
+    "enabled": true,
+    "min_commits": 3,
+    "lookback_commits": 20
   },
   "autonomous_reporting": {
     "enabled": true,
@@ -140,10 +162,11 @@
     "provider": "repertoire",
     "module_path": "node_modules/@0xray/repertoire/dist/provider/memory-routing-provider.js",
     "config": {
-      "dataDir": "node_modules/@0xray/repertoire/data",
       "signalsPath": "node_modules/@0xray/repertoire/data/curated_signals.json",
-      "logDir": "research/groover-inference-logs",
-      "feedbackDir": "research/groover-inference-logs"
+      "statePath": ".xray/state/repertoire/inference-state.json",
+      "feedbackDir": "research/groover-inference-logs",
+      "dataDir": "node_modules/@0xray/repertoire/data",
+      "logDir": "research/groover-inference-logs"
     }
   },
   "synthesis": {

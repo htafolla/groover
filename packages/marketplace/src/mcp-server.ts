@@ -246,7 +246,10 @@ export const TOOL_HANDLERS: Record<string, (args: Record<string, unknown>) => Pr
   get_plugin_ui_manifest(args) {
     const did = args.did as string;
     const manifest = getPluginUiManifest(did);
-    return { success: !!manifest, manifest };
+    if (!manifest) {
+      return { success: false, manifest: null, reason: 'no_ui_manifest' };
+    }
+    return { success: true, manifest };
   },
 
   list_mcp_servers() {
@@ -268,7 +271,10 @@ export const TOOL_HANDLERS: Record<string, (args: Record<string, unknown>) => Pr
 
   get_sui_binding(args) {
     const binding = getSuiBinding(args.did as string);
-    return { success: Boolean(binding), binding };
+    if (!binding) {
+      return { success: false, binding: null, reason: 'no_sui_binding' };
+    }
+    return { success: true, binding };
   },
 
   async mint_suit(args) {

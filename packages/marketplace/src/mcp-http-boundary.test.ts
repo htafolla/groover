@@ -132,6 +132,28 @@ describe('MCP HTTP boundary (P0.9)', () => {
     }
   });
 
+  it('get_sui_binding reports no_sui_binding when empty', async () => {
+    const outcome = await processStreamableMcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: { name: 'get_sui_binding', arguments: { did: 'did:groover:missing' } },
+      },
+      'bind-client',
+      TOOL_HANDLERS,
+      TOOL_DEFINITIONS,
+    );
+    expect(outcome.kind).toBe('json');
+    if (outcome.kind === 'json') {
+      const text = (outcome.json.result as { content: { text: string }[] }).content[0].text;
+      const parsed = JSON.parse(text) as { success: boolean; reason?: string; binding: null };
+      expect(parsed.success).toBe(false);
+      expect(parsed.reason).toBe('no_sui_binding');
+      expect(parsed.binding).toBeNull();
+    }
+  });
+
   it('register_plugin has stricter rate bucket', () => {
     const key = 'reg-test';
     for (let i = 0; i < 5; i++) {

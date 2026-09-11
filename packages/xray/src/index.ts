@@ -1,7 +1,7 @@
 /**
  * @groover/xray
  * 0xRay MCP execution & orchestration bridge.
- * Primary integration point for all connected MCP endpoints (Dynamo, xray-*, strray-*, grok_com_github).
+ * Primary integration point for all connected MCP endpoints (Dynamo, Clearing, ZigZag, xray-*, grok_com_github).
  * Per ARCHITECTURE.md and AGENTS.md.
  *
  * All three subsystem methods (orchestrate, govern, enforce) make real MCP calls.
@@ -56,7 +56,7 @@ export function mcpCall(server: string, method: string, params: unknown = {}): P
 
 interface MCPBridge {
   orchestrate(description: string, tasks: Array<{id: string; description: string; type: string}>): Promise<unknown>;
-  govern(proposal: {id: string; title: string; description: string; type: string; source: string; confidence: number; evidence: string[]}): Promise<unknown>;
+  govern(proposal: {id: string; title: string; description: string; type: string; source: string; confidence: number; evidence: string[]; submitter?: string}): Promise<unknown>;
   enforce(operation: string, files: string[], newCode?: string): Promise<{score: number; violations: unknown[]}>;
 }
 
@@ -79,18 +79,28 @@ export class XrayBridge implements MCPBridge {
     return await this._mcpCall('xray-orchestrator', 'tools/call', { name: 'orchestrate-task', arguments: { description, tasks } });
   }
 
-  async govern(proposal: any) {
+  async govern(proposal: {
+    id: string;
+    title: string;
+    description: string;
+    type: string;
+    source: string;
+    confidence: number;
+    evidence: string[];
+    submitter?: string;
+  }) {
     frameworkLogger.log('xray', 'govern-proposal', 'info', { id: proposal.id, type: proposal.type });
     return await this._mcpCall('xray-governance', 'tools/call', { name: 'govern_proposals', arguments: { proposals: [proposal] } });
   }
 
   async enforce(operation: string, files: string[], newCode?: string) {
     frameworkLogger.log('xray', 'enforce-call', 'info', { operation, fileCount: files.length });
-    const result = await this._mcpCall('xray-enforcer', 'tools/call', {
+    const result = (await this._mcpCall('xray-enforcer', 'tools/call', {
       name: 'codex-enforcement',
       arguments: { operation, files, newCode },
-    }) as any;
-    return result?.result || result;
+    })) as { result?: { score: number; violations: unknown[] }; score?: number; violations?: unknown[] };
+    if (result?.result) return result.result;
+    return { score: result?.score ?? 0, violations: result?.violations ?? [] };
   }
 }
 
@@ -112,13 +122,10 @@ interface McpServerInfo {
 
 export function listMcpServers() {
   const servers: McpServerInfo[] = [
-    { name: 'Dynamo', role: 'Governance & signals (SSOT, Hammer, triangulation for core correlation, isotopic math)', toolCount: 20, keyTools: ['govern_with_solar', 'evaluate_governance', 'triangulate_signals', 'call_connected_tool', 'harmonic_oscillator', 'wave_function', 'optimize_cascade', 'cross_correlate', 'emit_isotopic_signal'] },
-    { name: 'Clearing', role: 'x402 spend policy on Base · https://clearing-production-9968.up.railway.app/mcp · status/discover/extract/fetch_paid/receipts', toolCount: 5, keyTools: ['status', 'discover', 'extract', 'fetch_paid', 'receipts'] },
+    { name: 'Dynamo', role: 'Hosted resource: governance SSOT (Hammer, triangulation). HTTP MCP, no agent keys.', toolCount: 20, keyTools: ['govern_with_solar', 'evaluate_governance', 'triangulate_signals', 'call_connected_tool', 'harmonic_oscillator', 'wave_function', 'optimize_cascade', 'cross_correlate', 'emit_isotopic_signal'] },
+    { name: 'Clearing', role: 'Local kit: spend policy (stdio). Hosted resource: 402 extract at /v1/extract. Keys stay on ZigZag/OWS.', toolCount: 5, keyTools: ['status', 'discover', 'extract', 'fetch_paid', 'receipts'] },
+    { name: 'ZigZag', role: 'Local kit: OWS wallet + x402 EIP-3009 sign in-process (stdio). Not a hosted signer.', toolCount: 8, keyTools: ['create_wallet', 'list_wallets', 'sign_x402', 'settle_x402', 'pay'] },
     { name: 'grok_com_github', role: 'GitHub signals & ops for marketplace/repo correlation, releases, code search', toolCount: 44, keyTools: ['search_code', 'get_file_contents', 'list_releases', 'list_branches', 'create_branch', 'fork_repository', 'get_me', 'search_repositories'] },
-    { name: 'strray-enforcer', role: 'Codex enforcement & quality gates (parallel variant for resilience)', toolCount: 7, keyTools: ['codex-enforcement', 'quality-gate-check', 'run-pre-commit-validation', 'security-scan'] },
-    { name: 'strray-governance', role: 'Proposal governance + active codex snapshot (parallel variant)', toolCount: 3, keyTools: ['govern_proposals', 'govern_reflection', 'get_active_codex'] },
-    { name: 'strray-orchestrator', role: 'thinDispatch 7-flow orchestration, complexity analysis, delegation (parallel)', toolCount: 6, keyTools: ['orchestrate-task', 'analyze-complexity', 'govern-and-apply', 'optimize-orchestration'] },
-    { name: 'strray-skills', role: 'Specialized skills invocation (code-review, project-analysis, ui-ux etc; parallel)', toolCount: 13, keyTools: ['list-skills', 'invoke-skill', 'skill-code-review', 'skill-project-analysis', 'skill-testing-strategy', 'skill-ui-ux-design'] },
     { name: 'xray-enforcer', role: 'Codex enforcement & quality gates (primary per AGENTS.md)', toolCount: 7, keyTools: ['codex-enforcement', 'quality-gate-check', 'run-pre-commit-validation', 'security-scan'] },
     { name: 'xray-governance', role: 'Proposal governance + active codex (68 terms v3.0.10; primary per AGENTS.md)', toolCount: 3, keyTools: ['govern_proposals', 'govern_reflection', 'get_active_codex'] },
     { name: 'xray-orchestrator', role: 'thinDispatch 7-flow orchestration, complexity analysis, delegation (primary)', toolCount: 6, keyTools: ['orchestrate-task', 'analyze-complexity', 'govern-and-apply', 'get-orchestration-status'] },

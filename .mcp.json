@@ -1,12 +1,13 @@
 {
   "mcpServers": {
     "repertoire": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "@0xray/repertoire",
-        "mcp"
-      ]
+        "/Users/blaze/dev/groover/node_modules/0xray/vendor/@0xray/repertoire/dist/mcp/server.js"
+      ],
+      "env": {
+        "XRAY_ROOT": "/Users/blaze/dev/groover"
+      }
     },
     "xray-governance": {
       "command": "npx",
@@ -74,13 +75,44 @@
         "architect-tools"
       ]
     },
+    "groover": {
+      "type": "http",
+      "url": "https://groover.rippel.ai/mcp"
+    },
     "groover-registry": {
       "type": "http",
-      "url": "https://registry-production-e2c4.up.railway.app"
+      "url": "https://registry-production-e2c4.up.railway.app/mcp"
     },
     "clearing": {
-      "type": "http",
-      "url": "https://clearing-production-9968.up.railway.app/mcp"
+      "command": "node",
+      "args": [
+        "--env-file",
+        "/Users/blaze/dev/clearing/kit.env",
+        "--import",
+        "tsx",
+        "/Users/blaze/dev/clearing/mcp/src/server.ts"
+      ],
+      "env": {
+        "CLEARING_EXTRACT_BASE_URL": "https://clearing-production-9968.up.railway.app",
+        "CLEARING_PUBLIC_URL": "https://clearing-production-9968.up.railway.app",
+        "CLEARING_SIGNER": "zigzag",
+        "CLEARING_FACILITATOR": "zigzag",
+        "CLEARING_ZIGZAG_URL": "http://127.0.0.1:8789",
+        "CLEARING_PAY_TO": "0xc9cD4E19e8fFabFC479352680295ba12e454462D",
+        "CLEARING_ALLOW_ORIGINS": "clearing-production-9968.up.railway.app"
+      }
+    },
+    "zigzag": {
+      "command": "node",
+      "args": [
+        "--import",
+        "tsx",
+        "/Users/blaze/dev/zigzag/ows-server/src/mcp.ts"
+      ],
+      "env": {
+        "ZIGZAG_WALLET": "agent-treasury-1",
+        "ZIGZAG_RAIL_HOST": "127.0.0.1"
+      }
     }
   }
 }

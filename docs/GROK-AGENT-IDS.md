@@ -2,6 +2,8 @@
 
 Do not lose these. API keys are not in this file.
 
+Agents sign on the **local kit** (ZigZag stdio + OWS). Hosted ZigZag `/sign` is gone. Hosted Clearing **extract** is the 402 shop.
+
 | What | Value |
 |------|--------|
 | DID | `did:groover:f60a3753b5ef6dd3` |
@@ -13,5 +15,12 @@ Do not lose these. API keys are not in this file.
 | register tx | https://basescan.org/tx/0x8e9cf9d0d716558f15402033f62f80f5bb317f9284414a5cc35402ea262c9360 |
 | setAgentURI tx | https://basescan.org/tx/0x8881d33f85488ef0ea56d23d5d14000fee52a255496622f931ff2aa5a66fa1fb |
 | agentURI | https://website-production-c0da.up.railway.app/identity/registration/grvr-2-v2.json |
-| Clearing MCP | https://clearing-production-9968.up.railway.app/mcp |
 | Factory | https://website-production-c0da.up.railway.app/suit |
+| **402 extract (hosted shop)** | https://clearing-production-9968.up.railway.app/v1/extract |
+| Clearing kit | local stdio (`mcp/src/server.ts` + `kit.env`) |
+| ZigZag kit | local stdio (`ows-server/src/mcp.ts`); loopback rail `127.0.0.1:8789` |
+| Optional Coinbase rail | `CLEARING_SIGNER=awal` after `npx awal auth login` |
+| Hosted zigzag | facilitator `/settle` only — not an agent signer |
+| Hosted penny tx | https://basescan.org/tx/0x936e22b345d433dcad8cb9742d6389f55ebc41d9452c3e3c368b1061d2950ab5 |
+
+Default loop: [`KIT-LOOP.md`](./KIT-LOOP.md). Landscape: [`AGENT-STACK-LANDSCAPE.md`](./AGENT-STACK-LANDSCAPE.md).

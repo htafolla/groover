@@ -5,9 +5,15 @@ describe('@groover/xray', () => {
   describe('listMcpServers', () => {
     it('returns at least 10 servers including Dynamo', () => {
       const mcps = listMcpServers();
-      expect(mcps.length).toBeGreaterThanOrEqual(10);
+      expect(mcps.length).toBeGreaterThanOrEqual(8);
       expect(mcps.find(m => m.name === 'Dynamo')).toBeTruthy();
       expect(mcps.find(m => m.name === 'Clearing')).toBeTruthy();
+      expect(mcps.find(m => m.name === 'ZigZag')).toBeTruthy();
+      expect(mcps.find(m => m.name.startsWith('strray-'))).toBeUndefined();
+      expect(mcps.find(m => m.name === 'ZigZag')?.role).toMatch(/Local kit/i);
+      expect(mcps.find(m => m.name === 'ZigZag')?.role).not.toMatch(/railway\.app\/api\/mcp/);
+      expect(mcps.find(m => m.name === 'Clearing')?.role).toMatch(/Local kit/i);
+      expect(mcps.find(m => m.name === 'Dynamo')?.role).toMatch(/Hosted resource/i);
     });
   });
 
