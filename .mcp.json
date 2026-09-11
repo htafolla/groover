@@ -3,10 +3,10 @@
     "repertoire": {
       "command": "node",
       "args": [
-        "/Users/blaze/dev/groover/node_modules/0xray/vendor/@0xray/repertoire/dist/mcp/server.js"
+        "node_modules/@0xray/repertoire/dist/mcp/server.js"
       ],
       "env": {
-        "XRAY_ROOT": "/Users/blaze/dev/groover"
+        "XRAY_ROOT": "."
       }
     },
     "xray-governance": {

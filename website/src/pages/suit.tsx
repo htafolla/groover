@@ -39,10 +39,10 @@ npm i -D 0xray@4.0.9
 npx @0xray/foundry mint
 npx @0xray/foundry inspect`;
 
-const SAMPLE_SKILLS = ['summarize', 'extract-tables', 'translate'];
-const SAMPLE_AGENTS = ['reviewer.yml', 'triage.yml'];
-const SAMPLE_TREE_SKILLS = ['billing', 'support-macros'];
-const SAMPLE_TREE_AGENTS = ['oncall.yml', 'billing.yml'];
+const SAMPLE_SKILLS = ['extract', 'witness'];
+const SAMPLE_AGENTS: string[] = [];
+const SAMPLE_TREE_SKILLS: string[] = [];
+const SAMPLE_TREE_AGENTS: string[] = [];
 
 const SUIT_FIT_HELP: Record<SuitKind, string> = {
   fastened: 'Lean plant: mill + inspect only. Start here.',
@@ -331,9 +331,9 @@ export default function SuitFactoryPage(): JSX.Element {
         suit: 'fastened',
         costume: false,
         params: {...DEFAULT_MILL_PARAMS},
-        treeSkillsRaw: 'billing, support-macros',
-        treeAgentsRaw: 'oncall.yml',
-        millPlantSkillsExtra: 'summarize, extract-tables',
+        treeSkillsRaw: '',
+        treeAgentsRaw: '',
+        millPlantSkillsExtra: '',
         millPlantAgentsRaw: 'mill.yml, inspect.yml',
         constitution: false,
         features: true,
@@ -449,10 +449,10 @@ export default function SuitFactoryPage(): JSX.Element {
                     setMillVersion('0.1.9');
                     setSuit('fastened');
                     setCostume(false);
-                    setMillPlantSkillsExtra('summarize, extract-tables');
+                    setMillPlantSkillsExtra('');
                     setMillPlantAgentsRaw('mill.yml, inspect.yml');
-                    setTreeSkillsRaw('billing, support-macros');
-                    setTreeAgentsRaw('oncall.yml');
+                    setTreeSkillsRaw('');
+                    setTreeAgentsRaw('');
                     setFacetAgentsCard(true);
                   }}
                 >

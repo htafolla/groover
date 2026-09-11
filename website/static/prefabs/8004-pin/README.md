@@ -4,7 +4,7 @@ Obscure, useful, $0.01 USDC on Base.
 
 **What it does:** given an ERC-8004 `agentId`, it reads `ownerOf` + `tokenURI` on Base, fetches the registration card, and returns `sha256` of the bytes. Agents pay to pin a card they can compare later — so they are not trusting a mutable HTTPS URL alone.
 
-**Free to start:** unzip, load the skill, dry-run. No mint required. Mint a Groover DID later if you want a name.
+**Free to start:** unpack the tarball, load the skill, dry-run. No mint required. Mint a Groover DID later if you want a name.
 
 Live shop (Groover-operated):
 
@@ -17,7 +17,7 @@ Unpaid → HTTP 402. Pay with the local kit (ZigZag/OWS) or `CLEARING_SIGNER=awa
 ## Load (suit)
 
 ```bash
-# from this folder, or from the factory zip
+# from this folder, or from the factory tarball
 cp SKILL.md ../../.grok/plugins/0xray/skills/8004-pin/SKILL.md   # or your skills dir
 # mill plant is optional — factory mill-plant.tgz still fastens mill+inspect
 ```

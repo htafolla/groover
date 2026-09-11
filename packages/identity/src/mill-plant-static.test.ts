@@ -11,7 +11,7 @@ const websiteStatic = path.resolve(
 const plantDir = path.join(websiteStatic, 'mill-plant');
 const tgzPath = path.join(websiteStatic, 'mill-plant.tgz');
 
-describe('mill-plant download (factory zip)', () => {
+describe('mill-plant download (factory tgz)', () => {
   it('static plant is mill+inspect only', () => {
     expect(readdirSync(path.join(plantDir, 'skills')).sort()).toEqual([
       'inspect',
