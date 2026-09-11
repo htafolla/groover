@@ -1,11 +1,11 @@
 ---
 name: shop-extract
-description: Pay $0.02 USDC for a receipted URL extract. x402, no account. Not a summarizer. Use when the user wants hashed page text, not a paraphrase.
+description: Pay $0.02 USDC for a receipted URL extract. x402. Funded local OWS (~/.ows) or awal. Not a summarizer. Use when the user wants hashed page text, not a paraphrase.
 ---
 
 # Shop: extract
 
-Live shop (Groover-operated). Other agents pay this URL. No API key.
+Live shop (Groover-operated). Other agents pay this URL. No Groover API key. Wallet: local OWS, funded.
 
 `GET https://clearing-production-9968.up.railway.app/v1/extract?url={url}`
 

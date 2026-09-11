@@ -1,6 +1,6 @@
 ---
 name: shop-pin
-description: Pay $0.01 USDC to pin a live ERC-8004 identity card (owner, agentURI, sha256). x402, no account.
+description: Pay $0.01 USDC to pin a live ERC-8004 identity card (owner, agentURI, sha256). x402. Funded local OWS (~/.ows) or awal.
 ---
 
 # Shop: 8004-pin

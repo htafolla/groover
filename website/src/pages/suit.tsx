@@ -390,7 +390,7 @@ export default function SuitFactoryPage(): JSX.Element {
   return (
     <Layout
       title="Hangar"
-      description="Install mill. Pay three 402 shops. No account. Mint is a name."
+      description="x402 shops on Base. npx groover-hangar. Fund local OWS with USDC. Mint is a name."
     >
       <main className={styles.bay}>
         <header className={styles.hud}>
@@ -401,32 +401,47 @@ export default function SuitFactoryPage(): JSX.Element {
           </div>
           <Heading as="h1">Pay a shop. Or become one.</Heading>
           <p>
+            No Groover login. Mill and DID are optional. To pay: local{' '}
+            <a href="https://docs.openwallet.sh">OWS</a> wallet, funded with{' '}
+            <strong>USDC on Base</strong> from another wallet or exchange (not
+            Ethereum). Hosted <code>/sign</code> is 410.
+          </p>
+          <pre className={styles.code}>{`npx groover-hangar
+curl -fsSL https://docs.openwallet.sh/install.sh | bash
+ows wallet create --name agent-treasury-1
+# send USDC on Base to the eip155:8453 address
+ows pay request 'https://clearing-production-9968.up.railway.app/v1/extract?url=https://example.com' --wallet agent-treasury-1`}</pre>
+          <p>
             Grok:{' '}
             <code>grok plugin marketplace add htafolla/groover</code> then{' '}
-            <code>grok plugin install shop-extract --trust</code>. npm:{' '}
-            <code>npx groover-hangar</code>. Hermes and OpenClaw get the same plant.
-            Mint below is a name — not required to pay.
-          </p>
-          <p>
-            Three live shops, x402, no API key. Keys on the laptop. Hosted{' '}
-            <code>/sign</code> is 410. Do not mill-plant Clearing into 0xray.
+            <code>grok plugin install shop-extract --trust</code>. Node 20. Project
+            root, never passwd-home <code>~</code>.
           </p>
           <div className={styles.prefabs}>
             <a className={styles.prefab} href="/mill-plant.tgz">
               mill
-              <span>mill + inspect plugin. Free. Not the 45-skill costume.</span>
+              <span>mill + inspect. Free. Not the 45-skill costume.</span>
             </a>
-            <a className={styles.prefab} href="/hangar/shop-extract/skills/shop-extract/SKILL.md">
+            <a
+              className={styles.prefab}
+              href="https://clearing-production-9968.up.railway.app/v1/extract?url=https://example.com"
+            >
               shop-extract
-              <span>$0.02 · receipted URL extract · 402</span>
+              <span>$0.02 · unpaid GET → 402 · receipted URL</span>
             </a>
-            <a className={styles.prefab} href="/hangar/shop-witness/skills/shop-witness/SKILL.md">
+            <a
+              className={styles.prefab}
+              href="https://clearing-production-9968.up.railway.app/v1/witness?url=https://example.com"
+            >
               shop-witness
-              <span>$0.02 · proof of a GET · 402</span>
+              <span>$0.02 · unpaid GET → 402 · proof of a GET</span>
             </a>
-            <a className={styles.prefab} href="/hangar/shop-pin/skills/shop-pin/SKILL.md">
+            <a
+              className={styles.prefab}
+              href="https://clearing-production-9968.up.railway.app/v1/pin?agentId=86025"
+            >
               shop-pin
-              <span>$0.01 · ERC-8004 card hash · 402</span>
+              <span>$0.01 · unpaid GET → 402 · ERC-8004 card</span>
             </a>
           </div>
         </header>
@@ -440,10 +455,10 @@ export default function SuitFactoryPage(): JSX.Element {
             }}
           >
             <fieldset className={styles.block}>
-              <legend>01 · Your factory</legend>
+              <legend>01 · Mill plant (optional)</legend>
               <p className={styles.fieldHint}>
-                Tell the mill who you are and what to plant. New here? Load the
-                sample, then make it yours.
+                Not required to pay a shop. Fastens mill+inspect into the
+                project. Load a sample if you want a suit, not a 402.
               </p>
               <div className={styles.sampleBar}>
                 <button
@@ -607,7 +622,7 @@ export default function SuitFactoryPage(): JSX.Element {
             </fieldset>
 
             <fieldset className={styles.block}>
-              <legend>02 · Switches, limits, house rules</legend>
+              <legend>02 · Mill switches (optional)</legend>
               <p className={styles.hint}>
                 These go in the download. <code>install.mjs</code> writes plant path +{' '}
                 <code>.xray/</code>. Mill-safe defaults — not the 45/42 costume.
@@ -655,7 +670,11 @@ export default function SuitFactoryPage(): JSX.Element {
             </fieldset>
 
             <fieldset className={styles.block}>
-              <legend>03 · mint</legend>
+              <legend>03 · mint (optional name)</legend>
+              <p className={styles.fieldHint}>
+                Not required to pay. Needs a registered Groover DID, API key,
+                and Ed25519 mintSignature. Tourists cannot click MINT empty.
+              </p>
               <div className={styles.row2}>
                 <label>
                   Pack
@@ -706,7 +725,7 @@ export default function SuitFactoryPage(): JSX.Element {
                 <label>
                   Visor look
                   <span className={styles.fieldHint}>Empty = picked from DNA.</span>
-                  <select>
+                  <select
                     value={hat}
                     onChange={(e) => setHat(e.target.value as Hat | '')}
                   >
@@ -808,10 +827,10 @@ export default function SuitFactoryPage(): JSX.Element {
             </div>
 
             <section className={styles.panel}>
-              <h2>04 · download · load CLI</h2>
+              <h2>04 · mill tarball</h2>
               <p className={styles.hint}>
-                Tarball is mill+inspect + <code>install.mjs</code>. Config JSON is your
-                factory. Run the script from the repo root — not machine{' '}
+                Shops are <code>npx groover-hangar</code> (or Grok plugin). This
+                tarball is mill+inspect only. Run from the project root — not{' '}
                 <code>~/.grok</code>.
               </p>
               <div className={styles.downloads}>

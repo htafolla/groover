@@ -1,6 +1,6 @@
 {
   "name": "shop-pin",
   "version": "0.1.0",
-  "description": "Pay $0.01 USDC to pin a live ERC-8004 identity card. x402, no account.",
+  "description": "Pay $0.01 USDC to pin a live ERC-8004 identity card. x402. Funded local OWS or awal.",
   "author": { "name": "Groover" }
 }
