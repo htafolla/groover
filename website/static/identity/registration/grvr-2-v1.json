@@ -1,7 +1,7 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "groover-f60a3753b5ef",
-  "description": "Groover identity mark for did:groover:f60a3753b5ef6dd3. Pack groover-identity, variant 3. Grounded issuance: DNA + inspect attestation + Dynamo governance citation, mirrored from GRVR token 2.",
+  "description": "Groover identity mark for did:groover:f60a3753b5ef6dd3. Pack groover-identity, variant 3. Grounded issuance: DNA + inspect attestation + Dynamo governance citation, mirrored from GRVR token 2. ERC-8004 agentId 86025 on Base.",
   "image": "https://website-production-c0da.up.railway.app/img/base-agentic-ecosystem.png",
   "services": [
     {
@@ -16,8 +16,14 @@
     }
   ],
   "x402Support": false,
-  "active": false,
+  "active": true,
   "supportedTrust": ["groover-provenance"],
+  "registrations": [
+    {
+      "agentId": "86025",
+      "agentRegistry": "eip155:8453:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+    }
+  ],
   "groover": {
     "did": "did:groover:f60a3753b5ef6dd3",
     "dna": "0x02aaf1b3cebf6fb014d46f3369141619f1b5f650b067175ea58a45aa74c78c14",
@@ -28,6 +34,8 @@
     "grvrTokenId": "2",
     "level": "3",
     "grvrChainId": 8453,
-    "txHash": "0x91aad4366860a38ae83282b386c03acc5f6217a1eedcf1a9e8c77a1317e450ab"
+    "txHash": "0x91aad4366860a38ae83282b386c03acc5f6217a1eedcf1a9e8c77a1317e450ab",
+    "erc8004RegisterTx": "0x8e9cf9d0d716558f15402033f62f80f5bb317f9284414a5cc35402ea262c9360",
+    "erc8004AgentId": "86025"
   }
 }
