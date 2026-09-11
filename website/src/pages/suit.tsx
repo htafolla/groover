@@ -412,10 +412,12 @@ ows wallet create --name agent-treasury-1
 # send USDC on Base to the eip155:8453 address
 ows pay request 'https://clearing-production-9968.up.railway.app/v1/extract?url=https://example.com' --wallet agent-treasury-1`}</pre>
           <p>
-            Grok:{' '}
+            Grok bot is Grok CLI on that same machine — not grok.com. Install{' '}
             <code>grok plugin marketplace add htafolla/groover</code> then{' '}
-            <code>grok plugin install shop-extract --trust</code>. Node 20. Project
-            root, never passwd-home <code>~</code>.
+            <code>grok plugin install shop-extract --trust</code>. New session. Ask
+            it to extract a URL; it 402s then runs <code>ows pay request</code>.
+            Skills are not a wallet. Node 20. Project root, never passwd-home{' '}
+            <code>~</code>.
           </p>
           <div className={styles.prefabs}>
             <a className={styles.prefab} href="/mill-plant.tgz">

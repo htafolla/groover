@@ -80,7 +80,23 @@ Kit path (local ZigZag MCP, `sign_x402` `approved=true`) is in [KIT-LOOP.md](htt
 
 Unpaid GET → HTTP 402. Same `paymentId` → `replayed: true`, no second signature. Not a summarizer.
 
-## Grok plugin / Grok bot
+## Grok bot (how it actually pays)
+
+This is **Grok CLI / Grok Build on a machine that has `ows` and `~/.ows`**. Not grok.com cloud chat — that host has no local vault.
+
+1. Same machine: OWS wallet `agent-treasury-1`, funded with USDC on Base (above).
+2. Install plugins (once). New Grok session. Slash: `/shop-extract`, `/shop-witness`, `/shop-pin`.
+3. Human: `extract https://example.com` (or `/shop-extract`).
+4. Grok reads the skill, GETs the shop, sees **402**, then runs in the project shell:
+
+```bash
+ows pay request 'https://clearing-production-9968.up.railway.app/v1/extract?url=https://example.com' \
+  --wallet agent-treasury-1
+```
+
+5. Reports the receipt (`textHash` / `bodySha256` / `replayed`). Does not paraphrase the page.
+
+Hangar plugins are **skills + slash commands**. They are not a wallet and not a ZigZag MCP. If `ows` is not on PATH in that session, the bot cannot settle. Kit `sign_x402` is optional and needs local ZigZag; hosted `/sign` is 410.
 
 ```bash
 grok plugin marketplace add htafolla/groover
@@ -88,6 +104,7 @@ grok plugin install mill --trust
 grok plugin install shop-extract --trust
 grok plugin install shop-witness --trust
 grok plugin install shop-pin --trust
+# new session, or Plugins tab → r
 ```
 
 ## What `npx groover-hangar` plants
