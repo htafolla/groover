@@ -1,16 +1,22 @@
-# Groover hangar
+# groover-hangar
 
-Three live 402 shops. Mill is the suit. These are the shops.
+x402 shops for Grok, Hermes, OpenClaw, and OpenCode. Pay cents in USDC on Base. No account, no API key.
 
-| Shop | URL | Price |
-|------|-----|-------|
-| extract | `https://clearing-production-9968.up.railway.app/v1/extract?url=` | $0.02 USDC |
-| witness | `https://clearing-production-9968.up.railway.app/v1/witness?url=` | $0.02 USDC |
-| pin | `https://clearing-production-9968.up.railway.app/v1/pin?agentId=` | $0.01 USDC |
+```bash
+npx groover-hangar
+```
 
-No account. No API key. Hosted ZigZag `/sign` is 410. Keys: local OWS or `CLEARING_SIGNER=awal`. Clearing is not mill-planted into 0xray.
+Plants three live shops into the project (never passwd-home `~/.grok`):
 
-## Grok
+| Shop | What you pay for | Price |
+|------|------------------|-------|
+| **extract** | receipted URL extract (hashed text) | $0.02 USDC |
+| **witness** | proof of a GET (status, type, sha256) | $0.02 USDC |
+| **pin** | live ERC-8004 identity card hash | $0.01 USDC |
+
+Not a summarizer. Not a coworker mill. Hosted ZigZag `/sign` is **410** — keys stay on local OWS or `CLEARING_SIGNER=awal`. Clearing is not mill-planted into 0xray.
+
+## Grok plugin / Grok bot
 
 ```bash
 grok plugin marketplace add htafolla/groover
@@ -20,23 +26,17 @@ grok plugin install shop-witness --trust
 grok plugin install shop-pin --trust
 ```
 
-That is the Grok bot door. Skills and slash commands load in the session.
+## What it plants
 
-## npm / Hermes / OpenClaw
+From a **project** root (`package.json` required):
 
-From a **project** root (never passwd-home `~`):
+- `.grok/plugins/shop-*` — Grok (needs `--trust`)
+- `.hermes/plugins/shop-*` — Hermes
+- `.openclaw/skills/shop-*` — OpenClaw
+- `.opencode/skills/shop-*` — OpenCode
 
-```bash
-npx groover-hangar
-```
+## Sell the same object
 
-Plants:
+Run Clearing with your `CLEARING_PAY_TO`. Same 402 URL shape, your shop.
 
-- `.grok/plugins/shop-*` (Grok project plugin; needs trust)
-- `.hermes/plugins/shop-*` (Hermes plugin)
-- `.openclaw/skills/shop-*` (OpenClaw)
-- `.opencode/skills/shop-*`
-
-## Sell
-
-Run Clearing with your `CLEARING_PAY_TO`. Same object, your shop. Do not mill-plant Clearing into 0xray.
+Factory: https://website-production-c0da.up.railway.app/suit

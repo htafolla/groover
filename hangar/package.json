@@ -1,7 +1,7 @@
 {
   "name": "groover-hangar",
   "version": "0.1.0",
-  "description": "Three 402 shops (extract, witness, pin) plus plant for Grok, Hermes, OpenClaw. No account. Keys on the laptop.",
+  "description": "x402 USDC shops for Grok, Hermes, OpenClaw, OpenCode: extract, witness, pin. No account. grok plugin + npx groover-hangar.",
   "type": "module",
   "bin": {
     "groover-hangar": "groover-hangar.js"
@@ -24,11 +24,21 @@
     "url": "git+https://github.com/htafolla/groover.git",
     "directory": "hangar"
   },
+  "homepage": "https://website-production-c0da.up.railway.app/suit",
+  "bugs": {
+    "url": "https://github.com/htafolla/groover/issues"
+  },
   "keywords": [
     "x402",
+    "usdc",
     "grok",
-    "plugin",
+    "grok-plugin",
+    "hermes",
+    "openclaw",
+    "opencode",
     "mcp",
+    "micropayments",
+    "erc-8004",
     "hangar"
   ]
 }
