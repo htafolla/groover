@@ -1,7 +1,13 @@
 {
   "name": "groover-hangar",
   "version": "0.1.1",
-  "description": "x402 USDC shops for Grok, Hermes, OpenClaw, OpenCode: extract, witness, pin. No account. grok plugin + npx groover-hangar.",
+  "description": "x402 USDC shops for Grok, Hermes, OpenClaw, and OpenCode — extract, witness, pin. No account. Mill is 0xray; these are the shops.",
+  "readme": "README.md",
+  "license": "MIT",
+  "author": {
+    "name": "htafolla",
+    "url": "https://github.com/htafolla"
+  },
   "type": "module",
   "bin": {
     "groover-hangar": "groover-hangar.js"
@@ -10,7 +16,10 @@
     "groover-hangar.js",
     "plant.mjs",
     "plugins",
-    "README.md"
+    "README.md",
+    "AGENTS.md",
+    "SKILLS.md",
+    "llms.txt"
   ],
   "scripts": {
     "plant": "node plant.mjs"
@@ -18,27 +27,33 @@
   "engines": {
     "node": ">=20"
   },
-  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/htafolla/groover.git",
+    "url": "https://github.com/htafolla/groover.git",
     "directory": "hangar"
   },
-  "homepage": "https://website-production-c0da.up.railway.app/suit",
+  "homepage": "https://github.com/htafolla/groover/tree/main/hangar#readme",
   "bugs": {
     "url": "https://github.com/htafolla/groover/issues"
   },
   "keywords": [
+    "ai",
+    "agent",
     "x402",
     "usdc",
+    "base",
+    "micropayments",
     "grok",
     "grok-plugin",
     "hermes",
     "openclaw",
     "opencode",
     "mcp",
-    "micropayments",
+    "plugin-system",
+    "cli",
     "erc-8004",
+    "mill",
+    "0xray",
     "hangar"
   ]
 }

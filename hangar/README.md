@@ -1,20 +1,35 @@
 # groover-hangar
 
-x402 shops for Grok, Hermes, OpenClaw, and OpenCode. Pay cents in USDC on Base. No account, no API key.
+x402 shops for **Grok**, **Hermes**, **OpenClaw**, and **OpenCode**. Pay cents in USDC on Base. No account, no API key.
+
+**Mill is the suit** (`0xray` / `@0xray/foundry`). **These are the shops.** Not the 45-skill 0xray costume. Not an 8th `xray-*` MCP.
 
 ```bash
 npx groover-hangar
 ```
 
-Plants three live shops into the project (never passwd-home `~/.grok`):
+Run from a **project** root (`package.json` required). Never passwd-home `~`.
 
-| Shop | What you pay for | Price |
-|------|------------------|-------|
-| **extract** | receipted URL extract (hashed text) | $0.02 USDC |
-| **witness** | proof of a GET (status, type, sha256) | $0.02 USDC |
-| **pin** | live ERC-8004 identity card hash | $0.01 USDC |
+## Ecosystem
 
-Not a summarizer. Not a coworker mill. Hosted ZigZag `/sign` is **410** — keys stay on local OWS or `CLEARING_SIGNER=awal`. Clearing is not mill-planted into 0xray.
+| Piece | Package / URL | Role |
+|-------|----------------|------|
+| Suit / mill | [`0xray`](https://www.npmjs.com/package/0xray) · [`@0xray/foundry`](https://www.npmjs.com/package/@0xray/foundry) | Fasten mill+inspect. DNA. Not a shop. |
+| Hangar shops | **this package** | extract · witness · pin as Grok/Hermes/OpenClaw plugins |
+| Factory | [website `/suit`](https://website-production-c0da.up.railway.app/suit) | Download mill-plant.tgz, mint a name (optional) |
+| Registry | [groover.rippel.ai](https://groover.rippel.ai/mcp) | DID / GRVR / 8004 — optional to pay |
+| Kit loop | [KIT-LOOP.md](https://github.com/htafolla/groover/blob/main/docs/KIT-LOOP.md) | Local ZigZag/OWS keys. Hosted `/sign` is 410 |
+| Source | [htafolla/groover](https://github.com/htafolla/groover) | Marketplace + hangar |
+
+## Three live shops
+
+| Shop | URL | Price |
+|------|-----|-------|
+| **extract** | https://clearing-production-9968.up.railway.app/v1/extract?url= | $0.02 USDC |
+| **witness** | https://clearing-production-9968.up.railway.app/v1/witness?url= | $0.02 USDC |
+| **pin** | https://clearing-production-9968.up.railway.app/v1/pin?agentId= | $0.01 USDC |
+
+Unpaid GET → HTTP 402. Same `paymentId` → `replayed: true`, no second signature. Not a summarizer.
 
 ## Grok plugin / Grok bot
 
@@ -26,17 +41,23 @@ grok plugin install shop-witness --trust
 grok plugin install shop-pin --trust
 ```
 
-## What it plants
-
-From a **project** root (`package.json` required):
+## What `npx groover-hangar` plants
 
 - `.grok/plugins/shop-*` — Grok (needs `--trust`)
 - `.hermes/plugins/shop-*` — Hermes
 - `.openclaw/skills/shop-*` — OpenClaw
 - `.opencode/skills/shop-*` — OpenCode
 
-## Sell the same object
+Does **not** write project `AGENTS.md` (0xray mill owns that). Does **not** mill-plant Clearing into 0xray. Does **not** dump 45/42 costume.
 
-Run Clearing with your `CLEARING_PAY_TO`. Same 402 URL shape, your shop.
+Agent map in this package: `AGENTS.md` · `SKILLS.md` · `llms.txt`.
 
-Factory: https://website-production-c0da.up.railway.app/suit
+## Sell
+
+Run Clearing with your `CLEARING_PAY_TO`. Same 402 object, your shop.
+
+## Docs
+
+- Factory: https://website-production-c0da.up.railway.app/suit
+- Issues: https://github.com/htafolla/groover/issues
+- License: MIT

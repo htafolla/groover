@@ -15,6 +15,23 @@ const urls = {
 };
 
 describe('hangar shops', () => {
+  it('ships npm discovery files (README, AGENTS, SKILLS, llms.txt)', () => {
+    const pkg = JSON.parse(readFileSync(path.join(hangar, 'package.json'), 'utf8')) as {
+      version: string;
+      files: string[];
+      keywords: string[];
+    };
+    expect(pkg.version).toBe('0.1.1');
+    for (const name of ['README.md', 'AGENTS.md', 'SKILLS.md', 'llms.txt']) {
+      expect(pkg.files).toContain(name);
+      expect(existsSync(path.join(hangar, name))).toBe(true);
+    }
+    expect(pkg.keywords).toEqual(expect.arrayContaining(['x402', 'grok', 'hermes', 'openclaw', '0xray']));
+    const agents = readFileSync(path.join(hangar, 'AGENTS.md'), 'utf8');
+    expect(agents).toContain('Do not mill-plant Clearing into 0xray');
+    expect(agents).not.toMatch(/45-skill costume dump/);
+  });
+
   it('marketplace lists mill + three shops', () => {
     const raw = readFileSync(path.join(repo, '.grok-plugin/marketplace.json'), 'utf8');
     const index = JSON.parse(raw) as {plugins: Array<{name: string; source: string}>};
