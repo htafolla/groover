@@ -60,7 +60,15 @@ describe('hangar shops', () => {
       expect(skill).toContain('410');
       expect(skill).not.toMatch(/xray-clearing/);
       expect(skill).toContain('Do not mill-plant Clearing into 0xray');
+      expect(skill).toContain('ows pay request');
       expect(command).toContain(urls[name]);
+      expect(command).toContain('ows pay request');
+      expect(command).toContain('410');
+      const staticCommand = readFileSync(
+        path.join(repo, 'website/static/hangar', name, 'commands', `${name}.md`),
+        'utf8',
+      );
+      expect(staticCommand).toBe(command);
     }
   });
 
