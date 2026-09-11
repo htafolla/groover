@@ -7,6 +7,7 @@ describe('@groover/xray', () => {
       const mcps = listMcpServers();
       expect(mcps.length).toBeGreaterThanOrEqual(10);
       expect(mcps.find(m => m.name === 'Dynamo')).toBeTruthy();
+      expect(mcps.find(m => m.name === 'Clearing')).toBeTruthy();
     });
   });
 

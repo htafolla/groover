@@ -217,7 +217,20 @@ export async function mintGrvrIdentity(params: {
     tokenId,
     did: prepared.did,
   });
-  return { ...payload, dryRun: false, txHash: hash, tokenId };
+  const minted = { ...payload, dryRun: false, txHash: hash, tokenId };
+  const { mirrorGrvrMint } = await import('./mirror-8004.js');
+  await mirrorGrvrMint({
+    did: minted.did,
+    dna: minted.dna,
+    pack: minted.pack,
+    variant: minted.variant,
+    identityKey: minted.identityKey,
+    grvrContract: minted.contract,
+    grvrTokenId: tokenId,
+    dynamoCitation: prepared.dynamoCitation,
+    level: minted.level,
+  });
+  return minted;
 }
 
 export function parseTokenIdParam(raw: string): bigint | null {
