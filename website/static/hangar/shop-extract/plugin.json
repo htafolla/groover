@@ -1,0 +1,6 @@
+{
+  "name": "shop-extract",
+  "version": "0.1.0",
+  "description": "Pay $0.02 USDC for a receipted URL extract. x402, no account. Not a summarizer.",
+  "author": { "name": "Groover" }
+}

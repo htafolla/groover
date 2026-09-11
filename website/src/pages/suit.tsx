@@ -389,41 +389,44 @@ export default function SuitFactoryPage(): JSX.Element {
 
   return (
     <Layout
-      title="0xray factory"
-      description="0xray mill configurator — set mill params and features.json, download mill+inspect, load it in the CLI, mint the suit."
+      title="Hangar"
+      description="Install mill. Pay three 402 shops. No account. Mint is a name."
     >
       <main className={styles.bay}>
         <header className={styles.hud}>
           <div className={styles.cores}>
             <span className={styles.core}>MILL</span>
-            <span className={styles.wordmark}>0xRAY FACTORY</span>
-            <span className={styles.core}>INSPECT</span>
+            <span className={styles.wordmark}>HANGAR</span>
+            <span className={styles.core}>SHOPS</span>
           </div>
-          <Heading as="h1">Build your mill. Fasten the suit. Load the CLI.</Heading>
+          <Heading as="h1">Pay a shop. Or become one.</Heading>
           <p>
-            This is the 0xray configurator. Set mill params, <code>features.json</code>,
-            and the other mill config. Download mill+inspect. Run the install script.
-            Mint <code>0xray-suit</code> and see the token.
+            Grok:{' '}
+            <code>grok plugin marketplace add htafolla/groover</code> then{' '}
+            <code>grok plugin install shop-extract --trust</code>. npm:{' '}
+            <code>npx groover-hangar</code>. Hermes and OpenClaw get the same plant.
+            Mint below is a name — not required to pay.
           </p>
           <p>
-            Prefab agents are <strong>free to start</strong> — download, load the skill, dry-run.
-            Mint later if you want a Groover name. They operate in Groover + Clearing + ZigZag:
-            local keys, independent caps, hosted 402 shops.
+            Three live shops, x402, no API key. Keys on the laptop. Hosted{' '}
+            <code>/sign</code> is 410. Do not mill-plant Clearing into 0xray.
           </p>
           <div className={styles.prefabs}>
             <a className={styles.prefab} href="/mill-plant.tgz">
-              lean mill-plant.tgz
-              <span>mill + inspect only. Free. Not the 45-skill costume. npm i -D 0xray@4.0.9</span>
+              mill
+              <span>mill + inspect plugin. Free. Not the 45-skill costume.</span>
             </a>
-            <a className={styles.prefab} href="/prefabs/lean/README.md">
-              lean clerk
-              <span>
-                Pay for proof of a GET: extract + witness ($0.02). Idempotent paymentId. Not a coworker.
-              </span>
+            <a className={styles.prefab} href="/hangar/shop-extract/skills/shop-extract/SKILL.md">
+              shop-extract
+              <span>$0.02 · receipted URL extract · 402</span>
             </a>
-            <a className={styles.prefab} href="/prefabs/8004-pin/README.md">
-              8004-pin
-              <span>Optional. Pin a live ERC-8004 card. Not required to use extract/witness.</span>
+            <a className={styles.prefab} href="/hangar/shop-witness/skills/shop-witness/SKILL.md">
+              shop-witness
+              <span>$0.02 · proof of a GET · 402</span>
+            </a>
+            <a className={styles.prefab} href="/hangar/shop-pin/skills/shop-pin/SKILL.md">
+              shop-pin
+              <span>$0.01 · ERC-8004 card hash · 402</span>
             </a>
           </div>
         </header>

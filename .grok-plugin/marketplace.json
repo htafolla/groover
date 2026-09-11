@@ -1,0 +1,30 @@
+{
+  "name": "Groover hangar",
+  "description": "Mill + three 402 shops. No account. Keys on the laptop. Hosted /sign is 410.",
+  "owner": {
+    "name": "Groover",
+    "email": "htafolla@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "mill",
+      "description": "Fasten mill+inspect. Not the 45-skill costume.",
+      "source": "./website/static/mill-plant"
+    },
+    {
+      "name": "shop-extract",
+      "description": "Pay $0.02 USDC for a receipted URL extract. x402. Not a summarizer.",
+      "source": "./hangar/plugins/shop-extract"
+    },
+    {
+      "name": "shop-witness",
+      "description": "Pay $0.02 USDC for proof of a GET. x402. Not a paraphrase.",
+      "source": "./hangar/plugins/shop-witness"
+    },
+    {
+      "name": "shop-pin",
+      "description": "Pay $0.01 USDC to pin a live ERC-8004 identity card.",
+      "source": "./hangar/plugins/shop-pin"
+    }
+  ]
+}

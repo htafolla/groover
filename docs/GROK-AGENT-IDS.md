@@ -16,7 +16,9 @@ Agents sign on the **local kit** (ZigZag stdio + OWS). Hosted ZigZag `/sign` is 
 | setAgentURI tx | https://basescan.org/tx/0x8881d33f85488ef0ea56d23d5d14000fee52a255496622f931ff2aa5a66fa1fb |
 | agentURI | https://website-production-c0da.up.railway.app/identity/registration/grvr-2-v2.json |
 | Factory | https://website-production-c0da.up.railway.app/suit |
-| **402 extract (hosted shop)** | https://clearing-production-9968.up.railway.app/v1/extract |
+| **402 extract (shop)** | https://clearing-production-9968.up.railway.app/v1/extract |
+| **402 witness (shop)** | https://clearing-production-9968.up.railway.app/v1/witness |
+| **402 pin (shop)** | https://clearing-production-9968.up.railway.app/v1/pin?agentId=86025 |
 | Clearing kit | local stdio (`mcp/src/server.ts` + `kit.env`) |
 | ZigZag kit | local stdio (`ows-server/src/mcp.ts`); loopback rail `127.0.0.1:8789` |
 | Optional Coinbase rail | `CLEARING_SIGNER=awal` after `npx awal auth login` |
