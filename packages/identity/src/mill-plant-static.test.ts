@@ -9,7 +9,7 @@ const websiteStatic = path.resolve(
   '../../../website/static',
 );
 const plantDir = path.join(websiteStatic, 'mill-plant');
-const zipPath = path.join(websiteStatic, 'mill-plant.zip');
+const tgzPath = path.join(websiteStatic, 'mill-plant.tgz');
 
 describe('mill-plant download (factory zip)', () => {
   it('static plant is mill+inspect only', () => {
@@ -25,21 +25,21 @@ describe('mill-plant download (factory zip)', () => {
     expect(existsSync(path.join(plantDir, 'skills/inspect/SKILL.md'))).toBe(true);
     expect(existsSync(path.join(plantDir, 'CLI.md'))).toBe(true);
     const cli = readFileSync(path.join(plantDir, 'CLI.md'), 'utf8');
-    expect(cli).toContain('npm i -D @0xray/foundry');
+    expect(cli).toContain('npm i -D 0xray@4.0.9');
     expect(cli).toContain('npx @0xray/foundry mint');
     expect(cli).toContain('npx @0xray/foundry inspect');
     expect(cli).toContain('node mill-plant/install.mjs');
     expect(cli).not.toMatch(/\benforcer\b|\borchestrator\b/);
     const install = readFileSync(path.join(plantDir, 'install.mjs'), 'utf8');
-    expect(install).toContain('npm i -D @0xray/foundry');
+    expect(install).toContain('npm i -D 0xray@4.0.9');
     expect(install).toContain('.xray/features.json');
     expect(install).toContain('factory-config.json');
     expect(install).toContain('isPasswdHome');
   });
 
-  it('zip lists mill+inspect plant and CLI load, not costume', () => {
-    expect(existsSync(zipPath)).toBe(true);
-    const listing = execFileSync('unzip', ['-Z1', zipPath], {encoding: 'utf8'});
+  it('tgz lists mill+inspect plant and CLI load, not costume', () => {
+    expect(existsSync(tgzPath)).toBe(true);
+    const listing = execFileSync('tar', ['-tzf', tgzPath], {encoding: 'utf8'});
     expect(listing).toContain('mill-plant/skills/mill/SKILL.md');
     expect(listing).toContain('mill-plant/skills/inspect/SKILL.md');
     expect(listing).toContain('mill-plant/agents/mill.yml');

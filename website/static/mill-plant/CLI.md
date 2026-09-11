@@ -5,7 +5,7 @@ This zip is mill plant only (`mill` + `inspect`) plus `install.mjs`. Not the 0xr
 Run from **your project root**, never passwd-home `~/.grok/plugins/0xray`.
 
 ```bash
-unzip mill-plant.zip
+tar xzf mill-plant.tgz
 # put factory-config.json (from the configurator) in the repo root
 node mill-plant/install.mjs
 # or: node mill-plant/install.mjs --from factory-config.json --mint

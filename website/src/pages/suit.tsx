@@ -32,9 +32,10 @@ const GRVR_V4 = '0xD892D6836ab138a5aE4365dcb05Adb296607d6f9';
 const PREVIEW_DID = 'did:groover:aaaaaaaaaaaaaaaa';
 const DEFAULT_PACK = '0xray-suit';
 
-const CLI_LOAD = `unzip mill-plant.zip
+const CLI_LOAD = `tar xzf mill-plant.tgz
 # factory-config.json from this page → repo root
 node mill-plant/install.mjs --from factory-config.json
+npm i -D 0xray@4.0.9
 npx @0xray/foundry mint
 npx @0xray/foundry inspect`;
 
@@ -628,13 +629,13 @@ export default function SuitFactoryPage(): JSX.Element {
             <section className={styles.panel}>
               <h2>04 · download · load CLI</h2>
               <p className={styles.hint}>
-                Zip is mill+inspect + <code>install.mjs</code>. Config JSON is your
+                Tarball is mill+inspect + <code>install.mjs</code>. Config JSON is your
                 factory. Run the script from the repo root — not machine{' '}
                 <code>~/.grok</code>.
               </p>
               <div className={styles.downloads}>
-                <a className={styles.dl} href="/mill-plant.zip" download>
-                  mill-plant.zip
+                <a className={styles.dl} href="/mill-plant.tgz" download>
+                  mill-plant.tgz
                 </a>
                 <button
                   type="button"
@@ -646,7 +647,7 @@ export default function SuitFactoryPage(): JSX.Element {
               </div>
               <ol className={styles.drop}>
                 <li>
-                  Unzip <code>mill-plant.zip</code> in the project
+                  Unpack <code>mill-plant.tgz</code> in the project
                 </li>
                 <li>
                   Drop <code>factory-config.json</code> on the repo root (inventory +
@@ -654,7 +655,7 @@ export default function SuitFactoryPage(): JSX.Element {
                 </li>
                 <li>
                   <code>node mill-plant/install.mjs</code> — plants mill+inspect, writes{' '}
-                  <code>.xray/</code> + plant JSON, <code>npm i -D @0xray/foundry</code>
+                  <code>.xray/</code> + plant JSON, <code>npm i -D 0xray@4.0.9</code>
                 </li>
                 <li>
                   <code>npx @0xray/foundry mint</code> then{' '}

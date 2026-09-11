@@ -19,7 +19,7 @@ Unpaid → HTTP 402. Pay with the local kit (ZigZag/OWS) or `CLEARING_SIGNER=awa
 ```bash
 # from this folder, or from the factory zip
 cp SKILL.md ../../.grok/plugins/0xray/skills/8004-pin/SKILL.md   # or your skills dir
-# mill plant is optional — factory mill-plant.zip still fastens mill+inspect
+# mill plant is optional — factory mill-plant.tgz still fastens mill+inspect
 ```
 
 Then in Grok / OpenCode:
