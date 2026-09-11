@@ -29,9 +29,23 @@ import {
   generateKeyPair,
   signPayload,
   canonicalSuiBindMessage,
+  canonicalRegisterMessage,
   ed25519PublicKeyToRawHex,
   suiAddressFromEd25519PublicKey,
 } from '../../identity/src/index.js';
+
+function signRegister(
+  keys: { publicKey: string; privateKey: string },
+  nonce: string,
+  payload: string,
+  metadata: Record<string, unknown> = {},
+): string {
+  const publicKeyHex = ed25519PublicKeyToRawHex(keys.publicKey);
+  return signPayload(
+    keys.privateKey,
+    canonicalRegisterMessage({ nonce, publicKeyHex, payload, metadata }),
+  );
+}
 
 function buildValidTrace(sessionId: string) {
   const baseTime = Date.now() - 6000;
@@ -71,7 +85,7 @@ describe('@groover/marketplace', () => {
     const challenge = getRegistrationChallenge(keys.publicKey);
     const trace = submitValidTraceFlow(challenge.session.sessionId, challenge.session.task.prompt);
     const payload = 'pop-ui-' + Date.now();
-    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
+    const sig = signRegister(keys, challenge.nonce, payload, { name: 'ui-manifest-test' });
     const uiManifest = {
       version: '1' as const,
       displayMode: 'form' as const,
@@ -142,7 +156,7 @@ describe('@groover/marketplace', () => {
 
     const trace = submitValidTraceFlow(challenge.session.sessionId, challenge.session.task.prompt);
     const payload = 'pop-reg-' + Date.now();
-    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
+    const sig = signRegister(keys, challenge.nonce, payload, { name: 'pop-test-agent' });
 
     const result = await registerPlugin({
       pubkey: keys.publicKey,
@@ -153,8 +167,50 @@ describe('@groover/marketplace', () => {
       metadata: { name: 'pop-test-agent' },
     });
     expect('did' in result).toBe(true);
-    expect((result as any).did).toMatch(/^did:groover:/);
-    expect((result as any).apiKey).toMatch(/^groover_/);
+    const rec = result as { did: string; apiKey: string };
+    expect(rec.did).toMatch(/^did:groover:[0-9a-f]{64}$/);
+    expect(rec.apiKey).toMatch(/^groover_/);
+    const stored = getRegistrySnapshot().find((p) => p.did === rec.did);
+    expect(stored?.apiKey).toMatch(/^[0-9a-f]{64}$/);
+    expect(stored?.apiKey.startsWith('groover_')).toBe(false);
+  });
+
+  it('nonce issued for one key cannot register another', async () => {
+    const a = generateKeyPair();
+    const b = generateKeyPair();
+    const challenge = getRegistrationChallenge(a.publicKey);
+    const trace = submitValidTraceFlow(challenge.session.sessionId, challenge.session.task.prompt);
+    const payload = 'cross-key-' + Date.now();
+    const metadata = { name: 'cross-key' };
+    const sig = signRegister(b, challenge.nonce, payload, metadata);
+    await expect(
+      registerPlugin({
+        pubkey: b.publicKey,
+        payload,
+        signature: sig,
+        challengeNonce: challenge.nonce,
+        challengeTrace: trace,
+        metadata,
+      }),
+    ).rejects.toThrow(/different key/);
+  });
+
+  it('metadata not in the signed message fails PoP', async () => {
+    const keys = generateKeyPair();
+    const challenge = getRegistrationChallenge(keys.publicKey);
+    const trace = submitValidTraceFlow(challenge.session.sessionId, challenge.session.task.prompt);
+    const payload = 'meta-bind-' + Date.now();
+    const sig = signRegister(keys, challenge.nonce, payload, { name: 'signed' });
+    await expect(
+      registerPlugin({
+        pubkey: keys.publicKey,
+        payload,
+        signature: sig,
+        challengeNonce: challenge.nonce,
+        challengeTrace: trace,
+        metadata: { name: 'tampered' },
+      }),
+    ).rejects.toThrow('Proof-of-possession failed');
   });
 
   it('Proof-of-Possession with wrong signature throws', async () => {
@@ -179,7 +235,7 @@ describe('@groover/marketplace', () => {
     const challenge = getRegistrationChallenge(keys.publicKey);
     const trace = submitValidTraceFlow(challenge.session.sessionId, challenge.session.task.prompt);
     const payload = 'pop-reuse-' + Date.now();
-    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
+    const sig = signRegister(keys, challenge.nonce, payload, { name: 'pop-reuse-first' });
 
     await registerPlugin({
       pubkey: keys.publicKey,
@@ -193,7 +249,7 @@ describe('@groover/marketplace', () => {
     const challenge2 = getRegistrationChallenge(keys.publicKey);
     const trace2 = submitValidTraceFlow(challenge2.session.sessionId, challenge2.session.task.prompt);
     const payload2 = 'pop-reuse-second-' + Date.now();
-    const sig2 = signPayload(keys.privateKey, challenge2.nonce + '|' + payload2);
+    const sig2 = signRegister(keys, challenge2.nonce, payload2, { name: 'pop-reuse-second' });
 
     await expect(registerPlugin({
       pubkey: keys.publicKey,
@@ -211,7 +267,7 @@ describe('@groover/marketplace', () => {
     challenge.session.followUpCompleted = true;
     const trace = buildValidTrace(challenge.session.sessionId);
     const payload = 'bad-trace-' + Date.now();
-    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
+    const sig = signRegister(keys, challenge.nonce, payload, { name: 'bad-trace-agent' });
 
     const result = await registerPlugin({
       pubkey: keys.publicKey,
@@ -230,7 +286,7 @@ describe('@groover/marketplace', () => {
     const trace = submitValidTraceFlow(challenge.session.sessionId, challenge.session.task.prompt);
     const fakeTrace = { ...trace, merkleRoot: '0'.repeat(64), attestation: '0'.repeat(64) };
     const payload = 'fake-trace-' + Date.now();
-    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
+    const sig = signRegister(keys, challenge.nonce, payload, { name: 'fake-trace-agent' });
 
     const result = await registerPlugin({
       pubkey: keys.publicKey,
@@ -248,7 +304,7 @@ describe('@groover/marketplace', () => {
     const challenge = getRegistrationChallenge(keys.publicKey);
     const trace = buildValidTrace('nonexistent-session-id');
     const payload = 'bad-session-' + Date.now();
-    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
+    const sig = signRegister(keys, challenge.nonce, payload, { name: 'bad-session-agent' });
 
     await expect(registerPlugin({
       pubkey: keys.publicKey,
@@ -267,7 +323,7 @@ describe('@groover/marketplace', () => {
     const tamperedTurns = trace.turns.map((t, i) => i === 1 ? { ...t, reasoning: 'TAMPERED' } : t);
     const tamperedTrace = buildTraceFromTurns(trace.sessionId, tamperedTurns);
     const payload = 'tampered-' + Date.now();
-    const sig = signPayload(keys.privateKey, challenge.nonce + '|' + payload);
+    const sig = signRegister(keys, challenge.nonce, payload, { name: 'tampered-agent' });
 
     const result = await registerPlugin({
       pubkey: keys.publicKey,
@@ -454,7 +510,7 @@ describe('MCP handler (local)', () => {
     turns.push(t4);
     const trace = buildTraceFromTurns(sessionId, turns);
     const payload = 'adaptive-test-' + Date.now();
-    const sig = signPayload(keys.privateKey, chal.nonce + '|' + payload);
+    const sig = signRegister(keys, chal.nonce, payload, { name: 'adaptive-flow-test' });
 
     // Verify session state before registering
     const sessionBefore = getSession(sessionId);

@@ -53,17 +53,9 @@ The response wraps in `result.content[0].text`:
 
 ### Step 1 — Keypair
 
-**HMAC path** (no dependencies, Python stdlib):
+Ed25519 only. HMAC-as-pubkey is not proof-of-possession and is rejected.
 
-```python
-import hashlib, hmac
-secret = hashlib.sha256(b"your-secret").hexdigest()
-pubkey = secret  # same hex string
-def sign(nonce, payload, secret):
-    return hmac.new(secret.encode(), (nonce + "|" + payload).encode(), hashlib.sha256).hexdigest()
-```
-
-**ed25519 PEM path** (stronger proof):
+**ed25519 PEM path**:
 
 Node:
 ```js
@@ -72,7 +64,8 @@ const kp = crypto.generateKeyPairSync('ed25519', {
   publicKeyEncoding: { type: 'spki', format: 'pem' },
   privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
 });
-const sig = crypto.sign(null, Buffer.from(nonce + '|' + payload), crypto.createPrivateKey(kp.privateKey)).toString('hex');
+const sig = crypto.sign(null, Buffer.from(registerMessage), crypto.createPrivateKey(kp.privateKey)).toString('hex');
+// registerMessage = groover-register:v1|{nonce}|{32-byte-pubkey-hex}|{payload}|{stableJson(metadata)}
 ```
 
 Python (needs `cryptography`):
@@ -80,7 +73,8 @@ Python (needs `cryptography`):
 from cryptography.hazmat.primitives.asymmetric import ed25519
 pk = ed25519.Ed25519PrivateKey.generate()
 pubkey = pk.public_key().public_bytes(...).decode()
-sig = pk.sign((nonce + "|" + payload).encode()).hex()
+sig = pk.sign(register_message.encode()).hex()
+# register_message = groover-register:v1|{nonce}|{32-byte-pubkey-hex}|{payload}|{stable_json(metadata)}
 ```
 
 ### Step 2 — Get challenge
@@ -155,7 +149,7 @@ Success returns:
 |-------|-------|-----|
 | `Proof-of-possession failed` | Signature doesn't match pubkey for nonce+payload | Use real signing, not simulated |
 | `gray` + cooldown 300s | Missing adaptive follow-up or trace validation failed | Submit 4th turn after followUpPrompt |
-| `ASN1 encoding error` | Malformed PEM key | Use hex + HMAC path instead |
+| `ASN1 encoding error` | Malformed PEM key | Generate a fresh Ed25519 PKCS8/SPKI pair |
 | `ECONNREFUSED` | No outbound internet | Run from a machine with connectivity |
 | `already-used` nonce | Nonce reused | Get a fresh challenge |
 | `Challenge session not found` | Wrong sessionId or session expired (10min TTL) | Get a fresh challenge |

@@ -250,11 +250,28 @@ async function main() {
   const trace = buildTrace(sessionId, turns);
   log('Merkle root: ' + trace.merkleRoot.slice(0, 16) + '...');
 
-  // Step 3: Sign nonce + payload with ed25519
+  // Step 3: Sign canonical register message with ed25519
   const payload = args.payload;
-  const msg = Buffer.from(challengeNonce + '|' + payload, 'utf-8');
+  const pubDer = crypto.createPublicKey(pubkey).export({ type: 'spki', format: 'der' });
+  const publicKeyHex = pubDer.subarray(pubDer.length - 32).toString('hex');
+  function stableJson(value) {
+    if (Array.isArray(value)) return JSON.stringify(value.map((v) => JSON.parse(stableJson(v))));
+    if (value && typeof value === 'object') {
+      const out = {};
+      for (const key of Object.keys(value).sort()) out[key] = JSON.parse(stableJson(value[key]));
+      return JSON.stringify(out);
+    }
+    return JSON.stringify(value);
+  }
+  const registerMessage = [
+    'groover-register:v1',
+    challengeNonce,
+    publicKeyHex,
+    payload,
+    stableJson(metadata),
+  ].join('|');
   const privateKeyObj = crypto.createPrivateKey(secretKey);
-  const signature = crypto.sign(null, msg, privateKeyObj).toString('hex');
+  const signature = crypto.sign(null, Buffer.from(registerMessage), privateKeyObj).toString('hex');
   log('Generated PoP signature: ' + signature.slice(0, 16) + '...');
 
   // Step 4: Register with signature + challenge trace

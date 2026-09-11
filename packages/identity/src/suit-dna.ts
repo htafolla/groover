@@ -3,6 +3,7 @@
  * in ./packs (new schema = Groover PR).
  */
 import { encodeAbiParameters, keccak256 } from 'viem';
+import { isCanonicalGrooverDid } from './did.js';
 import { getPackAdapter, listPackIds } from './packs/index.js';
 import { millInventoryDna } from './packs/xray-suit.js';
 
@@ -22,23 +23,19 @@ export const GRVR_V2_MAINNET = '0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3';
 export const GRVR_V2_SEPOLIA = '0x6C61feb8389c99EBf00576E7A110140866C5D9fF';
 export const GRVR_V1_MAINNET = '0x0abcd80C929Ff2f6c308958B112b7925801750D7';
 
-const DID_RE = /^did:groover:[0-9a-fA-F]{16}$/;
-
-export function isCanonicalGrooverDid(did: string): boolean {
-  return typeof did === 'string' && did.length === 28 && DID_RE.test(did);
-}
+export { isCanonicalGrooverDid };
 
 export function inventoryDna(inventory: Record<string, unknown>): `0x${string}` {
   return millInventoryDna(inventory);
 }
 
 export function grooverIdentityDna(did: string): `0x${string}` {
-  if (!isCanonicalGrooverDid(did)) throw new Error('DID must be did:groover: + 16 hex');
+  if (!isCanonicalGrooverDid(did)) throw new Error('DID must be did:groover: + 16 or 64 hex');
   return getPackAdapter('groover-identity').resolveDna({ did });
 }
 
 export function identityKey(did: string, dna: `0x${string}`): `0x${string}` {
-  if (!isCanonicalGrooverDid(did)) throw new Error('DID must be did:groover: + 16 hex');
+  if (!isCanonicalGrooverDid(did)) throw new Error('DID must be did:groover: + 16 or 64 hex');
   if (!/^0x[0-9a-fA-F]{64}$/.test(dna)) throw new Error('dna must be 32-byte hex');
   return keccak256(
     encodeAbiParameters(
@@ -91,7 +88,7 @@ export function prepareMintInput(params: {
   dynamoCitation: `0x${string}`;
   level: number;
 } {
-  if (!isCanonicalGrooverDid(params.did)) throw new Error('DID must be did:groover: + 16 hex');
+  if (!isCanonicalGrooverDid(params.did)) throw new Error('DID must be did:groover: + 16 or 64 hex');
   const adapter = getPackAdapter(params.pack);
   const dna = adapter.resolveDna({
     did: params.did,

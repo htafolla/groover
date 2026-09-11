@@ -18,6 +18,13 @@ import {
   ed25519PublicKeyToRawHex,
   suiAddressFromEd25519PublicKey,
   verifySuiBinding,
+  canonicalRegisterMessage,
+  canonicalMintMessage,
+  publicKeyFingerprint,
+  hashApiKey,
+  isHashedApiKey,
+  apiKeyMatches,
+  MINT_SIGNATURE_MAX_AGE_MS,
   type SuiWalletBinding,
 } from '../../identity/src/index.js';
 import {
@@ -59,7 +66,23 @@ function loadRegistry(): Map<string, PluginRecord> {
     if (fs.existsSync(REGISTRY_PATH)) {
       const raw = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf-8')) as [string, PluginRecord][];
       const loaded = new Map(raw);
-      frameworkLogger.log('marketplace', 'registry-loaded', 'success', { count: loaded.size, path: REGISTRY_PATH });
+      let migrated = 0;
+      for (const rec of loaded.values()) {
+        if (rec.apiKey && !isHashedApiKey(rec.apiKey)) {
+          rec.apiKey = hashApiKey(rec.apiKey);
+          migrated++;
+        }
+      }
+      if (migrated > 0) {
+        const tmp = REGISTRY_PATH + '.tmp';
+        fs.writeFileSync(tmp, JSON.stringify(Array.from(loaded.entries()), null, 2));
+        fs.renameSync(tmp, REGISTRY_PATH);
+      }
+      frameworkLogger.log('marketplace', 'registry-loaded', 'success', {
+        count: loaded.size,
+        path: REGISTRY_PATH,
+        apiKeysHashed: migrated,
+      });
       return loaded;
     }
   } catch (e) {
@@ -92,7 +115,7 @@ function saveRegistry(): void {
 const registry = loadRegistry();
 
 // PoP nonce store (unchanged — nonce is still required for crypto binding)
-const challengeNonces = new Map<string, { pubkey: string; createdAt: number; used: boolean }>();
+const challengeNonces = new Map<string, { pubkeyFingerprint: string; createdAt: number; used: boolean }>();
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const NONCE_SWEEP_MS = 60 * 1000;
 
@@ -117,11 +140,12 @@ setInterval(() => {
  *   2. Complete the multi-turn challenge session (MCP orchestration trace)
  */
 export function getRegistrationChallenge(pubkey: string): { nonce: string; ttl: number; session: ChallengeSession } {
+  const pubkeyFingerprint = publicKeyFingerprint(pubkey);
   const session = createChallengeSession(pubkey);
   const nonce = crypto.randomBytes(32).toString('hex');
-  challengeNonces.set(nonce, { pubkey, createdAt: Date.now(), used: false });
+  challengeNonces.set(nonce, { pubkeyFingerprint, createdAt: Date.now(), used: false });
   frameworkLogger.log('marketplace', 'challenge-issued', 'success', {
-    pubkeyPrefix: pubkey.slice(0, 16),
+    pubkeyPrefix: pubkeyFingerprint.slice(0, 16),
     ttl: CHALLENGE_TTL_MS,
     sessionId: session.sessionId,
     taskPrompt: session.task.prompt.slice(0, 80),
@@ -168,7 +192,7 @@ export async function registerPlugin(params: {
 }): Promise<PluginRecord | { status: 'gray'; cooldown: number }> {
   frameworkLogger.log('marketplace', 'register-start', 'info', { pubkeyPrefix: params.pubkey.slice(0, 16) });
 
-  // 1. Crypto Proof-of-Possession
+  // 1. Crypto Proof-of-Possession (Ed25519 over canonical register message)
   const stored = challengeNonces.get(params.challengeNonce);
   if (!stored || stored.used) {
     throw new Error('Invalid or already-used challenge nonce');
@@ -176,7 +200,17 @@ export async function registerPlugin(params: {
   if (Date.now() - stored.createdAt > CHALLENGE_TTL_MS) {
     throw new Error('Challenge nonce expired');
   }
-  const verified = verifyWithPublic(params.pubkey, params.challengeNonce + '|' + params.payload, params.signature);
+  const publicKeyHex = publicKeyFingerprint(params.pubkey);
+  if (stored.pubkeyFingerprint !== publicKeyHex) {
+    throw new Error('Challenge nonce was issued for a different key');
+  }
+  const registerMessage = canonicalRegisterMessage({
+    nonce: params.challengeNonce,
+    publicKeyHex,
+    payload: params.payload,
+    metadata: params.metadata,
+  });
+  const verified = verifyWithPublic(params.pubkey, registerMessage, params.signature);
   if (!verified) {
     throw new Error('Proof-of-possession failed: signature does not match pubkey');
   }
@@ -372,7 +406,7 @@ export async function registerPlugin(params: {
     pubkey: params.pubkey,
     ed25519PublicKeyHex,
     signature: params.signature,
-    apiKey,
+    apiKey: hashApiKey(apiKey),
     metadata: params.metadata,
     registeredAt: new Date().toISOString(),
     reputation: 1.0,
@@ -382,7 +416,7 @@ export async function registerPlugin(params: {
   registry.set(did, record);
   saveRegistry();
   frameworkLogger.log('marketplace', 'register-success', 'success', { did, reputation: record.reputation, challengeScore: validation.score, hasUiManifest: !!record.uiManifest });
-  return record;
+  return { ...record, apiKey };
 }
 
 export function getRegistrySnapshot(): PluginRecord[] {
@@ -392,13 +426,6 @@ export function getRegistrySnapshot(): PluginRecord[] {
 export function getPluginUiManifest(did: string): import('./agent-ui-manifest.js').AgentUiManifest | undefined {
   const record = registry.get(did);
   return record?.uiManifest;
-}
-
-function apiKeyMatches(stored: string, provided: string): boolean {
-  const a = Buffer.from(stored);
-  const b = Buffer.from(provided);
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
 }
 
 export function getSuiBinding(did: string): SuiWalletBinding | null {
@@ -414,6 +441,32 @@ export function assertRegisteredDid(did: string, apiKey: string): PluginRecord {
   const record = registry.get(did);
   if (!record) throw new Error('DID is not registered');
   if (!apiKeyMatches(record.apiKey, apiKey)) throw new Error('API key does not match DID');
+  return record;
+}
+
+export function assertMintAuthorization(params: {
+  did: string;
+  apiKey: string;
+  pack: string;
+  to: string;
+  issuedAtMs: number;
+  signature: string;
+}): PluginRecord {
+  const record = assertRegisteredDid(params.did, params.apiKey);
+  const now = Date.now();
+  if (!Number.isFinite(params.issuedAtMs)) throw new Error('issuedAtMs required');
+  if (params.issuedAtMs > now + 60_000) throw new Error('issuedAtMs is in the future');
+  if (now - params.issuedAtMs > MINT_SIGNATURE_MAX_AGE_MS) throw new Error('mint signature expired');
+  const key = record.ed25519PublicKeyHex ?? record.pubkey;
+  const message = canonicalMintMessage({
+    did: params.did,
+    pack: params.pack,
+    to: params.to,
+    issuedAtMs: params.issuedAtMs,
+  });
+  if (!verifyWithPublic(key, message, params.signature)) {
+    throw new Error('mint proof-of-possession failed');
+  }
   return record;
 }
 

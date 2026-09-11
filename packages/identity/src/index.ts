@@ -21,6 +21,7 @@
 import { frameworkLogger } from '../../xray/src/index.js';
 import * as crypto from 'crypto';
 import { didFromEd25519PublicKey } from './did.js';
+import { verifyEd25519 } from './pop.js';
 
 export interface IdentityBinding {
   did: string;
@@ -55,50 +56,20 @@ export function generateDID(pubkey: string): string {
   if (!pubkey || typeof pubkey !== 'string') {
     throw new Error('pubkey required for DID generation');
   }
-  let did: string;
-  try {
-    did = didFromEd25519PublicKey(pubkey);
-  } catch {
-    const hash = crypto.createHash('sha256').update(pubkey).digest('hex').slice(0, 16);
-    did = `did:groover:${hash}`;
-  }
+  const did = didFromEd25519PublicKey(pubkey);
   frameworkLogger.log('identity', 'generate-did', 'success', { did, pubkeyLen: pubkey.length });
   return did;
 }
 
 /**
- * Crypto binding: pubkeyHex + payload → signature.
- * Exact reuse of node crypto HMAC pattern (from marketplace) for drop-in compatibility.
- * Treats provided pubkeyHex as HMAC key material for binding sig.
+ * HMAC-as-identity is not proof-of-possession. Use Ed25519 signPayload / verifyWithPublic.
  */
-export function bindCrypto(pubkeyHex: string, payload: string): { signature: string; ok: boolean } {
-  if (!pubkeyHex || !payload) {
-    frameworkLogger.log('identity', 'crypto-bind', 'error', { reason: 'missing-input' });
-    return { signature: '', ok: false };
-  }
-  const key = Buffer.from(pubkeyHex, 'hex');
-  const sig = crypto.createHmac('sha256', key).update(payload).digest('hex');
-  frameworkLogger.log('identity', 'crypto-bind', 'success', {
-    pubkeyLen: key.length,
-    sigLen: sig.length,
-    payloadLen: payload.length,
-  });
-  return { signature: sig, ok: true };
+export function bindCrypto(_pubkeyHex: string, _payload: string): { signature: string; ok: boolean } {
+  throw new Error('HMAC identity binding removed; use Ed25519');
 }
 
-/**
- * Verify a signature produced by bindCrypto for the same pubkey+payload.
- * Deterministic for the thin binding.
- */
-export function verifySignature(pubkeyHex: string, payload: string, signature: string): boolean {
-  const { signature: expected } = bindCrypto(pubkeyHex, payload);
-  const ok = expected.length > 0 && expected === signature;
-  frameworkLogger.log('identity', 'verify-signature', 'success', {
-    ok,
-    expectedLen: expected.length,
-    providedLen: signature?.length || 0,
-  });
-  return ok;
+export function verifySignature(_pubkeyHex: string, _payload: string, _signature: string): boolean {
+  throw new Error('HMAC identity binding removed; use Ed25519');
 }
 
 /**
@@ -120,10 +91,6 @@ function isEd25519PrivateKey(key: string): boolean {
   return key.startsWith('-----BEGIN PRIVATE KEY-----') || key.startsWith('-----BEGIN EC PRIVATE KEY-----');
 }
 
-function isEd25519PublicKey(key: string): boolean {
-  return key.startsWith('-----BEGIN PUBLIC KEY-----');
-}
-
 /**
  * Sign payload with PEM private key (asymmetric).
  */
@@ -131,37 +98,25 @@ export function signPayload(privateKeyPem: string, payload: string): string {
   if (!privateKeyPem || !payload) {
     throw new Error('privateKeyPem and payload required');
   }
+  if (!isEd25519PrivateKey(privateKeyPem)) {
+    throw new Error('Ed25519 PKCS8 PEM private key required');
+  }
   let sig: string;
-  if (isEd25519PrivateKey(privateKeyPem)) {
-    try {
-      sig = crypto.sign(null, Buffer.from(payload), privateKeyPem).toString('hex');
-    } catch {
-      throw new Error('Invalid private key PEM: ASN1 parse failed');
-    }
-  } else {
-    sig = crypto.createHmac('sha256', Buffer.from(privateKeyPem, 'hex')).update(payload).digest('hex');
+  try {
+    sig = crypto.sign(null, Buffer.from(payload), privateKeyPem).toString('hex');
+  } catch {
+    throw new Error('Invalid private key PEM: ASN1 parse failed');
   }
   frameworkLogger.log('identity', 'sign-payload', 'success', { sigLen: sig.length });
   return sig;
 }
 
-export function verifyWithPublic(publicKeyPem: string, payload: string, signatureHex: string): boolean {
-  if (!publicKeyPem || !payload || !signatureHex) {
+export function verifyWithPublic(publicKey: string, payload: string, signatureHex: string): boolean {
+  if (!publicKey || !payload || !signatureHex) {
     frameworkLogger.log('identity', 'verify-public', 'warning', { reason: 'missing-input' });
     return false;
   }
-  let ok: boolean;
-  if (isEd25519PublicKey(publicKeyPem)) {
-    try {
-      ok = crypto.verify(null, Buffer.from(payload), publicKeyPem, Buffer.from(signatureHex, 'hex'));
-    } catch {
-      frameworkLogger.log('identity', 'verify-public', 'warning', { reason: 'asn1-parse-failed' });
-      return false;
-    }
-  } else {
-    const expected = crypto.createHmac('sha256', Buffer.from(publicKeyPem, 'hex')).update(payload).digest('hex');
-    ok = expected === signatureHex;
-  }
+  const ok = verifyEd25519(publicKey, payload, signatureHex);
   frameworkLogger.log('identity', 'verify-public', 'success', { ok });
   return ok;
 }
@@ -170,7 +125,7 @@ export class IdentityEngine {
   constructor() {
     frameworkLogger.log('identity', 'engine-init', 'success', {
       didPrefix: 'did:groover:',
-      crypto: 'node:crypto (hmac + ed25519)',
+      crypto: 'node:crypto ed25519',
       binding: 'pubkey+sig',
       governancePreceded: true,
     });
@@ -204,20 +159,19 @@ export class IdentityEngine {
    * Full registration binding helper: produces DID + binding record.
    * Mirrors ARCHITECTURE.md crypto binding step.
    */
-  bindForRegistration(pubkeyHex: string, payload: string, metadata: Record<string, unknown> = {}): IdentityBinding {
-    const { signature, ok } = this.bind(pubkeyHex, payload);
+  bindForRegistration(pubkeyHex: string, _payload: string, metadata: Record<string, unknown> = {}): IdentityBinding {
     const did = this.generateDID(pubkeyHex);
     const apiKey = generateApiKey(did);
     const binding: IdentityBinding = {
       did,
       pubkey: pubkeyHex,
-      signature,
-      ok,
+      signature: '',
+      ok: false,
       apiKey,
     };
     frameworkLogger.log('identity', 'bind-for-registration', 'success', {
       did,
-      ok,
+      ok: binding.ok,
       apiKeyPrefix: apiKey.slice(0, 12) + '...',
       metaKeys: Object.keys(metadata).length,
     });
@@ -236,7 +190,27 @@ export function bindForRegistration(pubkeyHex: string, payload: string, metadata
   return identityEngine.bindForRegistration(pubkeyHex, payload, metadata);
 }
 
-export { didFromEd25519PublicKey, ed25519PublicKeyToRawHex, GROOVER_DID_PREFIX } from './did.js';
+export {
+  didFromEd25519PublicKey,
+  ed25519PublicKeyToPem,
+  ed25519PublicKeyToRawHex,
+  GROOVER_DID_PREFIX,
+  isCanonicalGrooverDid,
+  isFullWidthGrooverDid,
+} from './did.js';
+export {
+  apiKeyMatches,
+  canonicalMintMessage,
+  canonicalRegisterMessage,
+  hashApiKey,
+  isHashedApiKey,
+  MINT_BIND_VERSION,
+  MINT_SIGNATURE_MAX_AGE_MS,
+  publicKeyFingerprint,
+  REGISTER_BIND_VERSION,
+  stableJson,
+  verifyEd25519,
+} from './pop.js';
 export {
   GRVR_DEFAULT_CHAIN_ID,
   GRVR_DEFAULT_CONTRACT,
@@ -252,7 +226,6 @@ export {
   grooverIdentityDna,
   identityKey,
   inventoryDna,
-  isCanonicalGrooverDid,
   levelFromComposite,
   levelName,
   listPackIds,
