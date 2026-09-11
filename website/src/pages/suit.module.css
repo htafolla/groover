@@ -364,3 +364,123 @@
   flex-direction: column;
   gap: 1.25rem;
 }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.9rem;
+}
+
+.fieldLabel {
+  font-weight: 700;
+}
+
+.fieldHint {
+  font-size: 0.85rem;
+  color: var(--mill-dim);
+}
+
+label .fieldHint {
+  display: block;
+  font-weight: 400;
+  margin: 0.15rem 0 0.35rem;
+}
+
+.sampleBar {
+  margin-bottom: 1rem;
+}
+
+.sampleBtn {
+  background: transparent;
+  border: 1px dashed var(--mill-accent);
+  border-radius: 999px;
+  color: var(--mill-accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.45rem 1.2rem;
+}
+
+.sampleBtn:hover {
+  background: rgba(62, 200, 245, 0.12);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--mill-dark);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  background: rgba(3, 5, 8, 0.6);
+}
+
+.chip,
+.chipLocked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--mill-accent);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.chipLocked {
+  opacity: 0.75;
+}
+
+.chipX {
+  background: none;
+  border: 0;
+  color: var(--mill-dim);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.chipX:hover {
+  color: var(--mill-glass);
+}
+
+.chipInput {
+  flex: 1 1 120px;
+  min-width: 90px;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--mill-ink);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.samplesRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.samplesLabel {
+  color: var(--mill-dim);
+}
+
+.sampleChip {
+  background: transparent;
+  border: 1px dotted var(--mill-dim);
+  border-radius: 999px;
+  color: var(--mill-dim);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.1rem 0.65rem;
+}
+
+.sampleChip:hover {
+  border-color: var(--mill-accent);
+  color: var(--mill-accent);
+}

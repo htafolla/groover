@@ -7,6 +7,22 @@ import styles from './index.module.css';
 const MODE_KEY = 'groover-mode';
 type Mode = 'human' | 'ai';
 
+type RegistryRow = {
+  did?: string;
+  pubkey?: string;
+  name?: string;
+  registeredAt?: string;
+  metadata?: { name?: string };
+};
+
+function registryRowsFromMcpText(raw: string): RegistryRow[] {
+  const parsed: unknown = JSON.parse(raw);
+  if (typeof parsed !== 'object' || parsed === null || !('results' in parsed)) return [];
+  const results = (parsed as { results: unknown }).results;
+  if (!Array.isArray(results)) return [];
+  return results.filter((row): row is RegistryRow => typeof row === 'object' && row !== null);
+}
+
 const gates = [
   ['Ed25519 PoP', 'Impersonation, key delegation'],
   ['Session state machine', 'Replay attacks'],
@@ -44,7 +60,7 @@ function AiSection({ title, children }: { title: string; children: React.ReactNo
 
 export default function Home(): JSX.Element {
   const [mode, setMode] = useState<Mode>('human');
-  const [agents, setAgents] = useState<any[] | null>(null);
+  const [agents, setAgents] = useState<RegistryRow[] | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -61,11 +77,14 @@ export default function Home(): JSX.Element {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'search_plugins', arguments: { query: '' } } }),
       });
-      const json = await res.json();
-      const raw = json?.result?.content?.[0]?.text;
+      const json: unknown = await res.json();
+      const root =
+        typeof json === 'object' && json !== null
+          ? (json as { result?: { content?: Array<{ text?: string }> } })
+          : null;
+      const raw = root?.result?.content?.[0]?.text;
       if (raw) {
-        const parsed = JSON.parse(raw);
-        setAgents(parsed.results || []);
+        setAgents(registryRowsFromMcpText(raw));
       } else {
         setAgents([]);
       }
@@ -127,10 +146,15 @@ export default function Home(): JSX.Element {
               Cryptographic proof-of-possession + adaptive 4-turn behavioral challenge.
               {' '}<strong>12 anti-gaming gates. No backdoors. No exceptions.</strong>
             </p>
-            <p className={styles.suitCta}>
-              <Link to="/suit">Build a 0xray factory</Link>
-              {' — mill params, download mill+inspect, load it in the CLI, mint.'}
-            </p>
+            <div className={styles.factoryCta}>
+              <Link className={styles.factoryBtn} to="/suit">
+                Build a 0xray factory
+                <span className={styles.factoryArrow}>→</span>
+              </Link>
+              <p className={styles.factorySub}>
+                mill params · download mill+inspect · load it in the CLI · mint
+              </p>
+            </div>
             </>
           )}
         </div>
@@ -319,7 +343,7 @@ for each turn:
                           </tr>
                         </thead>
                         <tbody>
-                          {agents.map((a: any, i: number) => (
+                          {agents.map((a: RegistryRow, i: number) => (
                             <tr key={i}>
                               <td><code>{a.did || a.pubkey?.slice(0, 24) + '…'}</code></td>
                               <td>{a.metadata?.name || a.name || '—'}</td>
@@ -357,7 +381,7 @@ for each turn:
                           </tr>
                         </thead>
                         <tbody>
-                          {agents.map((a: any, i: number) => (
+                          {agents.map((a: RegistryRow, i: number) => (
                             <tr key={i}>
                               <td><code>{a.did || a.pubkey?.slice(0, 24) + '…'}</code></td>
                               <td>{a.metadata?.name || a.name || '—'}</td>

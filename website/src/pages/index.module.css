@@ -26,7 +26,376 @@
   width: 100%;
 }
 
-.suitCta {
-  margin-top: 1rem;
+.factoryCta {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.factoryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #030508;
+  text-decoration: none;
+  padding: 0.9rem 2.2rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7ae8ff 0%, #3ec8f5 45%, #2a8ab0 100%);
+  box-shadow: 0 0 28px rgba(62, 200, 245, 0.45), 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.factoryBtn:hover {
+  color: #030508;
+  text-decoration: none;
+  transform: translateY(-2px);
+  box-shadow: 0 0 44px rgba(62, 200, 245, 0.65), 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+.factoryArrow {
+  font-size: 1.3em;
+  line-height: 1;
+}
+
+.factorySub {
+  margin-top: 0.7rem;
+  font-size: 0.9rem;
+  color: #8ab4c4;
+}
+
+/* ---- hero (mill bay) ---- */
+.hero {
+  background:
+    radial-gradient(ellipse at 50% 0%, #0a3040 0%, #030508 65%);
+  color: #f4f7fb;
+  padding: 3.5rem 1.25rem 3rem;
+  text-align: center;
+}
+
+.heroContent {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.logo {
+  width: 120px;
+  height: 120px;
+  margin-bottom: 1rem;
+}
+
+.tagline {
+  font-size: 1.25rem;
+  color: #8ab4c4;
+  margin: 0.5rem 0 1.5rem;
+}
+
+.description {
+  max-width: 640px;
+  margin: 1rem auto;
+  line-height: 1.6;
+}
+
+/* ---- human/AI mode toggle ---- */
+.modeToggle {
+  display: flex;
+  justify-content: center;
+  margin: 1.25rem 0 2rem;
+}
+
+.modeToggleInner {
+  display: inline-flex;
+  border: 1px solid #3ec8f5;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.modeBtn {
+  background: transparent;
+  border: 0;
+  color: #8ab4c4;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.5rem 1.4rem;
+}
+
+.modeBtnActive {
+  background: #3ec8f5;
+  color: #030508;
+  font-weight: 700;
+}
+
+/* ---- sections ---- */
+.section {
+  padding: 3rem 0;
+}
+
+.sectionDark {
+  background: #030508;
+  color: #f4f7fb;
+}
+
+.sectionTitle {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.sectionSubtitle {
+  text-align: center;
+  color: #8ab4c4;
+  margin-bottom: 2rem;
+}
+
+.sectionDark .sectionSubtitle {
+  color: #8ab4c4;
+}
+
+/* ---- how-it-works steps ---- */
+.steps {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+.step {
+  flex: 1 1 220px;
+  max-width: 300px;
+  border: 1px solid #dfe7ee;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #3ec8f5;
+  color: #030508;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.stepArrow {
+  align-self: center;
+  font-size: 1.5rem;
+  color: #3ec8f5;
+}
+
+/* ---- registration steps + cards ---- */
+.regSteps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.regStep {
+  border: 1px solid #dfe7ee;
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  font-size: 0.92rem;
+}
+
+.regCta {
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.registerLinks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.registerCard {
+  border: 1px solid #dfe7ee;
+  border-radius: 8px;
+  padding: 1.1rem 1.2rem;
+}
+
+.registerCard h3 {
+  margin-top: 0;
+}
+
+.registryCta {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+/* ---- tables: tools, gates, agents ---- */
+.aiToolGrid,
+.gatesGrid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 0;
+  margin: 1rem 0 2rem;
+  border: 1px solid #dfe7ee;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.aiToolGrid {
+  grid-template-columns: 1fr 1.4fr 1.4fr;
+}
+
+.aiToolHeader,
+.gateHeader {
+  background: #0a3040;
+  color: #f4f7fb;
+  font-weight: 700;
+  padding: 0.6rem 0.9rem;
+}
+
+.aiToolRow,
+.gateRow {
+  display: contents;
+}
+
+.aiToolRow > div,
+.gateRow > div {
+  padding: 0.55rem 0.9rem;
+  border-top: 1px solid #dfe7ee;
+}
+
+.gateRowAlt > div {
+  background: rgba(62, 200, 245, 0.07);
+}
+
+.aiToolName,
+.gateName {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+.aiToolArgs,
+.aiToolReturns,
+.gateDesc {
+  font-size: 0.92rem;
+}
+
+.agentsList {
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.agentsTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.agentsTable th,
+.agentsTable td {
+  border: 1px solid #dfe7ee;
+  padding: 0.55rem 0.9rem;
+  text-align: left;
+  font-size: 0.92rem;
+}
+
+.agentsTable th {
+  background: #0a3040;
+  color: #f4f7fb;
+}
+
+.agentsEmpty {
+  color: #8ab4c4;
+  font-style: italic;
+}
+
+/* ---- AI endpoint + code + steps ---- */
+.aiEndpoint {
+  border: 1px dashed #3ec8f5;
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+}
+
+.aiEndpointLine {
+  margin: 0.3rem 0;
   font-size: 0.95rem;
+}
+
+.aiSteps {
+  margin: 1rem 0 1rem 1.2rem;
+}
+
+.aiCode {
+  background: #030508;
+  color: #7ae8ff;
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  overflow-x: auto;
+  font-size: 0.85rem;
+}
+
+/* ---- stats + status ---- */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+  text-align: center;
+}
+
+.stat {
+  border: 1px solid #dfe7ee;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.statValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #3ec8f5;
+}
+
+.statLabel {
+  font-size: 0.85rem;
+  color: #8ab4c4;
+}
+
+.statusLinks {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+
+.gatesNote {
+  font-size: 0.9rem;
+  color: #8ab4c4;
+  margin-top: 1rem;
+}
+
+/* ---- meta proof ---- */
+.metaProof {
+  border-left: 3px solid #3ec8f5;
+  padding: 0.5rem 0 0.5rem 1rem;
+  margin: 1.5rem 0;
+}
+
+.metaProofCoda {
+  font-size: 0.9rem;
+  color: #8ab4c4;
+}
+
+@media screen and (max-width: 768px) {
+  .stepArrow {
+    display: none;
+  }
+  .aiToolGrid {
+    grid-template-columns: 1fr;
+  }
+  .logo {
+    width: 88px;
+    height: 88px;
+  }
 }

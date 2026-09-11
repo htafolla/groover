@@ -1,6 +1,6 @@
 # Load this mill into the CLI
 
-This zip is mill plant only (`mill` + `inspect`) plus `install.mjs`. Not the 0xray costume.
+This tarball is mill plant only (`mill` + `inspect`) plus `install.mjs`. Not the 0xray costume.
 
 Run from **your project root**, never passwd-home `~/.grok/plugins/0xray`.
 

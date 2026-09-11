@@ -39,6 +39,113 @@ npm i -D 0xray@4.0.9
 npx @0xray/foundry mint
 npx @0xray/foundry inspect`;
 
+const SAMPLE_SKILLS = ['extract', 'witness'];
+const SAMPLE_AGENTS: string[] = [];
+const SAMPLE_TREE_SKILLS: string[] = [];
+const SAMPLE_TREE_AGENTS: string[] = [];
+
+const SUIT_FIT_HELP: Record<SuitKind, string> = {
+  fastened: 'Lean plant: mill + inspect only. Start here.',
+  overlay: 'Your repo files win over mill defaults.',
+  costume: 'Full 45-skill / 42-agent 0xray costume.',
+};
+
+function splitTokens(raw: string): string[] {
+  return raw
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function ChipInput(props: {
+  label: string;
+  hint?: string;
+  value: string;
+  onChange: (raw: string) => void;
+  locked?: string[];
+  placeholder?: string;
+  samples?: string[];
+}): JSX.Element {
+  const [draft, setDraft] = useState('');
+  const tokens = splitTokens(props.value);
+  const locked = props.locked ?? [];
+  const editable = tokens.filter((t) => !locked.includes(t));
+  const commitDraft = () => {
+    const fresh = splitTokens(draft).filter((t) => !tokens.includes(t));
+    if (fresh.length > 0) props.onChange([...tokens, ...fresh].join(', '));
+    setDraft('');
+  };
+  const removeToken = (token: string) => {
+    props.onChange(tokens.filter((t) => t !== token).join(', '));
+  };
+  const addSample = (sample: string) => {
+    if (!tokens.includes(sample)) props.onChange([...tokens, sample].join(', '));
+  };
+  return (
+    <div className={styles.field}>
+      <span className={styles.fieldLabel}>{props.label}</span>
+      {props.hint ? <span className={styles.fieldHint}>{props.hint}</span> : null}
+      <div className={styles.chips}>
+        {locked.map((name) => (
+          <span key={`locked-${name}`} className={styles.chipLocked} title="Always planted">
+            🔒 {name}
+          </span>
+        ))}
+        {editable.map((name) => (
+          <span key={name} className={styles.chip}>
+            {name}
+            <button
+              type="button"
+              className={styles.chipX}
+              aria-label={`Remove ${name}`}
+              onClick={() => removeToken(name)}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <input
+          className={styles.chipInput}
+          value={draft}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v.includes(',')) {
+              setDraft('');
+              const fresh = splitTokens(v).filter((t) => !tokens.includes(t));
+              if (fresh.length > 0) props.onChange([...tokens, ...fresh].join(', '));
+            } else {
+              setDraft(v);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commitDraft();
+            }
+          }}
+          onBlur={commitDraft}
+          placeholder={props.placeholder ?? 'type + Enter'}
+        />
+      </div>
+      {props.samples && props.samples.length > 0 ? (
+        <div className={styles.samplesRow}>
+          <span className={styles.samplesLabel}>Examples:</span>
+          {props.samples.map((s) => (
+            <button
+              key={s}
+              type="button"
+              className={styles.sampleChip}
+              onClick={() => addSample(s)}
+            >
+              + {s}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 type MintPayload = {
   success?: boolean;
   dryRun?: boolean;
@@ -214,6 +321,28 @@ export default function SuitFactoryPage(): JSX.Element {
     codex: codexParsed.ok ? codexParsed.value : null,
   };
 
+  const sampleFactoryConfig = useMemo(
+    () =>
+      buildFoundryInventory({
+        consumerName: 'demo-suit',
+        consumerVersion: '0.1.0',
+        millName: '@0xray/foundry',
+        millVersion: '0.1.9',
+        suit: 'fastened',
+        costume: false,
+        params: {...DEFAULT_MILL_PARAMS},
+        treeSkillsRaw: '',
+        treeAgentsRaw: '',
+        millPlantSkillsExtra: '',
+        millPlantAgentsRaw: 'mill.yml, inspect.yml',
+        constitution: false,
+        features: true,
+        config: true,
+        agentsCard: true,
+      }),
+    [],
+  );
+
   const mintedImage =
     minted?.tokenId && minted.dryRun !== true
       ? `${IMAGE_BASE}${minted.tokenId}`
@@ -304,10 +433,36 @@ export default function SuitFactoryPage(): JSX.Element {
             }}
           >
             <fieldset className={styles.block}>
-              <legend>01 · mill params</legend>
+              <legend>01 · Your factory</legend>
+              <p className={styles.fieldHint}>
+                Tell the mill who you are and what to plant. New here? Load the
+                sample, then make it yours.
+              </p>
+              <div className={styles.sampleBar}>
+                <button
+                  type="button"
+                  className={styles.sampleBtn}
+                  onClick={() => {
+                    setConsumerName('demo-suit');
+                    setConsumerVersion('0.1.0');
+                    setMillName('@0xray/foundry');
+                    setMillVersion('0.1.9');
+                    setSuit('fastened');
+                    setCostume(false);
+                    setMillPlantSkillsExtra('');
+                    setMillPlantAgentsRaw('mill.yml, inspect.yml');
+                    setTreeSkillsRaw('');
+                    setTreeAgentsRaw('');
+                    setFacetAgentsCard(true);
+                  }}
+                >
+                  Load sample factory
+                </button>
+              </div>
               <div className={styles.row2}>
                 <label>
-                  Consumer name
+                  App name
+                  <span className={styles.fieldHint}>Your project. Ends up in the inventory.</span>
                   <input
                     value={consumerName}
                     onChange={(e) => setConsumerName(e.target.value)}
@@ -316,7 +471,7 @@ export default function SuitFactoryPage(): JSX.Element {
                   />
                 </label>
                 <label>
-                  Consumer version
+                  App version
                   <input
                     value={consumerVersion}
                     onChange={(e) => setConsumerVersion(e.target.value)}
@@ -325,7 +480,8 @@ export default function SuitFactoryPage(): JSX.Element {
                   />
                 </label>
                 <label>
-                  Mill name
+                  Mill
+                  <span className={styles.fieldHint}>The builder stamping this suit. Leave as-is.</span>
                   <input value={millName} onChange={(e) => setMillName(e.target.value)} />
                 </label>
                 <label>
@@ -336,7 +492,8 @@ export default function SuitFactoryPage(): JSX.Element {
                   />
                 </label>
                 <label>
-                  Suit
+                  Suit fit
+                  <span className={styles.fieldHint}>{SUIT_FIT_HELP[suit]}</span>
                   <select
                     value={suit}
                     onChange={(e) => setSuit(e.target.value as SuitKind)}
@@ -352,41 +509,39 @@ export default function SuitFactoryPage(): JSX.Element {
                     checked={suit === 'costume' || costume}
                     onChange={(e) => setCostume(e.target.checked)}
                   />
-                  costume dump
+                  Full costume copy (45 skills / 42 agents)
                 </label>
               </div>
-              <label>
-                Extra mill-plant skills
-                <input
-                  value={millPlantSkillsExtra}
-                  onChange={(e) => setMillPlantSkillsExtra(e.target.value)}
-                  placeholder="mill + inspect locked"
-                />
-              </label>
-              <label>
-                Mill-plant agents
-                <input
-                  value={millPlantAgentsRaw}
-                  onChange={(e) => setMillPlantAgentsRaw(e.target.value)}
-                />
-              </label>
+              <ChipInput
+                label="Extra skills"
+                hint="mill + inspect are always planted. Add yours below."
+                value={millPlantSkillsExtra}
+                onChange={setMillPlantSkillsExtra}
+                locked={['mill', 'inspect']}
+                samples={SAMPLE_SKILLS}
+              />
+              <ChipInput
+                label="Extra agents"
+                hint="mill.yml + inspect.yml always planted. Use .yml names."
+                value={millPlantAgentsRaw}
+                onChange={setMillPlantAgentsRaw}
+                locked={['mill.yml', 'inspect.yml']}
+                samples={SAMPLE_AGENTS}
+              />
               <div className={styles.row2}>
-                <label>
-                  Tree skills
-                  <input
-                    value={treeSkillsRaw}
-                    onChange={(e) => setTreeSkillsRaw(e.target.value)}
-                    placeholder="overlay names"
-                  />
-                </label>
-                <label>
-                  Tree agents
-                  <input
-                    value={treeAgentsRaw}
-                    onChange={(e) => setTreeAgentsRaw(e.target.value)}
-                    placeholder="optional.yml"
-                  />
-                </label>
+                <ChipInput
+                  label="Skills already in your repo"
+                  hint="We leave these alone unless you overlay them."
+                  value={treeSkillsRaw}
+                  onChange={setTreeSkillsRaw}
+                  samples={SAMPLE_TREE_SKILLS}
+                />
+                <ChipInput
+                  label="Agents already in your repo"
+                  value={treeAgentsRaw}
+                  onChange={setTreeAgentsRaw}
+                  samples={SAMPLE_TREE_AGENTS}
+                />
               </div>
               <label className={styles.check}>
                 <input
@@ -394,10 +549,11 @@ export default function SuitFactoryPage(): JSX.Element {
                   checked={facetAgentsCard}
                   onChange={(e) => setFacetAgentsCard(e.target.checked)}
                 />
-                overlay AGENTS.md card
+                Starter AGENTS.md card
+                <span className={styles.fieldHint}>Drops our starter card on top of yours.</span>
               </label>
               <details>
-                <summary>plant paths</summary>
+                <summary>Advanced: install paths</summary>
                 <label>
                   features
                   <input
@@ -444,13 +600,14 @@ export default function SuitFactoryPage(): JSX.Element {
             </fieldset>
 
             <fieldset className={styles.block}>
-              <legend>02 · features.json · config · constitution</legend>
+              <legend>02 · Switches, limits, house rules</legend>
               <p className={styles.hint}>
                 These go in the download. <code>install.mjs</code> writes plant path +{' '}
                 <code>.xray/</code>. Mill-safe defaults — not the 45/42 costume.
               </p>
               <label>
                 features.json
+                <span className={styles.fieldHint}>Behavior switches for the mill.</span>
                 <textarea
                   className={styles.json}
                   value={featuresRaw}
@@ -461,6 +618,7 @@ export default function SuitFactoryPage(): JSX.Element {
               </label>
               <label>
                 config.json
+                <span className={styles.fieldHint}>Limits and keys.</span>
                 <textarea
                   className={styles.json}
                   value={configRaw}
@@ -470,7 +628,8 @@ export default function SuitFactoryPage(): JSX.Element {
                 />
               </label>
               <label>
-                codex.json (optional mill constitution)
+                codex.json (optional)
+                <span className={styles.fieldHint}>House rules for the mill. Empty is fine.</span>
                 <textarea
                   className={styles.json}
                   value={codexRaw}
@@ -493,6 +652,7 @@ export default function SuitFactoryPage(): JSX.Element {
               <div className={styles.row2}>
                 <label>
                   Pack
+                  <span className={styles.fieldHint}>Leave 0xray-suit.</span>
                   <input
                     value={pack}
                     onChange={(e) => setPack(e.target.value)}
@@ -500,7 +660,8 @@ export default function SuitFactoryPage(): JSX.Element {
                   />
                 </label>
                 <label>
-                  Holder
+                  Holder wallet
+                  <span className={styles.fieldHint}>Receives the token.</span>
                   <input
                     value={holder}
                     onChange={(e) => setHolder(e.target.value)}
@@ -509,6 +670,7 @@ export default function SuitFactoryPage(): JSX.Element {
                 </label>
                 <label>
                   DID
+                  <span className={styles.fieldHint}>did:groover: + 16 hex chars.</span>
                   <input
                     value={did}
                     onChange={(e) => setDid(e.target.value)}
@@ -516,7 +678,8 @@ export default function SuitFactoryPage(): JSX.Element {
                   />
                 </label>
                 <label>
-                  apiKey
+                  Groover API key
+                  <span className={styles.fieldHint}>Never shared. Only sent to mint.</span>
                   <input
                     type="password"
                     value={apiKey}
@@ -525,7 +688,8 @@ export default function SuitFactoryPage(): JSX.Element {
                   />
                 </label>
                 <label>
-                  Visor
+                  Visor look
+                  <span className={styles.fieldHint}>Empty = picked from DNA.</span>
                   <select
                     value={hat}
                     onChange={(e) => setHat(e.target.value as Hat | '')}
@@ -539,7 +703,8 @@ export default function SuitFactoryPage(): JSX.Element {
                   </select>
                 </label>
                 <label>
-                  Colorway
+                  Color look
+                  <span className={styles.fieldHint}>Empty = picked from DNA.</span>
                   <select
                     value={colorway}
                     onChange={(e) => setColorway(e.target.value as Colorway | '')}
@@ -643,6 +808,14 @@ export default function SuitFactoryPage(): JSX.Element {
                   onClick={() => downloadJson('factory-config.json', factoryConfig)}
                 >
                   factory-config.json
+                </button>
+                <button
+                  type="button"
+                  className={styles.dl}
+                  title="Pre-filled demo — try the flow without typing"
+                  onClick={() => downloadJson('sample-factory-config.json', sampleFactoryConfig)}
+                >
+                  sample-factory-config.json
                 </button>
               </div>
               <ol className={styles.drop}>
