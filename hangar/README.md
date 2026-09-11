@@ -1,6 +1,8 @@
 # groover-hangar
 
-x402 shops for **Grok**, **Hermes**, **OpenClaw**, and **OpenCode**. Pay cents in USDC on Base. No account, no API key.
+x402 shops for **Grok**, **Hermes**, **OpenClaw**, and **OpenCode**. Pay cents in USDC on Base.
+
+No Groover login. No API key. No hosted wallet. **To pay:** create a local OWS wallet (ZigZag, keys in `~/.ows`), fund it with USDC on Base, sign with `approved=true`. Or `CLEARING_SIGNER=awal` (that path *is* a Coinbase account). Unpaid GET still 402s with no wallet.
 
 **Mill is the suit** (`0xray` / `@0xray/foundry`). **These are the shops.** Not the 45-skill 0xray costume. Not an 8th `xray-*` MCP.
 

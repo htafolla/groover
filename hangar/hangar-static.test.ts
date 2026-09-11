@@ -21,7 +21,7 @@ describe('hangar shops', () => {
       files: string[];
       keywords: string[];
     };
-    expect(pkg.version).toBe('0.1.1');
+    expect(pkg.version).toBe('0.1.2');
     for (const name of ['README.md', 'AGENTS.md', 'SKILLS.md', 'llms.txt']) {
       expect(pkg.files).toContain(name);
       expect(existsSync(path.join(hangar, name))).toBe(true);

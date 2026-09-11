@@ -1,6 +1,6 @@
 ---
 name: shop-witness
-description: Pay $0.02 USDC for proof of a GET (status, type, sha256, bytes). x402, no account. Not a paraphrase.
+description: Pay $0.02 USDC for proof of a GET (status, type, sha256, bytes). x402. Funded local OWS (~/.ows) or awal. Not a paraphrase.
 ---
 
 # Shop: witness

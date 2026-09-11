@@ -1,6 +1,6 @@
 {
   "name": "shop-witness",
   "version": "0.1.0",
-  "description": "Pay $0.02 USDC for proof of a GET. x402, no account. Not a paraphrase.",
+  "description": "Pay $0.02 USDC for proof of a GET. x402. Funded local OWS or awal. Not a paraphrase.",
   "author": { "name": "Groover" }
 }
