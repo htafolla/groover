@@ -4,9 +4,10 @@
   "description": "Three 402 shops (extract, witness, pin) plus plant for Grok, Hermes, OpenClaw. No account. Keys on the laptop.",
   "type": "module",
   "bin": {
-    "groover-hangar": "./plant.mjs"
+    "groover-hangar": "groover-hangar.js"
   },
   "files": [
+    "groover-hangar.js",
     "plant.mjs",
     "plugins",
     "README.md"
