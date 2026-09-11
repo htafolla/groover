@@ -12,6 +12,25 @@ npx groover-hangar
 
 Run from a **project** root (`package.json` required). Never passwd-home `~`.
 
+## Create a local OWS wallet (required to pay)
+
+Docs: [docs.openwallet.sh](https://docs.openwallet.sh) · [open-wallet-standard/core](https://github.com/open-wallet-standard/core) · wallet lifecycle: [06 — Wallet Lifecycle](https://docs.openwallet.sh/doc.html?slug=06-wallet-lifecycle)
+
+ZigZag hangar kit looks for wallet name `agent-treasury-1` in `~/.ows`. Hosted ZigZag `/sign` is **410**.
+
+```bash
+# CLI
+curl -fsSL https://docs.openwallet.sh/install.sh | bash
+
+ows wallet create --name "agent-treasury-1"
+ows fund deposit --wallet agent-treasury-1 --chain base
+ows fund balance --wallet agent-treasury-1 --chain base
+```
+
+Or Node: `npm install @open-wallet-standard/core`. Browser setup (ZigZag web wallet): [zigzag-two.vercel.app/wallet/setup](https://zigzag-two.vercel.app/wallet/setup).
+
+Then sign shop 402s with `approved=true`. Alternate custody: `CLEARING_SIGNER=awal` after `npx awal auth login` (that path *is* a Coinbase account).
+
 ## Ecosystem
 
 | Piece | Package / URL | Role |
@@ -21,6 +40,7 @@ Run from a **project** root (`package.json` required). Never passwd-home `~`.
 | Factory | [website `/suit`](https://website-production-c0da.up.railway.app/suit) | Download mill-plant.tgz, mint a name (optional) |
 | Registry | [groover.rippel.ai](https://groover.rippel.ai/mcp) | DID / GRVR / 8004 — optional to pay |
 | Kit loop | [KIT-LOOP.md](https://github.com/htafolla/groover/blob/main/docs/KIT-LOOP.md) | Local ZigZag/OWS keys. Hosted `/sign` is 410 |
+| OWS | [docs.openwallet.sh](https://docs.openwallet.sh) | Create + fund local wallet. Vault `~/.ows` |
 | Source | [htafolla/groover](https://github.com/htafolla/groover) | Marketplace + hangar |
 
 ## Three live shops
