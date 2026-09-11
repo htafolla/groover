@@ -6,11 +6,13 @@ No Groover login. No API key. No hosted wallet. **To pay:** create a local OWS w
 
 **Mill is the suit** (`0xray` / `@0xray/foundry`). **These are the shops.** Not the 45-skill 0xray costume. Not an 8th `xray-*` MCP.
 
+Need **Node 20+**. Run from a **project** root (`package.json` required). Never passwd-home `~`.
+
 ```bash
 npx groover-hangar
 ```
 
-Run from a **project** root (`package.json` required). Never passwd-home `~`.
+Grok path also needs the [Grok CLI](https://docs.x.ai/docs) (`grok` on PATH) and `--trust` on install. Mill / Groover DID / API key are **not** required to pay a shop.
 
 ## Create a local OWS wallet (required to pay)
 
@@ -34,7 +36,27 @@ Optional on-ramp in OWS (MoonPay): `ows fund deposit --wallet agent-treasury-1 -
 
 Or Node: `npm install @open-wallet-standard/core`. Browser setup (ZigZag web wallet): [zigzag-two.vercel.app/wallet/setup](https://zigzag-two.vercel.app/wallet/setup).
 
-Then sign shop 402s with `approved=true`. Alternate custody: `CLEARING_SIGNER=awal` after `npx awal auth login` (that path *is* a Coinbase account).
+Wait until `ows fund balance` shows USDC on Base (exchange withdrawals can take minutes).
+
+## Pay a shop (first receipt)
+
+Quote (no wallet):
+
+```bash
+curl -sI 'https://clearing-production-9968.up.railway.app/v1/extract?url=https://example.com'
+# HTTP 402
+```
+
+Pay from OWS (public path — signs the 402 and retries):
+
+```bash
+ows pay request 'https://clearing-production-9968.up.railway.app/v1/extract?url=https://example.com' \
+  --wallet agent-treasury-1
+```
+
+Same for witness (`/v1/witness?url=`) and pin (`/v1/pin?agentId=86025`). Reuse fails as `replayed: true`, not a second debit.
+
+Kit path (local ZigZag MCP, `sign_x402` `approved=true`) is in [KIT-LOOP.md](https://github.com/htafolla/groover/blob/main/docs/KIT-LOOP.md). Do not call hosted ZigZag `/sign` (410). Alternate custody: `CLEARING_SIGNER=awal` after `npx awal auth login` (Coinbase account).
 
 ## Ecosystem
 
