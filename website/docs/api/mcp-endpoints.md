@@ -192,6 +192,29 @@ List all integrated MCP servers with their roles and key tools.
 { "jsonrpc": "2.0", "id": 1, "method": "tools/list" }
 ```
 
+## Agent docs (HTTP GET)
+
+General core set first, then Groover-specific pages. Markdown / plain.
+**Not** the MCP catch-all banner.
+
+| Path | Type | Role |
+|------|------|------|
+| `/README.md` | `text/markdown` | Core |
+| `/CHANGELOG.md` | `text/markdown` | Core |
+| `/package.json` | `application/json` | Core (name/version/`files`) |
+| `/AGENTS.md` | `text/markdown` | Core + factory E2E |
+| `/SKILLS.md` | `text/markdown` | Core + factory + shops |
+| `/llms.txt` | `text/plain` | Core + factory + shops |
+
+Docusaurus is `/docs` (this site). Website static serves the same files at
+the site root after deploy.
+
+Task C2 ship-ready (acceptance): live curl **200** for `/AGENTS.md`
+`/SKILLS.md` `/llms.txt` on registry **and** website after deploy
+(`npx tsx deploy/check-agent-docs.ts`). CI curls a local Railway-shaped
+registry; that is not live evidence. README, CHANGELOG, and `package.json`
+must also be 200, not the banner.
+
 ## Health Check
 
 ```

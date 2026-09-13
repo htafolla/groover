@@ -9,6 +9,30 @@ demo `86025`. Do not claim `0xray-suit` works until **live** mint is green.
 
 UI: **[/suit](/suit)** — mill plant → register → mint → pin → shops.
 
+Core docs first (every project), then Groover-specific. Path-as-root static
++ registry HTTP (`text/markdown` / `text/plain` / `application/json` for
+package.json, not the MCP banner):
+
+- General: `GET /README.md` · `/CHANGELOG.md` · `/package.json` · `/AGENTS.md` · `/SKILLS.md` · `/llms.txt`
+- Docusaurus: `/docs` (this site)
+- Groover: this page, [Registration](./registration.md), [SKILL](./skill.md)
+
+**Task C2 (ship-ready):** CI green is not enough. After registry + website
+deploy, live curl evidence is mandatory — same checker, both hosts:
+
+```bash
+npx tsx deploy/check-agent-docs.ts \
+  --base https://registry-production-e2c4.up.railway.app \
+  --base https://website-production-c0da.up.railway.app
+```
+
+(`npx tsx deploy/check-agent-docs.ts` with no args hits those two hosts.)
+Fails on HTTP ≠ 200, HTML 404, or `Groover MCP Registry active`. We released
+without this gate once; do not call C2 done without the live PASS.
+
+**Dynamo:** PoA `register_plugin` does **not** require a PASS citation. Live
+`mint_suit` and ERC-8004 mirror **do**.
+
 ## Sequence
 
 1. **Persist Ed25519 first.** Generate a PEM keypair, `chmod 600` the secret,
@@ -25,8 +49,11 @@ UI: **[/suit](/suit)** — mill plant → register → mint → pin → shops.
    mirror.** PoA `register_plugin` is still pre-Dynamo (4-turn challenge
    only). `POST https://mcp-production-80e2.up.railway.app/govern_with_solar`
    with `proposal` (mint intent + DID + DNA) and `persistToChain: true`.
-   Loop until `recommendation === 'PASS'` **and** real solar activity present
-   **and** activity ≠ `storm`. Citation =
+   This is a **solar hammer**, not a rubber stamp: `REJECT`,
+   `NEEDS_REVISION`, or storm override can fail the proposal. Retry until
+   approved — loop until `recommendation === 'PASS'` **and** real solar
+   activity present
+   **and** activity ≠ `storm`. Do not mint on a failed hammer. Citation =
    `temporalContainer.containerId` as 32-byte hex `0x…` → `dynamoCitation`.
    Optional `fullBox7D` for Level. Do not invent a citation. Live
    `mint_suit` (`dryRun: false`) and `mirrorGrvrMint` reject a missing or
