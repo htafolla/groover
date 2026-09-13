@@ -8,13 +8,15 @@ Core agent card (every project). Read the general set first, then Groover.
 |------|------|
 | `README.md` | `/README.md` |
 | `CHANGELOG.md` | `/CHANGELOG.md` |
+| `package.json` | `/package.json` |
 | `llms.txt` | `/llms.txt` |
 | `AGENTS.md` | this file |
 | `SKILLS.md` | `/SKILLS.md` |
 | Docusaurus | `/docs` |
 
-`GET` these on the registry or website (`text/markdown` / `text/plain`, not
-the MCP banner). Root `AGENTS.md` after 0xray mill-plant is the mill card —
+`GET` these on the registry or website (`text/markdown` / `text/plain` /
+`application/json` for package.json, not the MCP banner). Root `AGENTS.md`
+after 0xray mill-plant is the mill card —
 do not overwrite it; fetch the live copy.
 
 ## Groover factory (agents)

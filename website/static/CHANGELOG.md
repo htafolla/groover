@@ -5,11 +5,16 @@ in the same file after the general heading.
 
 ## 2026-09-13 — agent-docs publish surface (Task C2)
 
-### General (core six)
+### General (core seven)
 
 - Live entrypoints now serve the general set: `GET /README.md`,
-  `/CHANGELOG.md`, `/AGENTS.md`, `/SKILLS.md`, `/llms.txt` on the registry
-  HTTP server (`text/markdown` / `text/plain`, not the MCP catch-all banner).
+  `/CHANGELOG.md`, `/package.json`, `/AGENTS.md`, `/SKILLS.md`, `/llms.txt`
+  on the registry HTTP server (`text/markdown` / `text/plain` /
+  `application/json` for package.json, not the MCP catch-all banner).
+- `package.json` is part of the general core list (with README, CHANGELOG,
+  llms.txt, AGENTS.md, SKILLS.md, Docusaurus). Root + marketplace packages
+  align at version `0.1.1-mvp`; description and `files` list the published
+  docs-serve surface.
 - Matching files at `website/static/` (path-as-root after website deploy).
 - Docusaurus sidebar leads with **Core docs**, then Groover-specific pages.
 - CI starts the Railway `mcp-server.ts` entrypoint and fails if those GETs
@@ -17,6 +22,7 @@ in the same file after the general heading.
 - **Ship-ready Task C2** still requires live curl evidence after registry +
   website deploy: `npx tsx deploy/check-agent-docs.ts` (AGENTS / SKILLS /
   llms on both hosts must be 200 factory markdown, not the banner).
+  README, CHANGELOG, and `package.json` must also be 200, not the banner.
 
 ### Groover
 

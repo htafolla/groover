@@ -13,6 +13,7 @@ site's static root (path-as-root):
 |------|------|
 | [README.md](/README.md) | `/README.md` |
 | [CHANGELOG.md](/CHANGELOG.md) | `/CHANGELOG.md` |
+| [package.json](/package.json) | `/package.json` |
 | [llms.txt](/llms.txt) | `/llms.txt` |
 | [AGENTS.md](/AGENTS.md) | `/AGENTS.md` |
 | [SKILLS.md](/SKILLS.md) | `/SKILLS.md` |

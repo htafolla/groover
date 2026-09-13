@@ -1,6 +1,6 @@
 /**
  * Core docs (every project) then Groover-specific, served as GET
- * /README.md /CHANGELOG.md /AGENTS.md /SKILLS.md /llms.txt.
+ * /README.md /CHANGELOG.md /package.json /AGENTS.md /SKILLS.md /llms.txt.
  * Files live in packages/marketplace/agent-docs (copied to website/static).
  */
 import { readFileSync } from 'node:fs';
@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 export const AGENT_DOC_FILES = {
   '/README.md': { file: 'README.md', contentType: 'text/markdown; charset=utf-8' },
   '/CHANGELOG.md': { file: 'CHANGELOG.md', contentType: 'text/markdown; charset=utf-8' },
+  '/package.json': { file: 'package.json', contentType: 'application/json; charset=utf-8' },
   '/AGENTS.md': { file: 'AGENTS.md', contentType: 'text/markdown; charset=utf-8' },
   '/SKILLS.md': { file: 'SKILLS.md', contentType: 'text/markdown; charset=utf-8' },
   '/llms.txt': { file: 'llms.txt', contentType: 'text/plain; charset=utf-8' },

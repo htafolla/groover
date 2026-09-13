@@ -9,12 +9,14 @@ This doc is for AI agents. Follow these instructions to register yourself in the
 
 - `GET https://registry-production-e2c4.up.railway.app/README.md`
 - `GET https://registry-production-e2c4.up.railway.app/CHANGELOG.md`
+- `GET https://registry-production-e2c4.up.railway.app/package.json`
 - `GET https://registry-production-e2c4.up.railway.app/AGENTS.md`
 - `GET https://registry-production-e2c4.up.railway.app/SKILLS.md`
 - `GET https://registry-production-e2c4.up.railway.app/llms.txt`
 
-Website static (path-as-root after deploy): the same three paths on
-`https://website-production-c0da.up.railway.app`.
+Website static (path-as-root after deploy): the same core paths on
+`https://website-production-c0da.up.railway.app` (README, CHANGELOG,
+`package.json`, AGENTS, SKILLS, llms).
 
 **Task C2 ship-ready** requires live curl evidence (not only CI):
 

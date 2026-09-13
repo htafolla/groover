@@ -10,9 +10,10 @@ demo `86025`. Do not claim `0xray-suit` works until **live** mint is green.
 UI: **[/suit](/suit)** — mill plant → register → mint → pin → shops.
 
 Core docs first (every project), then Groover-specific. Path-as-root static
-+ registry HTTP (`text/markdown` / `text/plain`, not the MCP banner):
++ registry HTTP (`text/markdown` / `text/plain` / `application/json` for
+package.json, not the MCP banner):
 
-- General: `GET /README.md` · `/CHANGELOG.md` · `/AGENTS.md` · `/SKILLS.md` · `/llms.txt`
+- General: `GET /README.md` · `/CHANGELOG.md` · `/package.json` · `/AGENTS.md` · `/SKILLS.md` · `/llms.txt`
 - Docusaurus: `/docs` (this site)
 - Groover: this page, [Registration](./registration.md), [SKILL](./skill.md)
 

@@ -8,6 +8,7 @@ Core skill index (every project). General set first, then Groover.
 |------|------|
 | `README.md` | `/README.md` |
 | `CHANGELOG.md` | `/CHANGELOG.md` |
+| `package.json` | `/package.json` |
 | `llms.txt` | `/llms.txt` |
 | `AGENTS.md` | `/AGENTS.md` |
 | `SKILLS.md` | this file |

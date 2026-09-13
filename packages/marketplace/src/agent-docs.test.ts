@@ -54,7 +54,7 @@ describe('registry agent-doc HTTP routes', () => {
       if (route === '/AGENTS.md' || route === '/SKILLS.md' || route === '/llms.txt') {
         expect(text).toContain('shop-pin');
       }
-      expect(text).toMatch(/Core docs \(every project\)|# Changelog/);
+      expect(text).toMatch(/Core docs \(every project\)|# Changelog|"name": "groover"/);
     },
   );
 
@@ -86,7 +86,14 @@ describe('website static agent docs', () => {
   });
 
   it('ships matching core docs at static root (general first)', () => {
-    const names = ['README.md', 'CHANGELOG.md', 'AGENTS.md', 'SKILLS.md', 'llms.txt'] as const;
+    const names = [
+      'README.md',
+      'CHANGELOG.md',
+      'package.json',
+      'AGENTS.md',
+      'SKILLS.md',
+      'llms.txt',
+    ] as const;
     for (const name of names) {
       const marketplace = path.join(marketplaceDocs, name);
       const website = path.join(websiteStatic, name);
@@ -105,7 +112,9 @@ describe('website static agent docs', () => {
     }
     const rootReadme = readFileSync(path.join(repoRoot, 'README.md'), 'utf8');
     const rootChangelog = readFileSync(path.join(repoRoot, 'CHANGELOG.md'), 'utf8');
+    const rootPackage = readFileSync(path.join(repoRoot, 'package.json'), 'utf8');
     expect(rootReadme).toBe(readFileSync(path.join(marketplaceDocs, 'README.md'), 'utf8'));
     expect(rootChangelog).toBe(readFileSync(path.join(marketplaceDocs, 'CHANGELOG.md'), 'utf8'));
+    expect(rootPackage).toBe(readFileSync(path.join(marketplaceDocs, 'package.json'), 'utf8'));
   });
 });

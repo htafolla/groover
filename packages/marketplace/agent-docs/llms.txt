@@ -7,6 +7,7 @@
 
 README.md    GET /README.md
 CHANGELOG.md GET /CHANGELOG.md
+package.json GET /package.json
 AGENTS.md    GET /AGENTS.md
 SKILLS.md    GET /SKILLS.md
 llms.txt     GET /llms.txt

@@ -8,6 +8,7 @@ Maintain these first. Live copies (path-as-root on website + registry HTTP):
 |------|------|
 | `README.md` | `/README.md` |
 | `CHANGELOG.md` | `/CHANGELOG.md` |
+| `package.json` | `/package.json` |
 | `llms.txt` | `/llms.txt` |
 | `AGENTS.md` | `/AGENTS.md` |
 | `SKILLS.md` | `/SKILLS.md` |

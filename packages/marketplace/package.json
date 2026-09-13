@@ -1,7 +1,11 @@
 {
   "name": "@groover/marketplace",
-  "version": "0.1.0-mvp",
-  "description": "Plugin Registry, CLI, search. Self-registration with Proof of Autonomy (crypto + behavioral challenge + Dynamo Hammer). Per ARCHITECTURE.md + README.",
+  "version": "0.1.1-mvp",
+  "description": "Plugin registry + MCP HTTP. Serves core docs GET /README.md /CHANGELOG.md /package.json /AGENTS.md /SKILLS.md /llms.txt. PoA + Dynamo solar hammer.",
+  "files": [
+    "dist",
+    "agent-docs"
+  ],
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

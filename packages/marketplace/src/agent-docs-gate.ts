@@ -9,6 +9,7 @@ export const MCP_REGISTRY_BANNER = 'Groover MCP Registry active';
 export const AGENT_DOC_HEADINGS: Record<string, string> = {
   'README.md': '# Groover',
   'CHANGELOG.md': '# Changelog',
+  'package.json': '"name": "groover"',
   'AGENTS.md': '# AGENTS.md',
   'SKILLS.md': '# SKILLS.md',
   'llms.txt': '# llms.txt',
@@ -49,7 +50,11 @@ export function evaluateAgentDocResponse(input: {
     return { ok: false, reason: `${input.path} returned HTML (likely a 404 page)` };
   }
   const type = (input.contentType ?? '').toLowerCase();
-  if (type.includes('text/html') || type.includes('application/json')) {
+  if (input.path === '/package.json') {
+    if (type.includes('text/html') || (type.length > 0 && !type.includes('application/json'))) {
+      return { ok: false, reason: `${input.path} content-type ${input.contentType ?? '(empty)'}` };
+    }
+  } else if (type.includes('text/html') || type.includes('application/json')) {
     return { ok: false, reason: `${input.path} content-type ${input.contentType ?? '(empty)'}` };
   }
   const file = input.path.replace(/^\//, '');

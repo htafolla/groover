@@ -70,12 +70,14 @@ describe('agent-docs HTTP gate', () => {
     expect(Object.keys(AGENT_DOC_FILES)).toEqual([
       '/README.md',
       '/CHANGELOG.md',
+      '/package.json',
       '/AGENTS.md',
       '/SKILLS.md',
       '/llms.txt',
     ]);
     expect(AGENT_DOC_HEADINGS['llms.txt']).toBe('# llms.txt');
     expect(AGENT_DOC_HEADINGS['README.md']).toBe('# Groover');
+    expect(AGENT_DOC_HEADINGS['package.json']).toBe('"name": "groover"');
     expect(AGENT_DOC_KEYWORDS).toContain('mint_suit');
   });
 
@@ -94,6 +96,14 @@ describe('agent-docs HTTP gate', () => {
         status: 200,
         contentType: 'text/markdown; charset=utf-8',
         body: '# Changelog\n\n## 2026-09-13\n',
+      }),
+    ).toEqual({ ok: true });
+    expect(
+      evaluateAgentDocResponse({
+        path: '/package.json',
+        status: 200,
+        contentType: 'application/json; charset=utf-8',
+        body: '{ "name": "groover", "version": "0.1.1-mvp" }\n',
       }),
     ).toEqual({ ok: true });
   });
