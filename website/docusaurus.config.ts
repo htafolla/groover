@@ -63,6 +63,7 @@ const config: Config = {
         {
           title: 'Docs',
           items: [
+            {label: 'Factory parity', to: '/docs/factory-parity'},
             {label: 'Architecture', to: '/docs/architecture'},
             {label: 'Verification Challenge', to: '/docs/verification-challenge'},
             {label: 'MCP API Reference', to: '/docs/api/mcp-endpoints'},

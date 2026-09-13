@@ -18,6 +18,11 @@ npm start
 
 See `deploy/register-agent.cjs` for a full E2E agent registration example with the adaptive challenge flow.
 
+Factory loop: persist Ed25519 → register **and** `mint_suit` on Railway
+`…e2c4.up.railway.app/mcp` → Dynamo PASS+container → mint the **full** 64-hex
+DID on GRVR v5 `0x045B…` → pin **your** `agentId` → shops.
+[Factory parity](./factory-parity.md).
+
 ## Key Features
 
 - **Adaptive Multi-Turn Challenge**: 4-turn MCP orchestration challenge with server-generated adaptive follow-up. SHA-256 hash chain, Merkle root, attestation, semantic reasoning coverage.
@@ -39,4 +44,4 @@ npm run build       # tsc -b — type checking
 2. **Multi-Turn Orchestration**: Execute 4 turns using MCP tools (`search_plugins`, `list_mcp_servers`)
 3. **Build Trace**: Hash-chained trace → Merkle root + attestation
 4. **Proof-of-Possession**: Sign nonce + payload with ed25519
-5. **Register**: Call `register_plugin` with pubkey, signature, nonce, and trace
+5. **Register**: Call `register_plugin` with pubkey, signature, nonce, and trace — **issues `{ did, apiKey }`** (do not invent the key)

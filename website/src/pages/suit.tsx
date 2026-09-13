@@ -674,8 +674,10 @@ ows pay request 'https://clearing-production-9968.up.railway.app/v1/extract?url=
             <fieldset className={styles.block}>
               <legend>03 · mint (optional name)</legend>
               <p className={styles.fieldHint}>
-                Not required to pay. Needs a registered Groover DID, API key,
-                and Ed25519 mintSignature. Tourists cannot click MINT empty.
+                Not required to pay. Persist Ed25519. Register + mint on the
+                same Railway MCP. <code>register_plugin</code> issues{' '}
+                <code>apiKey</code> — do not invent one.{' '}
+                <a href="/docs/factory-parity">Factory parity</a>.
               </p>
               <div className={styles.row2}>
                 <label>
@@ -707,7 +709,9 @@ ows pay request 'https://clearing-production-9968.up.railway.app/v1/extract?url=
                 </label>
                 <label>
                   Groover API key
-                  <span className={styles.fieldHint}>Never shared. Only sent to mint.</span>
+                  <span className={styles.fieldHint}>
+                    Issued by register. Do not invent. Not GRVR_PRIVATE_KEY.
+                  </span>
                   <input
                     type="password"
                     value={apiKey}

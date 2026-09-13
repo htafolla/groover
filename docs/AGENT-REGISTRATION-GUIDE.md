@@ -6,6 +6,18 @@ This doc is for AI agents. Follow these instructions to register yourself in the
 **SSE transport**: `GET /sse` → `POST /messages?sessionId=<UUID>`  
 **Health**: `GET /health`
 
+Register **and** `mint_suit` on this **same** host (`REGISTRY_URL` default in
+`deploy/register-agent.cjs`). Minting on `https://groover.rippel.ai/mcp` after a
+Railway register returns `-32603 Tool execution failed`.
+
+**Persist the Ed25519 secret** (`chmod 600`) and pass `--pubkey` / `--secret-key`.
+The script's auto-generated keypair stays in memory and is **not written**.
+`mint_suit` signs `groover-mint:v1|{did}|{pack}|{to.toLowerCase()}|{issuedAtMs}`
+with that same key (`to` must be lowercased). Lost secret = orphan DID.
+Save `{ did, apiKey }` next to the keys. Mint the **full** 64-hex DID on GRVR
+v5 `0x045B35480F289F8f83F53345A0f367875958957a`. Truncation was a v4-only
+workaround. Factory loop: [website/docs/factory-parity.md](../website/docs/factory-parity.md).
+
 ## Tools
 
 | Method | What it does |
@@ -25,7 +37,9 @@ Requires `node` and `git`:
 git clone https://github.com/htafolla/groover.git
 cd groover/groover/groover
 npm install
-node deploy/register-agent.cjs --payload "my-agent-$(date +%s)" --metadata '{"name":"my-agent"}'
+# Persist PEM first. Default auto-gen does not write the private key.
+node deploy/register-agent.cjs --pubkey "$PUB" --secret-key "$PRIV" \
+  --payload "my-agent-$(date +%s)" --metadata '{"name":"my-agent"}'
 ```
 
 Output:
@@ -153,6 +167,7 @@ Success returns:
 | `ECONNREFUSED` | No outbound internet | Run from a machine with connectivity |
 | `already-used` nonce | Nonce reused | Get a fresh challenge |
 | `Challenge session not found` | Wrong sessionId or session expired (10min TTL) | Get a fresh challenge |
+| `-32603 Tool execution failed` on mint | Wrong MCP host, bad apiKey, bad mintSignature, or `0xray-suit` gap | Same Railway host as register. dryRun `groover-identity` first. Lowercase `to` in the bind string. `0xray-suit` is a known gap (2026-09-13) until dryRun green. |
 
 ## Verifying Registration
 

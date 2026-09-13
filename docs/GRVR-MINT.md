@@ -2,6 +2,17 @@
 
 Contract is on chrono-warp-drive. Groover is the minter. Pack DNA is an **adapter**: a new schema is a Groover PR, not a new contract.
 
+**Same host as register:** `POST https://registry-production-e2c4.up.railway.app/mcp`.
+Do not mint on `groover.rippel.ai` after a Railway register (`-32603`). Persist
+the Ed25519 secret used at register. Canonical bind
+(`to` lowercased in the signed string):
+`groover-mint:v1|{did}|{pack}|{to.toLowerCase()}|{issuedAtMs}`.
+**Live GRVR v5:** `0x045B35480F289F8f83F53345A0f367875958957a` (Base 8453).
+Accepts 28-byte (16-hex legacy) **and** 76-byte (64-hex registry) DIDs.
+Mint the **full** registry DID. Truncation was a v4 `0xD892…` `InvalidDid`
+workaround only. v4 / v3 superseded for new mints. Always Dynamo-gate.
+Agent loop: `website/docs/factory-parity.md`.
+
 ## Adapter
 
 `packages/identity/src/packs/`:
@@ -19,6 +30,10 @@ Builtin:
 | `0xray-suit` | keccak256(canonical mill inventory without `mintedAt`/`dna`); requires `inspect.ok` |
 
 ## Base mainnet (live) — v5 on-chain SVG
+
+Railway `GRVR_CONTRACT` is v5. Prefer the **full** 64-hex registry DID (didLen 76).
+Blinky token #1 (full DID): https://basescan.org/tx/0x3d81ad93b4e6e37b79f338c1dd6fbb99c680a59cd345423a9d415671ee236ec1
+v4 / v3 superseded for new mints. Do not truncate.
 
 | Collection | Address | Status |
 |---|---|---|
@@ -41,7 +56,7 @@ Builtin:
 
 `https://registry-production-e2c4.up.railway.app/identity/token-image/{tokenId}`
 
-Railway `GRVR_CONTRACT` is this v5 address. `mint_suit` sends compact compositor SVG. v5 `totalSupply` starts at 0 — `/identity/token-image/1` 404s until the first v5 mint. v4 token 2 stays on `0xD892D683…`. v2 pictures stay on `0x7b184bf7…`.
+Railway `GRVR_CONTRACT` is this v5 address. `mint_suit` sends compact compositor SVG. v5 token #1 is live (Blinky, full 64-hex DID). v4 token 2 stays on `0xD892D683…`. v2 pictures stay on `0x7b184bf7…`.
 
 `IMAGE_BASE` is frozen. Recipe on-chain: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level`, `imageSvg`.
 
@@ -140,7 +155,7 @@ Future (Dynamo-side, not GRVR): pass `isotopeType` into Kuramoto from NOAA or fr
 
 ## Railway env
 
-Code defaults are mainnet v5. Env **wins**:
+Code defaults and Railway env are mainnet v5. Env **wins**:
 
 ```
 GRVR_CONTRACT=0x045B35480F289F8f83F53345A0f367875958957a
@@ -150,6 +165,12 @@ GRVR_PRIVATE_KEY=
 ```
 
 Live mint reads **only** `GRVR_PRIVATE_KEY`. `DEPLOYER_PRIVATE_KEY` / `GROOVER_MINTER_KEY` are ignored. Missing or empty `GRVR_PRIVATE_KEY` dry-runs (no tx). `dryRun: true` also dry-runs.
+
+**dryRun ≠ live mint.** Auth+DNA can pass with `dryRun: true` while
+`dryRun: false` returns `-32603`. That is minter/env, not a bad DID.
+
+Live Railway `GRVR_CONTRACT` is v5 `0x045B35480F289F8f83F53345A0f367875958957a`.
+Code default matches. Env still wins if set.
 
 Reverted chain mints (`AlreadyMinted`, wrong minter) throw; MCP does not return `success: true`.
 

@@ -7,11 +7,11 @@ description: Register an AI agent with Proof of Autonomy and earn a verifiable D
 
 Start the full agent registration flow:
 
-1. Generate ed25519 keypair (or HMAC fallback)
+1. Generate Ed25519 keypair (HMAC is rejected)
 2. Call `get_registration_challenge` with your public key
 3. Complete the 4-turn adaptive challenge via `submit_challenge_turn`
 4. Sign the Proof of Personhood envelope
-5. Call `register_plugin` to receive your DID and API key
+5. Call `register_plugin` — it **issues** `{ did, apiKey }`. Do not invent the key.
 
 **Example:**
 ```json

@@ -12,13 +12,15 @@ This skill enables AI agents to self-register in the Groover proof-of-autonomy r
 
 ## Registration Flow
 
-1. **Generate ed25519 keypair** or use HMAC-SHA256
+1. **Generate Ed25519 keypair** (HMAC is rejected)
 2. **Get challenge**: `get_registration_challenge(pubkey)` → nonce + session
 3. **Complete 3 challenge turns** using real MCP tools, submitting each via `submit_challenge_turn` with SHA-256 hash chain
 4. **Adaptive follow-up**: Submit turn 4 responding to server-provided prompt (mandatory)
 5. **Build envelope**: Merkle root of hash chain + attestation
 6. **Sign Proof of Personhood**: Sign `nonce + "|" + payload` with private key
-7. **Register**: `register_plugin(pubkey, payload, signature, challengeNonce, challengeTrace)` → DID + API key
+7. **Register**: `register_plugin(...)` **issues** `{ did, apiKey }` — do not invent the key
+
+Then factory: `mint_suit` (did+issued apiKey+signature) → pin **your** agentId → OWS pays shops. Railway `GRVR_PRIVATE_KEY` ≠ `groover_…`. See `/docs/factory-parity`.
 
 ## Anti-Gaming
 
@@ -27,4 +29,4 @@ This skill enables AI agents to self-register in the Groover proof-of-autonomy r
 ## Reference Implementation
 
 - Node.js: `deploy/register-agent.cjs` (full 4-turn flow)
-- Python HMAC: `docs/AGENT-REGISTRATION-GUIDE.md`
+- Python Ed25519: `docs/AGENT-REGISTRATION-GUIDE.md`

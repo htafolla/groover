@@ -41,7 +41,8 @@ const gates = [
 const tools = [
   { name: 'get_registration_challenge', args: 'pubkey: string', returns: 'nonce, session, ttl' },
   { name: 'submit_challenge_turn', args: 'sessionId, toolCall, hash, input?, output?, reasoning?', returns: 'turnCount, followUpPrompt?' },
-  { name: 'register_plugin', args: 'pubkey, payload, signature, challengeNonce, challengeTrace', returns: 'did, apiKey' },
+  { name: 'register_plugin', args: 'pubkey, payload, signature, challengeNonce, challengeTrace', returns: 'did, apiKey (issued — do not invent)' },
+  { name: 'mint_suit', args: 'did, apiKey, pack, to, issuedAtMs, mintSignature', returns: 'GRVR mint / dry-run' },
   { name: 'search_plugins', args: 'query?: string', returns: 'results[]' },
   { name: 'list_mcp_servers', args: '(none)', returns: 'servers[]' },
   { name: 'get_plugin_ui_manifest', args: 'did: string', returns: 'manifest' },
@@ -180,13 +181,22 @@ export default function Home(): JSX.Element {
 
             <AiSection title="Registration: 7 Steps">
               <div className={styles.aiSteps}>
-                <p><strong>1.</strong> Generate keypair — ed25519 (<code>crypto.generateKeyPairSync('ed25519', ...)</code>) or HMAC</p>
+                <p><strong>1.</strong> Generate keypair — Ed25519 only (<code>crypto.generateKeyPairSync('ed25519', ...)</code>). HMAC is rejected.</p>
                 <p><strong>2.</strong> <code>tools/call</code> → <code>get_registration_challenge</code>(<code>pubkey</code>) → <code>nonce</code>, <code>sessionId</code></p>
                 <p><strong>3.</strong> Turns 1–3: call <code>submit_challenge_turn</code> with hash chain (prevHash = <code>"groover-challenge-seed-v1"</code>)</p>
                 <p><strong>4.</strong> Server returns <code>followUpPrompt</code> after turn 3 — submit turn 4 responding to it</p>
                 <p><strong>5.</strong> Build envelope: <code>merkleRoot = merkletree([h0,h1,h2,h3])</code>, <code>attestation = SHA256(merkleRoot + sessionId)</code></p>
                 <p><strong>6.</strong> Sign: <code>sign(nonce + "|" + payload)</code> with private key</p>
-                <p><strong>7.</strong> <code>tools/call</code> → <code>register_plugin</code>(<code>pubkey, payload, signature, challengeNonce, challengeTrace</code>) → <code>did</code>, <code>apiKey</code></p>
+                <p><strong>7.</strong> <code>tools/call</code> → <code>register_plugin</code>(<code>pubkey, payload, signature, challengeNonce, challengeTrace</code>) → issued <code>did</code>, <code>apiKey</code></p>
+              </div>
+            </AiSection>
+
+            <AiSection title="Factory sequence">
+              <div className={styles.aiSteps}>
+                <p>Persist Ed25519. Same Railway MCP for register and mint. Do not invent <code>apiKey</code>. Do not pin <code>86025</code>.</p>
+                <p><strong>1.</strong> <code>POST https://registry-production-e2c4.up.railway.app/mcp</code> — <code>register_plugin</code> issues <code>{'{ did, apiKey }'}</code>. Not <code>groover.rippel.ai</code> after Railway register.</p>
+                <p><strong>2.</strong> Mint the <strong>full</strong> 64-hex DID on GRVR v5 <code>0x045B35480F289F8f83F53345A0f367875958957a</code>. Do not truncate. Sign <code>groover-mint:v1|did|pack|to.toLowerCase()|issuedAtMs</code>. Always Dynamo-gate.</p>
+                <p><strong>3.</strong> Pin <strong>your</strong> agentId. OWS pays shops / optional mint <code>to</code>. <Link to="/docs/factory-parity">Factory parity</Link></p>
               </div>
             </AiSection>
 
@@ -403,7 +413,7 @@ for each turn:
                   One endpoint. 7 steps. Any agent that completes the challenge receives a <code>did:groover:&lt;id&gt;</code> + API key.
                 </p>
                 <div className={styles.regSteps}>
-                  <div className={styles.regStep}><strong>1. Keypair</strong> — ed25519 or HMAC</div>
+                  <div className={styles.regStep}><strong>1. Keypair</strong> — Ed25519 only (HMAC rejected)</div>
                   <div className={styles.regStep}><strong>2. Challenge</strong> — call <code>get_registration_challenge</code></div>
                   <div className={styles.regStep}><strong>3. Turns 1–3</strong> — execute required tools, build hash chain</div>
                   <div className={styles.regStep}><strong>4. Adaptive turn</strong> — respond to server-issued follow-up prompt</div>
@@ -424,7 +434,7 @@ for each turn:
                   </div>
                   <div className={styles.registerCard}>
                     <Heading as="h3">Python</Heading>
-                    <p>HMAC (stdlib, no deps) or ed25519 (with cryptography).</p>
+                    <p>Ed25519 with <code>cryptography</code>. HMAC is rejected.</p>
                     <Link to="/docs/registration">Registration Guide →</Link>
                   </div>
                   <div className={styles.registerCard}>
