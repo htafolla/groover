@@ -117,4 +117,22 @@ describe('website static agent docs', () => {
     expect(rootChangelog).toBe(readFileSync(path.join(marketplaceDocs, 'CHANGELOG.md'), 'utf8'));
     expect(rootPackage).toBe(readFileSync(path.join(marketplaceDocs, 'package.json'), 'utf8'));
   });
+
+  it('Docusaurus intro uses pathname:// for static assets (onBrokenLinks stays throw)', () => {
+    const intro = readFileSync(path.join(repoRoot, 'website/docs/intro.md'), 'utf8');
+    const config = readFileSync(path.join(repoRoot, 'website/docusaurus.config.ts'), 'utf8');
+    expect(config).toMatch(/onBrokenLinks:\s*'throw'/);
+    expect(config).not.toMatch(/onBrokenLinks:\s*'(warn|ignore)'/);
+    for (const name of [
+      'README.md',
+      'CHANGELOG.md',
+      'package.json',
+      'llms.txt',
+      'AGENTS.md',
+      'SKILLS.md',
+    ] as const) {
+      expect(intro).toContain(`[${name}](pathname:///${name})`);
+      expect(intro).not.toMatch(new RegExp(`\\]\\(/${name.replace('.', '\\.')}\\)`));
+    }
+  });
 });

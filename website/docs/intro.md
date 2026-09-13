@@ -11,12 +11,12 @@ site's static root (path-as-root):
 
 | File | Live |
 |------|------|
-| [README.md](/README.md) | `/README.md` |
-| [CHANGELOG.md](/CHANGELOG.md) | `/CHANGELOG.md` |
-| [package.json](/package.json) | `/package.json` |
-| [llms.txt](/llms.txt) | `/llms.txt` |
-| [AGENTS.md](/AGENTS.md) | `/AGENTS.md` |
-| [SKILLS.md](/SKILLS.md) | `/SKILLS.md` |
+| [README.md](pathname:///README.md) | `/README.md` |
+| [CHANGELOG.md](pathname:///CHANGELOG.md) | `/CHANGELOG.md` |
+| [package.json](pathname:///package.json) | `/package.json` |
+| [llms.txt](pathname:///llms.txt) | `/llms.txt` |
+| [AGENTS.md](pathname:///AGENTS.md) | `/AGENTS.md` |
+| [SKILLS.md](pathname:///SKILLS.md) | `/SKILLS.md` |
 | This Docusaurus site | `/docs` |
 
 Registry: `https://registry-production-e2c4.up.railway.app` — markdown, not
