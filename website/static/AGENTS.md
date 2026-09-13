@@ -66,8 +66,9 @@ Hangar boutique shops stay below. This file is the **factory** entrypoint.
 | Action | Dynamo PASS citation |
 |--------|----------------------|
 | PoA `register_plugin` | **Not required** |
-| Live `mint_suit` (not dryRun) | **Required** — PASS + persist + real solar + not storm |
-| ERC-8004 mirror / setURI of a live mint | **Required** — same citation as the mint |
+| Live `mint_suit` (`dryRun: false`) | **Required** — fail-closed reject if missing. PASS + persist + real solar + not storm |
+| `dryRun: true` | Optional (result is labeled). Emergency only: `DYNAMO_MINT_REQUIRED=false` |
+| ERC-8004 mirror / setURI of a live mint | **Required** — skip/no files without the same citation |
 
 ## Hangar boutique (shops)
 
