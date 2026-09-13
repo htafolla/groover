@@ -22,7 +22,7 @@ describe('GRVR suit DNA', () => {
   it('defaults to Base mainnet GRVR', () => {
     expect(GRVR_DEFAULT_CHAIN_ID).toBe(8453);
     expect(GRVR_DEFAULT_CONTRACT.toLowerCase()).toBe(
-      '0x6f955ca006e2fe951750cac25372e098d6e89743',
+      '0x045b35480f289f8f83f53345a0f367875958957a',
     );
   });
 
@@ -31,6 +31,13 @@ describe('GRVR suit DNA', () => {
     expect(isCanonicalGrooverDid(`did:groover:${'ab'.repeat(32)}`)).toBe(true);
     expect(isCanonicalGrooverDid('did:groover:test0000000001')).toBe(false);
     expect(isCanonicalGrooverDid('did:groover:zzzzzzzzzzzzzzzz')).toBe(false);
+  });
+
+  it('prepareMintInput passes the full 64-hex registry DID (no truncation)', () => {
+    const full = `did:groover:${'ab'.repeat(32)}`;
+    const prepared = prepareMintInput({ did: full, pack: 'groover-identity' });
+    expect(prepared.did).toBe(full);
+    expect(prepared.did.slice('did:groover:'.length)).toHaveLength(64);
   });
 
   it('hashes inventory without mintedAt or dna', () => {

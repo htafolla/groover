@@ -49,7 +49,7 @@ export function generateApiKey(did: string): string {
 }
 
 /**
- * Generate DID from pubkey (or identifier). Format: did:groover:<16-hex>
+ * Generate DID from pubkey (or identifier). Format: did:groover:<64-hex>
  * Used in registration to mint did: after crypto binding.
  */
 export function generateDID(pubkey: string): string {
@@ -222,6 +222,8 @@ export {
   GRVR_V1_MAINNET,
   GRVR_V2_MAINNET,
   GRVR_V2_SEPOLIA,
+  GRVR_V3_MAINNET,
+  GRVR_V4_MAINNET,
   assertPack,
   grooverIdentityDna,
   identityKey,
