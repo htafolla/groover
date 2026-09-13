@@ -34,6 +34,9 @@ SKILLS.md
 !packages/marketplace/agent-docs/SKILLS.md
 !website/static/AGENTS.md
 !website/static/SKILLS.md
+# Railway `up --path-as-root` archives as static/… (website/ prefix stripped)
+!static/AGENTS.md
+!static/SKILLS.md
 .xray/
 .strray/
 strray/
