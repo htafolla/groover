@@ -72,6 +72,21 @@ export function assertPack(pack: string): string {
   return getPackAdapter(pack).pack;
 }
 
+/** bytes32(0) — contract accepts it; live mint/mirror policy does not. */
+export const ZERO_DYNAMO_CITATION = ('0x' + '00'.repeat(32)) as `0x${string}`;
+
+/** Default required. Emergency opt-out only: DYNAMO_MINT_REQUIRED=false. */
+export function dynamoMintRequired(): boolean {
+  return process.env.DYNAMO_MINT_REQUIRED !== 'false';
+}
+
+/** Non-empty 32-byte hex that is not bytes32(0). */
+export function hasPassCitation(citation?: string): boolean {
+  if (!citation) return false;
+  const hex = citation.replace(/^0x/i, '').toLowerCase();
+  return /^[0-9a-f]{64}$/.test(hex) && hex !== '00'.repeat(32);
+}
+
 export function prepareMintInput(params: {
   did: string;
   pack: string;
@@ -105,7 +120,7 @@ export function prepareMintInput(params: {
   if (!Number.isInteger(variant) || variant < 0 || variant >= GRVR_MAX_VARIANT) {
     throw new Error(`variant must be 0..${GRVR_MAX_VARIANT - 1}`);
   }
-  let dynamoCitation = '0x' + '00'.repeat(32);
+  let dynamoCitation: `0x${string}` = ZERO_DYNAMO_CITATION;
   if (params.dynamoCitation) {
     const hex = params.dynamoCitation.replace(/^0x/, '');
     if (!/^[0-9a-fA-F]{64}$/.test(hex)) throw new Error('dynamoCitation must be 32-byte hex');

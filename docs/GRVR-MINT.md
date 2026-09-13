@@ -10,8 +10,10 @@ the Ed25519 secret used at register. Canonical bind
 **Live GRVR v5:** `0x045B35480F289F8f83F53345A0f367875958957a` (Base 8453).
 Accepts 28-byte (16-hex legacy) **and** 76-byte (64-hex registry) DIDs.
 Mint the **full** registry DID. Truncation was a v4 `0xD892…` `InvalidDid`
-workaround only. v4 / v3 superseded for new mints. Always Dynamo-gate.
-Agent loop: `website/docs/factory-parity.md`.
+workaround only. v4 / v3 superseded for new mints. **Live mint + ERC-8004
+mirror require a Dynamo PASS citation** (enforced). PoA register does not.
+`dryRun: true` may omit citation (result is labeled). Emergency only:
+`DYNAMO_MINT_REQUIRED=false`. Agent loop: `website/docs/factory-parity.md`.
 
 ## Adapter
 
@@ -91,7 +93,12 @@ A transponder is a fixed point that answers interrogation. Codex name in code: *
 | **GRVR** (`GrooverIdentityToken`) | Who is wearing this mill DNA, locked at this instant? | DID, Pack, Variant, DNA, Dynamo citation, **Level**, Minted. Image: Groover `IMAGE_BASE + tokenId`. Level is the rarity of that lock. No Dynamo → Unknown. |
 | **TemporalContainerRegistry** | The receipt VRTX is minted from | Solar snapshot (activity, xray, kp, proton, magnetometer, solarTdf) + 7D profile + TMO. **No isotope field on the container either.** |
 
-`tokenByContainerId` / `getContainerData` exist on VRTX. GRVR `dynamoCitation` is optional and does **not** `require` a registry lookup (decoupling was deliberate).
+`tokenByContainerId` / `getContainerData` exist on VRTX. On-chain GRVR
+`dynamoCitation` does **not** `require` a registry lookup (decoupling was
+deliberate). **Issuance policy:** live `mint_suit` (`dryRun: false`) and the
+ERC-8004 mirror **require** a non-empty PASS citation. PoA `register_plugin`
+does not. `dryRun: true` may omit it (labeled). Emergency only:
+`DYNAMO_MINT_REQUIRED=false`.
 
 ### What forcing Dynamo on `mint_suit` actually means
 
@@ -171,12 +178,15 @@ GRVR_CONTRACT=0x045B35480F289F8f83F53345A0f367875958957a
 GRVR_CHAIN_ID=8453
 GRVR_RPC_URL=https://mainnet.base.org
 GRVR_PRIVATE_KEY=
+DYNAMO_MINT_REQUIRED=   # default required; set false only for emergency
 ```
 
 Live mint reads **only** `GRVR_PRIVATE_KEY`. `DEPLOYER_PRIVATE_KEY` / `GROOVER_MINTER_KEY` are ignored. Missing or empty `GRVR_PRIVATE_KEY` dry-runs (no tx). `dryRun: true` also dry-runs.
 
-**dryRun ≠ live mint.** Auth+DNA can pass with `dryRun: true` while
-`dryRun: false` returns `-32603`. That is minter/env, not a bad DID.
+**dryRun ≠ live mint.** Auth+DNA can pass with `dryRun: true` (labeled if
+citation is missing) while `dryRun: false` without a PASS citation is a
+clear reject (`Live GRVR mint requires a non-empty Dynamo PASS citation`).
+After citation is present, live `-32603` is minter/env, not a bad DID.
 
 Live Railway `GRVR_CONTRACT` is v5 `0x045B35480F289F8f83F53345A0f367875958957a`.
 Code default matches. Env still wins if set.

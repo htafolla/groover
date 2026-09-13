@@ -167,6 +167,7 @@ Success returns:
 | `ECONNREFUSED` | No outbound internet | Run from a machine with connectivity |
 | `already-used` nonce | Nonce reused | Get a fresh challenge |
 | `Challenge session not found` | Wrong sessionId or session expired (10min TTL) | Get a fresh challenge |
+| `Live GRVR mint requires a non-empty Dynamo PASS citation` | Live `mint_suit` / ERC-8004 mirror without `dynamoCitation` | Run `govern_with_solar` `persistToChain: true` until PASS + container. PoA register does not need Dynamo. `dryRun: true` may omit citation (labeled). Emergency only: `DYNAMO_MINT_REQUIRED=false`. |
 | `-32603 Tool execution failed` on mint | Wrong MCP host, bad apiKey, bad mintSignature, or `0xray-suit` gap | Same Railway host as register. dryRun `groover-identity` first. Lowercase `to` in the bind string. `0xray-suit` is a known gap (2026-09-13) until dryRun green. |
 
 ## Verifying Registration

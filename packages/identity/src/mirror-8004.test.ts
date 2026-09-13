@@ -3,12 +3,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  MIRROR_SKIP_MISSING_CITATION,
   agentRegistryId,
   buildRegistrationV1,
   buildRegistrationV2,
   didShort,
   identityRegistry,
   mirrorEnabled,
+  mirrorGrvrMint,
   writeRegistrationFiles,
 } from './mirror-8004.js';
 
@@ -24,11 +26,19 @@ const sample = {
   chainId: 8453,
 };
 
+const PASS_CITATION = '0x' + 'ab'.repeat(32);
+
 describe('ERC-8004 registration files', () => {
-  const prev = process.env.MIRROR_8004_ENABLED;
+  const prev = {
+    MIRROR_8004_ENABLED: process.env.MIRROR_8004_ENABLED,
+    DYNAMO_MINT_REQUIRED: process.env.DYNAMO_MINT_REQUIRED,
+    MIRROR_8004_FILE_DIR: process.env.MIRROR_8004_FILE_DIR,
+  };
   afterEach(() => {
-    if (prev === undefined) delete process.env.MIRROR_8004_ENABLED;
-    else process.env.MIRROR_8004_ENABLED = prev;
+    for (const [k, v] of Object.entries(prev)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
   });
 
   it('didShort is first 12 hex of DID suffix', () => {
@@ -75,5 +85,29 @@ describe('ERC-8004 registration files', () => {
   it('Base sepolia registry is not the mainnet vanity address', () => {
     expect(identityRegistry(84532)).toBe('0x8004A818BFB912233c491871b3d84c89A494BD9e');
     expect(agentRegistryId(84532)).toContain('84532');
+  });
+
+  it('skips mirror without Dynamo PASS citation', async () => {
+    delete process.env.DYNAMO_MINT_REQUIRED;
+    process.env.MIRROR_8004_ENABLED = 'true';
+    const dir = mkdtempSync(path.join(tmpdir(), 'mirror-8004-skip-'));
+    process.env.MIRROR_8004_FILE_DIR = dir;
+    const result = await mirrorGrvrMint(sample);
+    expect(result.skipped).toBe(MIRROR_SKIP_MISSING_CITATION);
+    expect(result.v1Path).toBeUndefined();
+  });
+
+  it('mirrors when citation is present', async () => {
+    delete process.env.DYNAMO_MINT_REQUIRED;
+    process.env.MIRROR_8004_ENABLED = 'true';
+    const dir = mkdtempSync(path.join(tmpdir(), 'mirror-8004-cite-'));
+    process.env.MIRROR_8004_FILE_DIR = dir;
+    const result = await mirrorGrvrMint({ ...sample, dynamoCitation: PASS_CITATION });
+    expect(result.skipped).toBeUndefined();
+    expect(result.v1Path).toBe(path.join(dir, 'grvr-2-v1.json'));
+    const parsed = JSON.parse(readFileSync(result.v1Path!, 'utf8')) as {
+      groover: { dynamoCitation: string };
+    };
+    expect(parsed.groover.dynamoCitation).toBe(PASS_CITATION);
   });
 });

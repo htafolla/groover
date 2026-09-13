@@ -29,7 +29,7 @@ re-entry criteria.
 | 8004 `setAgentURI` | `setAgentURI(agentId, newURI)` → emits `URIUpdated(agentId, newURI, updatedBy)`; authorized to owner **or** approved operators (`isApprovedForAll`/`getApproved`) — safety holds while the minter grants no approvals (never grant any) | canonical EIP + reference source |
 | Global agent handle | `agentRegistry = eip155:8453:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, `agentId` = minted id | EIP agent identity format |
 | Registration file | JSON, `type: https://eips.ethereum.org/EIPS/eip-8004#registration-v1`, **required** `name/description/image/services[]`; **optional** `registrations[]`, `supportedTrust[]` (EIP-correct optionality); `agentURI` MAY be `https://` | canonical EIP (services incl. custom `DID` entry `{name:"DID", endpoint:"did:…", version:"v1"}`) |
-| Groover mint flow (current) | `mintGrvrIdentity` in `packages/identity/src/grvr-mint.ts`: prepare → `writeContract(mint)` → receipt → `tokenIdFromMintReceipt`; returns `did/dna/pack/variant/identityKey/contract/to/txHash/tokenId` (**drops `dynamoCitation`** — callers retain the input); no govern gate and no image-warm step exist in the path today (both are proposed: citation policy + compositor-spec warm check) | origin/main code |
+| Groover mint flow (current) | `mintGrvrIdentity` in `packages/identity/src/grvr-mint.ts`: **live mint (`dryRun: false`) requires a non-empty Dynamo PASS `dynamoCitation`** (fail closed; `DYNAMO_MINT_REQUIRED=false` emergency only). Then prepare → `writeContract(mint)` → receipt → `tokenIdFromMintReceipt` → `mirrorGrvrMint` (skips without citation). `dryRun: true` may omit citation (labeled). PoA register is still pre-Dynamo. Image-warm still proposed. | origin/main code |
 
 ## 2. Mirror design (normative)
 
@@ -221,7 +221,7 @@ The mirror makes Groover identity legible to the market. Parity makes it
 mutually anchored with Dynamo: temporal memory authorizes identity memory, and
 every identity mark cites its temporal receipt.
 
-**The closed loop (to be implemented in `mint_suit`, no contract changes):**
+**The closed loop (citation policy is live in `mint_suit` + `mirrorGrvrMint`; Groover still does not auto-invoke Dynamo — caller supplies the PASS container. No contract changes):**
 
 1. Groover identifies the agent → DID + DNA via pack adapter (exists).
 2. For `0xray-suit`: mill inspect object (caller-supplied `ok` + DNA match; not re-run).
@@ -241,10 +241,11 @@ every identity mark cites its temporal receipt.
 
 **Why policy-level, not cryptographic:** the GRVR contract deliberately keeps
 `dynamoCitation` optional with no registry lookup (decoupling the contracts was an
-explicit spec decision). Enforcement therefore lives in `mint_suit` code + audit:
-citation-less mainnet mints are publicly visible and reviewable. This is also what
-distinguishes approval-gating from the banned auto-mint pattern — governance
-attests, Groover still signs; neither side mints alone.
+explicit spec decision). Enforcement lives in `mintGrvrIdentity` + `mirrorGrvrMint`
+(fail closed). Citation-less live mint is rejected; citation-less mirror is
+skipped. This is also what distinguishes approval-gating from the banned
+auto-mint pattern — governance attests, Groover still signs; neither side mints
+alone. PoA register remains pre-Dynamo.
 
 **Transponder framing (shared vocabulary, decided):** a transponder is any canonical
 fixed point that answers interrogation. Codex name in chrono-warp-drive code is

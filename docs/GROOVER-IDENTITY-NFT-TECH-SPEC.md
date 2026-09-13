@@ -59,7 +59,7 @@ Leave those running.
    `https://registry-production-e2c4.up.railway.app/identity/token-image/{tokenId}`
 
    Compositor is Groover’s job later. You only need a stable URL shape in `tokenURI`.
-6. **Citation (optional):** `bytes32 dynamoCitation`. Pass `bytes32(0)` if none. Never `require` a registry lookup.
+6. **Citation (optional on-chain):** `bytes32 dynamoCitation`. Contract still accepts `bytes32(0)` and never `require`s a registry lookup. **Issuance policy:** live `mint_suit` and ERC-8004 mirror require a non-empty PASS citation. PoA register does not. `dryRun` may omit it (labeled). Emergency only: `DYNAMO_MINT_REQUIRED=false`.
 7. **Mint path:** `onlyRole(MINTER_ROLE)`. No public mint. Groover MCP will call this after PoA (and, for pack `0xray-suit`, after mill inspect attestation — Groover, not this contract).
 8. **Keys:** minter key lives on Groover Railway. Not mill. Not 0xray. Not Dynamo ambient daemon.
 
@@ -342,6 +342,6 @@ Base mainnet only after Groover says the minter key on Railway is the same `GROO
 
 ## 10. Context for the other agent (do not implement)
 
-Groover later: `mint_suit` MCP, DNA from mill inventory (drop `mintedAt`) or from DID for pack `groover-identity`, variant = `hash(did, dna) % 16`, inspect attestation for `0xray-suit` only. 0xray mill stays receipt-only. Dynamo may pass `dynamoCitation` as optional bytes32.
+Groover later: `mint_suit` MCP, DNA from mill inventory (drop `mintedAt`) or from DID for pack `groover-identity`, variant = `hash(did, dna) % 16`, inspect attestation for `0xray-suit` only. 0xray mill stays receipt-only. Dynamo `dynamoCitation` is required for live mint/mirror (policy). The contract field remains optional bytes32.
 
 This spec is the contract + launch only.

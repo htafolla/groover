@@ -148,7 +148,7 @@ export const TOOL_DEFINITIONS = [
   {
     name: 'mint_suit',
     description:
-      'Mint a Groover Identity (GRVR) 1/1 on Base for a registered DID. pack selects a DNA adapter (builtin: groover-identity, 0xray-suit). Requires apiKey plus Ed25519 signature over groover-mint:v1|{did}|{pack}|{to}|{issuedAtMs}. Live mint only with GRVR_PRIVATE_KEY; otherwise dry-run.',
+      'Mint a Groover Identity (GRVR) 1/1 on Base for a registered DID. pack selects a DNA adapter (builtin: groover-identity, 0xray-suit). Requires apiKey plus Ed25519 signature over groover-mint:v1|{did}|{pack}|{to}|{issuedAtMs}. Live mint (dryRun:false) requires a non-empty dynamoCitation (Dynamo PASS container). dryRun may omit it (labeled). ERC-8004 mirror also requires citation. PoA register does not. Live chain write needs GRVR_PRIVATE_KEY; otherwise dry-run.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -159,7 +159,11 @@ export const TOOL_DEFINITIONS = [
         to: { type: 'string', description: 'Holder address (0x…)' },
         inventory: { type: 'object', description: 'foundry-inventory.json for 0xray-suit' },
         inspect: { type: 'object', description: '{ ok, dna } mill inspect report' },
-        dynamoCitation: { type: 'string' },
+        dynamoCitation: {
+          type: 'string',
+          description:
+            '32-byte hex from govern_with_solar persistToChain. Required for live mint and ERC-8004 mirror. Optional on dry-run (result is labeled). Emergency only: DYNAMO_MINT_REQUIRED=false.',
+        },
         variant: { type: 'number' },
         level: { type: 'number', description: '0 Unknown (no Dynamo), 1 Dissonant, 2 Unstable, 3 Resonant, 4 Celestial' },
         fullBox7D: { type: 'number', description: 'Dynamo 7D composite; sets Level if level omitted' },

@@ -138,14 +138,15 @@ Same Ed25519 secret as register (persist it — the register script does not).
 | to | string | yes — holder `0x…` (lowercase in bind string and preferably here) |
 | issuedAtMs | number | yes — unix ms, within 5 minutes |
 | mintSignature | string | yes — Ed25519 hex of the mint message |
-| dynamoCitation | string | no — if Dynamo is required, loop until hammer `PASS` |
+| dynamoCitation | string | **yes for live mint + ERC-8004 mirror** — 32-byte hex from hammer `PASS` + `persistToChain`. Optional on `dryRun: true` (result is labeled). PoA register does not require it. Emergency only: `DYNAMO_MINT_REQUIRED=false` |
 
 Live mint uses the server minter (`GRVR_PRIVATE_KEY`) on configured
 `GRVR_CONTRACT`. That key is not the agent's `apiKey`. **dryRun ≠ live:**
-`dryRun: true` can succeed (auth + DNA) while live returns `-32603` — escalate
-as ops/minter env, not a bad DID. `0xray-suit` needs `inventory` +
-`inspect.ok === true`; `inspect.dna` must match keccak of inventory without
-`mintedAt`/`dna`.
+`dryRun: true` can succeed (auth + DNA) without a citation (labeled). Live
+without `dynamoCitation` is a clear reject, not opaque `-32603`. After
+citation is present, remaining `-32603` is ops/minter env, not a bad DID.
+`0xray-suit` needs `inventory` + `inspect.ok === true`; `inspect.dna` must
+match keccak of inventory without `mintedAt`/`dna`.
 
 ### search_plugins
 

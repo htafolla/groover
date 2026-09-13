@@ -4,6 +4,9 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { frameworkLogger } from '../../xray/src/index.js';
+import { dynamoMintRequired, hasPassCitation } from './suit-dna.js';
+
+export const MIRROR_SKIP_MISSING_CITATION = 'missing-dynamo-citation';
 
 export const IDENTITY_REGISTRY_BASE =
   '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
@@ -126,6 +129,13 @@ export async function mirrorGrvrMint(input: MirrorMintInput): Promise<{
 }> {
   if (!mirrorEnabled()) {
     return { skipped: 'MIRROR_8004_ENABLED is not true' };
+  }
+  if (dynamoMintRequired() && !hasPassCitation(input.dynamoCitation)) {
+    frameworkLogger.log('identity', 'mirror-8004-skip', 'warn', {
+      step: MIRROR_SKIP_MISSING_CITATION,
+      tokenId: input.grvrTokenId,
+    });
+    return { skipped: MIRROR_SKIP_MISSING_CITATION };
   }
   if (!input.grvrTokenId) {
     frameworkLogger.log('identity', 'mirror-8004-fail', 'warn', { step: 'no-tokenId' });

@@ -31,7 +31,7 @@ All calls use JSON-RPC 2.0:
 | `get_registration_challenge` | `pubkey: string` | `nonce`, `session`, `ttl` |
 | `submit_challenge_turn` | `sessionId, toolCall, hash, input?, output?, reasoning?` | `turnCount`, `followUpPrompt?` |
 | `register_plugin` | `pubkey, payload, signature, challengeNonce, challengeTrace` | `{ did, apiKey }` — **apiKey is issued here** |
-| `mint_suit` | **required** `did, apiKey, pack, to, issuedAtMs, mintSignature` (+ optional `inventory`, `inspect`, `dynamoCitation`, `fullBox7D`, `dryRun`) | GRVR mint / dry-run |
+| `mint_suit` | **required** `did, apiKey, pack, to, issuedAtMs, mintSignature` (+ `dynamoCitation` **required for live mint/mirror**; optional on dry-run, labeled). Optional `inventory`, `inspect`, `fullBox7D`, `dryRun`. PoA register does not need Dynamo. | GRVR mint / dry-run |
 | `search_plugins` | `query?: string` | `results[]` |
 | `list_mcp_servers` | (none) | `servers[]` |
 | `get_plugin_ui_manifest` | `did: string` | `manifest` |
@@ -75,7 +75,7 @@ Sign `nonce + "|" + payload` with your private key.
 Same Railway MCP for register **and** mint. Persist the secret. Do not pin `86025`.
 
 1. **Register** on `https://registry-production-e2c4.up.railway.app/mcp`. Issues `{ did, apiKey }` (DID is **64 hex**).
-2. **Always Dynamo-gate:** `POST …/govern_with_solar` `persistToChain: true`. Loop until `PASS` + real solar + not `storm`. `dynamoCitation` = `0x` + `containerId`. Do not invent it. Do not mint without a container.
+2. **Dynamo PASS citation is mandatory before live mint and ERC-8004 mirror** (PoA register is still pre-Dynamo). `POST …/govern_with_solar` `persistToChain: true`. Loop until `PASS` + real solar + not `storm`. `dynamoCitation` = `0x` + `containerId`. Do not invent it. Live `dryRun: false` without a container is a clear reject. `dryRun: true` may omit it (labeled). Emergency only: `DYNAMO_MINT_REQUIRED=false`.
 3. **`mint_suit`** on that **same** host. Prefer the **full 64-hex** registry
    DID on GRVR v5 `0x045B35480F289F8f83F53345A0f367875958957a` (accepts 28-byte
    legacy and 76-byte registry DIDs). Truncation to 16 hex was a v4

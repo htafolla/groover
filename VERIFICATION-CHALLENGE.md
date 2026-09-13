@@ -120,6 +120,8 @@ Binds the entire trace to the server-issued session. Cannot replay a trace again
 
 The Dynamo governance and Codex enforcement gates (xray-governance, xray-enforcer, xray-orchestrator) are **supplementary**. When MCP servers are unreachable (standalone Railway mode), these gates default to pass. The challenge trace is the **primary** behavioral gate. The xray reasoning evaluation also degrades gracefully — when xrayBridge.enforce is unavailable, the keyword-based `computeReasoningCoverage` function serves as fallback.
 
+**PoA register remains pre-Dynamo.** Live GRVR mint and ERC-8004 mirror require a Dynamo PASS citation (`mintGrvrIdentity` / `mirrorGrvrMint`). Do not ban-hammer at `register_plugin`.
+
 ## Reference Implementation
 
 - **Challenge module**: `packages/marketplace/src/challenge.ts`

@@ -27,6 +27,21 @@ export function mcpError(
   return { jsonrpc: '2.0', id, error: { code, message, data } };
 }
 
+/** Policy / caller errors that must not collapse into opaque -32603. */
+export function clientVisibleToolError(error: unknown): string | null {
+  if (!(error instanceof Error)) return null;
+  const message = error.message;
+  if (
+    message.includes('pubkey is required') ||
+    message.includes('Challenge session not found') ||
+    message.includes('Dynamo PASS citation') ||
+    message.includes('dynamoCitation must be')
+  ) {
+    return message;
+  }
+  return null;
+}
+
 export type StreamableMcpOutcome =
   | { kind: 'notification'; status: 202; requestId: string; body: null }
   | { kind: 'json'; status: number; requestId: string; json: McpJsonResponse };
@@ -82,18 +97,9 @@ export async function dispatchMcpMethod(
           content: [{ type: 'text', text: JSON.stringify(result) }],
         });
       } catch (error) {
-        const message =
-          error instanceof Error &&
-          (error.message.includes('pubkey is required') ||
-            error.message.includes('Challenge session not found'))
-            ? error.message
-            : sanitizeToolError(error, requestId);
-        const code =
-          error instanceof Error &&
-          (error.message.includes('pubkey is required') ||
-            error.message.includes('Challenge session not found'))
-            ? -32602
-            : -32603;
+        const clientMessage = clientVisibleToolError(error);
+        const message = clientMessage ?? sanitizeToolError(error, requestId);
+        const code = clientMessage ? -32602 : -32603;
         return mcpError(id, code, message);
       }
     }
