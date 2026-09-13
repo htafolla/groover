@@ -1,0 +1,41 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "groover-869a20477a1e",
+  "description": "Groover identity mark for did:groover:869a20477a1e9a8c15760b15502a6d616f196d6546111138d7110a65f8ec1df9. Pack groover-identity, variant 3. Grounded issuance: DNA + Dynamo citation, mirrored from GRVR token 1 on v5 0x045B35480F289F8f83F53345A0f367875958957a. ERC-8004 agentId 86556 on Base.",
+  "image": "https://registry-production-e2c4.up.railway.app/identity/token-image/1",
+  "services": [
+    {
+      "name": "DID",
+      "endpoint": "did:groover:869a20477a1e9a8c15760b15502a6d616f196d6546111138d7110a65f8ec1df9",
+      "version": "v1"
+    },
+    {
+      "name": "GRVR",
+      "endpoint": "eip155:8453:0x045B35480F289F8f83F53345A0f367875958957a/1",
+      "version": "v1"
+    }
+  ],
+  "x402Support": false,
+  "active": true,
+  "supportedTrust": ["groover-provenance"],
+  "registrations": [
+    {
+      "agentId": "86556",
+      "agentRegistry": "eip155:8453:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+    }
+  ],
+  "groover": {
+    "did": "did:groover:869a20477a1e9a8c15760b15502a6d616f196d6546111138d7110a65f8ec1df9",
+    "dna": "0xf1b839a58bcf12e5d8297f54aa5d8db1dc8c977cb4af8f31f96c389b22d423d3",
+    "pack": "groover-identity",
+    "variant": "3",
+    "identityKey": "0x318bddbd4d85d08067e4a694c5acbc26e6139ec3ac5693a2ba6e26be286b3423",
+    "grvrContract": "0x045B35480F289F8f83F53345A0f367875958957a",
+    "grvrTokenId": "1",
+    "dynamoCitation": "0xaf105e77eefeb1f0e6346f2899d0cea694178b0017360b4b64c3d8545c736e41",
+    "level": "3",
+    "grvrChainId": 8453,
+    "erc8004AgentId": "86556",
+    "erc8004RegisterTx": "0x4c47e48084b1f58602d51e8dbc8a07029177527218f3557972277934c4aa8c3c"
+  }
+}

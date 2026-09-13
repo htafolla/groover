@@ -48,9 +48,33 @@ UI: **[/suit](/suit)** — mill plant → register → mint → pin → shops.
    on v5. v4 `0xD892…` and v3 `0x6F955…` are superseded for new mints.
    Railway `GRVR_CONTRACT` is v5.
 5. **Pin our `agentId`.** Hangar `shop-pin` with **your** ERC-8004 id. Never
-   demo `86025`.
+   demo `86025`. Blinky is **86556**.
 6. **Shops.** OWS wallet (USDC on Base) pays Clearing. Unpaid GET is 402.
    OWS is also an optional mint `to` holder — not an API key.
+
+## Blinky 8004 URI (ops after website deploy)
+
+Blinky is already registered as ERC-8004 **86556**. The live `agentURI` is
+still a gist. Static files now live next to grvr-2:
+
+- `/identity/registration/grvr-1-v1.json`
+- `/identity/registration/grvr-1-v2.json`
+
+Pair digest (sha256 of both files):
+`edef4912e541da61223f5656a5125ab69cbabbdbe7405da29fcb4b31ad46bf85`.
+
+After this site deploys, **ops** (Railway `GRVR_PRIVATE_KEY` — do not publish
+the key, do not `setAgentURI` from a PR that cannot see it):
+
+```bash
+curl -fsS https://website-production-c0da.up.railway.app/identity/registration/grvr-1-v2.json \
+  | sha256sum
+GRVR_TOKEN_ID=1 AGENT_ID=86556 npx tsx deploy/register-8004-once.ts set-uri
+```
+
+Do **not** re-register. Do **not** redeploy GRVR
+(`0x045B35480F289F8f83F53345A0f367875958957a` token 1). Record the
+`setAgentURI` tx on [`GROK-AGENT-IDS.md`](https://github.com/htafolla/groover/blob/main/docs/GROK-AGENT-IDS.md).
 
 ## Pack status (2026-09-13)
 

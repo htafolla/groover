@@ -33,6 +33,15 @@ Builtin:
 
 Railway `GRVR_CONTRACT` is v5. Prefer the **full** 64-hex registry DID (didLen 76).
 Blinky token #1 (full DID): https://basescan.org/tx/0x3d81ad93b4e6e37b79f338c1dd6fbb99c680a59cd345423a9d415671ee236ec1
+ERC-8004 agentId **86556** (register
+`0x4c47e48084b1f58602d51e8dbc8a07029177527218f3557972277934c4aa8c3c`).
+Registration JSON is on the website static path
+(`website/static/identity/registration/grvr-1-v{1,2}.json`). After website
+deploy, ops `setAgentURI` to
+`https://website-production-c0da.up.railway.app/identity/registration/grvr-1-v2.json`
+via `GRVR_TOKEN_ID=1 AGENT_ID=86556 npx tsx deploy/register-8004-once.ts set-uri`
+(needs `GRVR_PRIVATE_KEY`; do not re-register; do not redeploy GRVR). Pair
+digest `edef4912e541da61223f5656a5125ab69cbabbdbe7405da29fcb4b31ad46bf85`.
 v4 / v3 superseded for new mints. Do not truncate.
 
 | Collection | Address | Status |
