@@ -47,16 +47,11 @@ curl -sI 'https://clearing-production-9968.up.railway.app/v1/extract?url=https:/
 # HTTP 402
 ```
 
-Pay from OWS (public path — signs the 402 and retries):
+Clearing’s 402 `extra` is `{name, version}` only (USDC v2). It is **not** Coinbase facilitator shape. Bare `ows pay request` against Clearing prod fails (`missing paymentId/nonce`) — do not treat that as the public path.
 
-```bash
-ows pay request 'https://clearing-production-9968.up.railway.app/v1/extract?url=https://example.com' \
-  --wallet agent-treasury-1
-```
+**Working dogfood:** EIP-3009 `TransferWithAuthorization` (USDC FiatTokenV2 on Base), wrapped as Clearing `{paymentId, nonce, accepted, eip3009}`, then ZigZag settle. Local kit: [KIT-LOOP.md](https://github.com/htafolla/groover/blob/main/docs/KIT-LOOP.md) — `sign_x402` with `approved=true`. Hosted ZigZag `/sign` is **410**. Example extract receipt paymentId `a5a32d06-deac-4a1b-8f3c-e6f5dc09f931`.
 
-Same for witness (`/v1/witness?url=`) and pin (`/v1/pin?agentId=86025`). Reuse fails as `replayed: true`, not a second debit.
-
-Kit path (local ZigZag MCP, `sign_x402` `approved=true`) is in [KIT-LOOP.md](https://github.com/htafolla/groover/blob/main/docs/KIT-LOOP.md). Do not call hosted ZigZag `/sign` (410). Alternate custody: `CLEARING_SIGNER=awal` after `npx awal auth login` (Coinbase account).
+Same shops for witness (`/v1/witness?url=`) and pin (`/v1/pin?agentId=`). Same `paymentId` → `replayed: true`, not a second debit. Alternate custody: `CLEARING_SIGNER=awal` after `npx awal auth login` (Coinbase account). grok.com cannot pay (no local vault).
 
 ## Ecosystem
 
@@ -82,21 +77,15 @@ Unpaid GET → HTTP 402. Same `paymentId` → `replayed: true`, no second signat
 
 ## Grok bot (how it actually pays)
 
-This is **Grok CLI / Grok Build on a machine that has `ows` and `~/.ows`**. Not grok.com cloud chat — that host has no local vault.
+This is **Grok CLI / Grok Build on a machine with a funded Base USDC vault** (OWS `~/.ows` + local ZigZag kit). Not grok.com cloud chat — that host has no local vault.
 
-1. Same machine: OWS wallet `agent-treasury-1`, funded with USDC on Base (above).
+1. Same machine: OWS wallet `agent-treasury-1`, funded with USDC on Base (above). Local ZigZag kit ready ([KIT-LOOP.md](https://github.com/htafolla/groover/blob/main/docs/KIT-LOOP.md)).
 2. Install plugins (once). New Grok session. Slash: `/shop-extract`, `/shop-witness`, `/shop-pin`.
 3. Human: `extract https://example.com` (or `/shop-extract`).
-4. Grok reads the skill, GETs the shop, sees **402**, then runs in the project shell:
-
-```bash
-ows pay request 'https://clearing-production-9968.up.railway.app/v1/extract?url=https://example.com' \
-  --wallet agent-treasury-1
-```
-
+4. Grok reads the skill, GETs the shop, sees **402**, then settles with the **ZigZag-shaped** EIP-3009 path (`sign_x402` `approved=true`) — not bare `ows pay request` against Clearing.
 5. Reports the receipt (`textHash` / `bodySha256` / `replayed`). Does not paraphrase the page.
 
-Hangar plugins are **skills + slash commands**. They are not a wallet and not a ZigZag MCP. If `ows` is not on PATH in that session, the bot cannot settle. Kit `sign_x402` is optional and needs local ZigZag; hosted `/sign` is 410.
+Hangar plugins are **skills + slash commands**. They are not a wallet and not a ZigZag MCP. Hosted ZigZag `/sign` is 410.
 
 ```bash
 grok plugin marketplace add htafolla/groover
