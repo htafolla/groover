@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 vi.mock('../../xray/src/index.js', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>;
@@ -30,6 +30,7 @@ import {
   type ChallengeTrace,
 } from './challenge.js';
 import { TOOL_HANDLERS } from './mcp-server.js';
+import { LIVE_MINT_CITATION_REQUIRED } from '../../identity/src/grvr-mint.js';
 
 function buildValidTrace(sessionId: string) {
   const baseTime = Date.now() - 6000;
@@ -100,6 +101,11 @@ function mintAuth(rec: { did: string; apiKey: string; keys: { privateKey: string
 
 describe('mint_suit MCP', () => {
   const to = '0x0000000000000000000000000000000000000001';
+  const prevDynamo = process.env.DYNAMO_MINT_REQUIRED;
+  afterEach(() => {
+    if (prevDynamo === undefined) delete process.env.DYNAMO_MINT_REQUIRED;
+    else process.env.DYNAMO_MINT_REQUIRED = prevDynamo;
+  });
 
   it('rejects unregistered DID', async () => {
     await expect(
@@ -155,11 +161,56 @@ describe('mint_suit MCP', () => {
       to,
       dryRun: true,
       ...auth,
-    })) as { success: boolean; dryRun: boolean; txHash?: string; level: number };
+    })) as {
+      success: boolean;
+      dryRun: boolean;
+      txHash?: string;
+      level: number;
+      citationPresent: boolean;
+      warning?: string;
+    };
     expect(result.success).toBe(true);
     expect(result.dryRun).toBe(true);
     expect(result.txHash).toBeUndefined();
     expect(result.level).toBe(0);
+    expect(result.citationPresent).toBe(false);
+    expect(result.warning).toMatch(/dry-run without Dynamo PASS citation/);
+  });
+
+  it('rejects live mint_suit without dynamoCitation', async () => {
+    const rec = await registerFixture();
+    delete process.env.GRVR_PRIVATE_KEY;
+    delete process.env.DYNAMO_MINT_REQUIRED;
+    const auth = mintAuth(rec, 'groover-identity', to);
+    await expect(
+      TOOL_HANDLERS.mint_suit({
+        did: rec.did,
+        apiKey: rec.apiKey,
+        pack: 'groover-identity',
+        to,
+        dryRun: false,
+        ...auth,
+      }),
+    ).rejects.toThrow(LIVE_MINT_CITATION_REQUIRED);
+  });
+
+  it('live mint_suit with citation still dry-runs when minter key is unset', async () => {
+    const rec = await registerFixture();
+    delete process.env.GRVR_PRIVATE_KEY;
+    delete process.env.DYNAMO_MINT_REQUIRED;
+    const auth = mintAuth(rec, 'groover-identity', to);
+    const result = (await TOOL_HANDLERS.mint_suit({
+      did: rec.did,
+      apiKey: rec.apiKey,
+      pack: 'groover-identity',
+      to,
+      dynamoCitation: '0x' + 'cd'.repeat(32),
+      dryRun: false,
+      ...auth,
+    })) as { success: boolean; dryRun: boolean; citationPresent: boolean };
+    expect(result.success).toBe(true);
+    expect(result.dryRun).toBe(true);
+    expect(result.citationPresent).toBe(true);
   });
 
   it('sets Level from fullBox7D on dry-run', async () => {

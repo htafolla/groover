@@ -1,5 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import {
+  DRY_RUN_WITHOUT_CITATION,
+  DYNAMO_MINT_BYPASS_WARNING,
+  LIVE_MINT_CITATION_REQUIRED,
   compactSvg,
   mintGrvrIdentity,
   mintWantsOnchainSvg,
@@ -7,15 +10,18 @@ import {
   parseTokenIdParam,
   tokenIdFromMintReceipt,
 } from './grvr-mint.js';
+import { ZERO_DYNAMO_CITATION } from './suit-dna.js';
 
 const DID = 'did:groover:aaaaaaaaaaaaaaaa';
 const TO = '0x0000000000000000000000000000000000000001';
+const PASS_CITATION = '0x' + 'ab'.repeat(32);
 
 describe('GRVR mint key + receipt', () => {
   const prev = {
     GRVR_PRIVATE_KEY: process.env.GRVR_PRIVATE_KEY,
     DEPLOYER_PRIVATE_KEY: process.env.DEPLOYER_PRIVATE_KEY,
     GROOVER_MINTER_KEY: process.env.GROOVER_MINTER_KEY,
+    DYNAMO_MINT_REQUIRED: process.env.DYNAMO_MINT_REQUIRED,
   };
 
   afterEach(() => {
@@ -39,19 +45,46 @@ describe('GRVR mint key + receipt', () => {
 
   it('dry-runs when GRVR_PRIVATE_KEY is unset even if dryRun is false', async () => {
     delete process.env.GRVR_PRIVATE_KEY;
+    delete process.env.DYNAMO_MINT_REQUIRED;
     process.env.DEPLOYER_PRIVATE_KEY = '0x' + '11'.repeat(32);
     const result = await mintGrvrIdentity({
       did: DID,
       pack: 'groover-identity',
       to: TO,
+      dynamoCitation: PASS_CITATION,
       dryRun: false,
     });
     expect(result.dryRun).toBe(true);
+    expect(result.citationPresent).toBe(true);
+    expect(result.warning).toBeUndefined();
     expect(result.txHash).toBeUndefined();
     expect(result.tokenId).toBeUndefined();
   });
 
-  it('explicit dryRun does not send a tx', async () => {
+  it('rejects live mint without Dynamo PASS citation', async () => {
+    delete process.env.DYNAMO_MINT_REQUIRED;
+    process.env.GRVR_PRIVATE_KEY = '0x' + '33'.repeat(32);
+    await expect(
+      mintGrvrIdentity({
+        did: DID,
+        pack: 'groover-identity',
+        to: TO,
+        dryRun: false,
+      }),
+    ).rejects.toThrow(LIVE_MINT_CITATION_REQUIRED);
+    await expect(
+      mintGrvrIdentity({
+        did: DID,
+        pack: 'groover-identity',
+        to: TO,
+        dynamoCitation: ZERO_DYNAMO_CITATION,
+        dryRun: false,
+      }),
+    ).rejects.toThrow(LIVE_MINT_CITATION_REQUIRED);
+  });
+
+  it('explicit dryRun without citation succeeds and is labeled', async () => {
+    delete process.env.DYNAMO_MINT_REQUIRED;
     process.env.GRVR_PRIVATE_KEY = '0x' + '33'.repeat(32);
     const result = await mintGrvrIdentity({
       did: DID,
@@ -60,7 +93,37 @@ describe('GRVR mint key + receipt', () => {
       dryRun: true,
     });
     expect(result.dryRun).toBe(true);
+    expect(result.citationPresent).toBe(false);
+    expect(result.warning).toBe(DRY_RUN_WITHOUT_CITATION);
     expect(result.txHash).toBeUndefined();
+  });
+
+  it('live mint with citation is not rejected at the policy gate', async () => {
+    delete process.env.GRVR_PRIVATE_KEY;
+    delete process.env.DYNAMO_MINT_REQUIRED;
+    const result = await mintGrvrIdentity({
+      did: DID,
+      pack: 'groover-identity',
+      to: TO,
+      dynamoCitation: PASS_CITATION,
+      dryRun: false,
+    });
+    expect(result.dryRun).toBe(true);
+    expect(result.citationPresent).toBe(true);
+  });
+
+  it('DYNAMO_MINT_REQUIRED=false allows live-intent without citation (emergency)', async () => {
+    process.env.DYNAMO_MINT_REQUIRED = 'false';
+    delete process.env.GRVR_PRIVATE_KEY;
+    const result = await mintGrvrIdentity({
+      did: DID,
+      pack: 'groover-identity',
+      to: TO,
+      dryRun: false,
+    });
+    expect(result.dryRun).toBe(true);
+    expect(result.citationPresent).toBe(false);
+    expect(result.warning).toBe(DYNAMO_MINT_BYPASS_WARNING);
   });
 
   it('reverted receipt does not look like success', () => {

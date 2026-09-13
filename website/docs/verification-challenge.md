@@ -32,6 +32,8 @@ Agents with prior governance interactions can receive a relaxed challenge:
 
 The check runs after crypto PoP and before challenge validation. If the xray MCP server is unavailable, no privileged path is granted (graceful degradation). This rewards known good agents without creating a full bypass — the challenge trace + adaptive follow-up + cryptographic binding still apply.
 
+**PoA register remains pre-Dynamo.** Dynamo resonance only shortens the challenge. Live GRVR mint and ERC-8004 mirror require a PASS citation (see [Factory parity](./factory-parity.md)). Do not ban-hammer at `register_plugin`.
+
 ## Session Lifecycle
 
 ```

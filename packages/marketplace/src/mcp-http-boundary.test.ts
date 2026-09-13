@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { resetRateLimitStore, rateLimit } from './mcp-rate-limit.js';
 import { validateToolArguments } from './mcp-schemas.js';
 import { processStreamableMcpRequest, TOOL_HANDLERS, TOOL_DEFINITIONS } from './mcp-server.js';
+import { LIVE_MINT_CITATION_REQUIRED } from '../../identity/src/grvr-mint.js';
 
 describe('MCP HTTP boundary (P0.9)', () => {
   beforeEach(() => {
@@ -153,6 +154,42 @@ describe('MCP HTTP boundary (P0.9)', () => {
       expect(parsed.success).toBe(false);
       expect(parsed.reason).toBe('no_sui_binding');
       expect(parsed.binding).toBeNull();
+    }
+  });
+
+  it('surfaces live-mint Dynamo citation gate as -32602, not opaque -32603', async () => {
+    const outcome = await processStreamableMcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 9,
+        method: 'tools/call',
+        params: {
+          name: 'mint_suit',
+          arguments: {
+            did: 'did:groover:aaaaaaaaaaaaaaaa',
+            apiKey: 'groover_test',
+            pack: 'groover-identity',
+            to: '0x0000000000000000000000000000000000000001',
+            dryRun: false,
+            issuedAtMs: Date.now(),
+            mintSignature: 'aa'.repeat(64),
+          },
+        },
+      },
+      'citation-client',
+      {
+        mint_suit: () => {
+          throw new Error(LIVE_MINT_CITATION_REQUIRED);
+        },
+      },
+      TOOL_DEFINITIONS,
+    );
+    expect(outcome.kind).toBe('json');
+    if (outcome.kind === 'json') {
+      expect(outcome.status).toBe(400);
+      expect(outcome.json.error?.code).toBe(-32602);
+      expect(outcome.json.error?.message).toContain('Dynamo PASS citation');
+      expect(outcome.json.error?.message).not.toBe('Tool execution failed');
     }
   });
 

@@ -4,7 +4,10 @@ import { bytesToHex } from '@noble/hashes/utils';
 import {
   GRVR_DEFAULT_CHAIN_ID,
   GRVR_DEFAULT_CONTRACT,
+  ZERO_DYNAMO_CITATION,
+  dynamoMintRequired,
   grooverIdentityDna,
+  hasPassCitation,
   identityKey,
   inventoryDna,
   isCanonicalGrooverDid,
@@ -118,6 +121,27 @@ describe('GRVR suit DNA', () => {
     expect(levelName(2)).toBe('Unstable');
     expect(levelName(1)).toBe('Dissonant');
     expect(levelName(0)).toBe('Unknown');
+  });
+
+  it('hasPassCitation rejects empty and bytes32(0)', () => {
+    expect(hasPassCitation(undefined)).toBe(false);
+    expect(hasPassCitation('')).toBe(false);
+    expect(hasPassCitation(ZERO_DYNAMO_CITATION)).toBe(false);
+    expect(hasPassCitation('0x' + 'AB'.repeat(32))).toBe(true);
+    expect(hasPassCitation('ab'.repeat(32))).toBe(true);
+    expect(hasPassCitation('0xdead')).toBe(false);
+  });
+
+  it('dynamoMintRequired defaults true and opts out only on false', () => {
+    const prev = process.env.DYNAMO_MINT_REQUIRED;
+    delete process.env.DYNAMO_MINT_REQUIRED;
+    expect(dynamoMintRequired()).toBe(true);
+    process.env.DYNAMO_MINT_REQUIRED = 'true';
+    expect(dynamoMintRequired()).toBe(true);
+    process.env.DYNAMO_MINT_REQUIRED = 'false';
+    expect(dynamoMintRequired()).toBe(false);
+    if (prev === undefined) delete process.env.DYNAMO_MINT_REQUIRED;
+    else process.env.DYNAMO_MINT_REQUIRED = prev;
   });
 
   it('prepareMintInput Level from fullBox7D, explicit level wins, no Dynamo is Unknown', () => {

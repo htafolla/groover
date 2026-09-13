@@ -21,13 +21,17 @@ UI: **[/suit](/suit)** — mill plant → register → mint → pin → shops.
    (`REGISTRY_URL` default in `register-agent.cjs`). Registering on Railway then
    calling `mint_suit` on `https://groover.rippel.ai/mcp` returns opaque
    JSON-RPC `-32603 Tool execution failed` (DID/apiKey not on that store).
-3. **Always Dynamo-gate mint.** `POST https://mcp-production-80e2.up.railway.app/govern_with_solar`
+3. **Dynamo PASS citation is mandatory before live mint and ERC-8004
+   mirror.** PoA `register_plugin` is still pre-Dynamo (4-turn challenge
+   only). `POST https://mcp-production-80e2.up.railway.app/govern_with_solar`
    with `proposal` (mint intent + DID + DNA) and `persistToChain: true`.
    Loop until `recommendation === 'PASS'` **and** real solar activity present
    **and** activity ≠ `storm`. Citation =
    `temporalContainer.containerId` as 32-byte hex `0x…` → `dynamoCitation`.
-   Optional `fullBox7D` for Level. Do not invent a citation. Do not mint
-   without a container.
+   Optional `fullBox7D` for Level. Do not invent a citation. Live
+   `mint_suit` (`dryRun: false`) and `mirrorGrvrMint` reject a missing or
+   zero citation. `dryRun: true` may omit it (result is labeled). Emergency
+   only: `DYNAMO_MINT_REQUIRED=false`.
 4. **Mint the full registry DID on GRVR v5.** Live contract
    `0x045B35480F289F8f83F53345A0f367875958957a` (Base 8453) accepts **both**
    28-byte (16-hex legacy) and 76-byte (64-hex registry) DIDs. Prefer the
@@ -82,15 +86,17 @@ Do **not** re-register. Do **not** redeploy GRVR
   64-hex DID + Dynamo PASS + citation (token #1 above).
 - `pack: "0xray-suit"` — still a **known gap** (inventory + `inspect.ok`
   required; see adapter). No parity until **live** mint is green.
-- Opaque `-32603` covers wrong host, bad `apiKey`, bad `mintSignature`, or
-  minter/env. If full DID + Dynamo citation fails live after dryRun green →
-  ops/minter env, not “bad DID”. Do not truncate as a first fix.
+- Missing `dynamoCitation` on live mint is a **clear** reject (not opaque
+  `-32603`). Opaque `-32603` covers wrong host, bad `apiKey`, bad
+  `mintSignature`, or minter/env. If full DID + Dynamo citation fails live
+  after dryRun green → ops/minter env, not “bad DID”. Do not truncate as a
+  first fix.
 
 ## dryRun ≠ live mint
 
-`mint_suit` with `dryRun: true` can succeed (auth + DNA) while `dryRun: false`
-returns the same opaque `-32603`. Do **not** treat dryRun success as
-ship-ready identity.
+`mint_suit` with `dryRun: true` can succeed (auth + DNA) **without** a
+citation — the result is labeled. `dryRun: false` without a PASS citation
+fails closed. Do **not** treat dryRun success as ship-ready identity.
 
 Live mint needs Railway `GRVR_PRIVATE_KEY` with `MINTER_ROLE` on the
 **configured** `GRVR_CONTRACT`. Missing/empty key forces a dry-run even when

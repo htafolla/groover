@@ -23,8 +23,19 @@ import {
   GRVR_V1_MAINNET,
   GRVR_V2_MAINNET,
   GRVR_V2_SEPOLIA,
+  dynamoMintRequired,
+  hasPassCitation,
   prepareMintInput,
 } from './suit-dna.js';
+
+export const LIVE_MINT_CITATION_REQUIRED =
+  'Live GRVR mint requires a non-empty Dynamo PASS citation (32-byte hex dynamoCitation from govern_with_solar persistToChain). PoA register does not require Dynamo. Emergency only: DYNAMO_MINT_REQUIRED=false.';
+
+export const DRY_RUN_WITHOUT_CITATION =
+  'dry-run without Dynamo PASS citation — live mint and ERC-8004 mirror will reject';
+
+export const DYNAMO_MINT_BYPASS_WARNING =
+  'DYNAMO_MINT_REQUIRED=false emergency bypass — issuing without Dynamo PASS citation';
 
 const abiDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../abi');
 
@@ -139,11 +150,23 @@ export async function mintGrvrIdentity(params: {
   contract: `0x${string}`;
   to: `0x${string}`;
   level: number;
+  citationPresent: boolean;
+  warning?: string;
   txHash?: `0x${string}`;
   tokenId?: string;
 }> {
   const prepared = prepareGrvrMint(params);
   if (!prepared.to) throw new Error('to address required to mint');
+  const citationPresent = hasPassCitation(prepared.dynamoCitation);
+  const liveRequested = params.dryRun !== true;
+  if (liveRequested && dynamoMintRequired() && !citationPresent) {
+    throw new Error(LIVE_MINT_CITATION_REQUIRED);
+  }
+  const warning = citationPresent
+    ? undefined
+    : liveRequested
+      ? DYNAMO_MINT_BYPASS_WARNING
+      : DRY_RUN_WITHOUT_CITATION;
   const payload = {
     dryRun: Boolean(params.dryRun) || !minterKey(),
     did: prepared.did,
@@ -154,12 +177,16 @@ export async function mintGrvrIdentity(params: {
     contract: prepared.contract,
     to: prepared.to,
     level: prepared.level,
+    citationPresent,
+    warning,
   };
   if (payload.dryRun) {
     frameworkLogger.log('identity', 'grvr-mint-dry-run', 'info', {
       did: payload.did,
       pack: payload.pack,
       contract: payload.contract,
+      citationPresent,
+      warning,
     });
     return payload;
   }

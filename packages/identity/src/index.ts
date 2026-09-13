@@ -225,7 +225,9 @@ export {
   GRVR_V3_MAINNET,
   GRVR_V4_MAINNET,
   assertPack,
+  dynamoMintRequired,
   grooverIdentityDna,
+  hasPassCitation,
   identityKey,
   inventoryDna,
   levelFromComposite,
@@ -233,9 +235,13 @@ export {
   listPackIds,
   prepareMintInput,
   variantFromKey,
+  ZERO_DYNAMO_CITATION,
 } from './suit-dna.js';
 export {
   compactSvg,
+  DRY_RUN_WITHOUT_CITATION,
+  DYNAMO_MINT_BYPASS_WARNING,
+  LIVE_MINT_CITATION_REQUIRED,
   loadGrvrTokenView,
   mintGrvrIdentity,
   mintWantsOnchainSvg,
