@@ -36,9 +36,10 @@ v5 `0x045B35480F289F8f83F53345A0f367875958957a`. Truncation was a v4-only
 workaround. Factory loop: [website/docs/factory-parity.md](../website/docs/factory-parity.md).
 
 **Dynamo:** PoA `register_plugin` does **not** require a Dynamo PASS citation.
-Live `mint_suit` and ERC-8004 mirror **do** — `govern_with_solar` with
-`persistToChain: true`, loop until `PASS` + real solar + not `storm`, then
-`dynamoCitation` = `0x` + `containerId`. Then ERC-8004
+Live `mint_suit` and ERC-8004 mirror **do**. `govern_with_solar` is a **solar
+hammer** — `REJECT`, `NEEDS_REVISION`, or storm can fail the proposal. Retry
+until approved (`persistToChain: true`, loop until `PASS` + real solar + not
+`storm`), then `dynamoCitation` = `0x` + `containerId`. Then ERC-8004
 `deploy/register-8004-once.ts` register / setURI, then hangar `shop-pin` with
 **your** `agentId` (never demo `86025`).
 

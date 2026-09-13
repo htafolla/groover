@@ -88,8 +88,10 @@ Required `mint_suit` args: `did`, `apiKey`, `pack`, `to`, `issuedAtMs`
 container). `dryRun: true` may omit it (labeled). Emergency only:
 `DYNAMO_MINT_REQUIRED=false`.
 `POST https://mcp-production-80e2.up.railway.app/govern_with_solar` with
-`persistToChain: true`. Loop until `PASS` + real solar + not `storm`.
-Citation = `temporalContainer.containerId` as `0x` + 32-byte hex. Do not
+`persistToChain: true`. Solar hammer can `REJECT` / `NEEDS_REVISION` /
+storm-override — retry until approved (`PASS` + real solar + not `storm`).
+Do not mint on a failed proposal. Citation =
+`temporalContainer.containerId` as `0x` + 32-byte hex. Do not
 invent a citation. Do not live-mint or mirror without a container.
 
 Proven 2026-09-13: full 64-hex DID + Dynamo PASS → v5 token **#1**, tx

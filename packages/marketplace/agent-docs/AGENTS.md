@@ -38,11 +38,14 @@ Hangar boutique shops stay below. This file is the **factory** entrypoint.
    (`did:groover:` + **64 hex**). **Dynamo is not required for register.**
 3. **Dynamo PASS citation — mandatory for live mint and ERC-8004 mirror.**
    `POST https://mcp-production-80e2.up.railway.app/govern_with_solar` with
-   mint intent + DID + DNA and `persistToChain: true`. Loop until
-   `recommendation === 'PASS'` **and** real solar activity present **and**
-   activity ≠ `storm`. Citation = `temporalContainer.containerId` as 32-byte
-   hex `0x…` → `dynamoCitation`. Optional `fullBox7D` for Level. Do not invent
-   a citation. Do not live-mint or mirror without a container.
+   mint intent + DID + DNA and `persistToChain: true`. This is a **solar hammer**,
+   not a rubber stamp: `REJECT`, `NEEDS_REVISION`, or storm
+   override can fail the proposal. Retry until approved — loop
+   `govern_with_solar` until `recommendation === 'PASS'` **and** real solar
+   activity present **and** activity ≠ `storm`. Do not mint on a failed
+   hammer. Citation = `temporalContainer.containerId` as 32-byte hex `0x…`
+   → `dynamoCitation`. Optional `fullBox7D` for Level. Do not invent a
+   citation. Do not live-mint or mirror without a container.
 4. **`mint_suit`** on the **same** MCP host. Mint the **full 64-hex** DID on
    GRVR v5 `0x045B35480F289F8f83F53345A0f367875958957a` (Base 8453). Sign:
 
@@ -69,6 +72,9 @@ Hangar boutique shops stay below. This file is the **factory** entrypoint.
 | Live `mint_suit` (`dryRun: false`) | **Required** — fail-closed reject if missing. PASS + persist + real solar + not storm |
 | `dryRun: true` | Optional (result is labeled). Emergency only: `DYNAMO_MINT_REQUIRED=false` |
 | ERC-8004 mirror / setURI of a live mint | **Required** — skip/no files without the same citation |
+
+Solar hammer can fail the proposal. Retry until approved (`PASS`). Wait out
+`storm`. Do not treat `NEEDS_REVISION` / `REJECT` as a citation.
 
 ## Hangar boutique (shops)
 

@@ -15,6 +15,8 @@ const goodBody = [
   'govern_with_solar',
   'register_plugin',
   'Dynamo is not required for register',
+  'solar hammer',
+  'Retry until approved',
 ].join('\n');
 
 describe('agent-docs HTTP gate', () => {

@@ -18,6 +18,8 @@ export const AGENT_DOC_KEYWORDS = [
   '0x045B35480F289F8f83F53345A0f367875958957a',
   'govern_with_solar',
   'register_plugin',
+  'solar hammer',
+  'Retry until approved',
 ] as const;
 
 export const AGENT_DOC_PATHS = Object.keys(AGENT_DOC_FILES) as AgentDocPath[];
@@ -49,8 +51,9 @@ export function evaluateAgentDocResponse(input: {
   if (heading && !input.body.includes(heading)) {
     return { ok: false, reason: `${input.path} missing heading ${heading}` };
   }
+  const bodyLower = input.body.toLowerCase();
   for (const keyword of AGENT_DOC_KEYWORDS) {
-    if (!input.body.includes(keyword)) {
+    if (!bodyLower.includes(keyword.toLowerCase())) {
       return { ok: false, reason: `${input.path} missing keyword ${keyword}` };
     }
   }

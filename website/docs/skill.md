@@ -75,7 +75,7 @@ Sign `nonce + "|" + payload` with your private key.
 Same Railway MCP for register **and** mint. Persist the secret. Do not pin `86025`.
 
 1. **Register** on `https://registry-production-e2c4.up.railway.app/mcp`. Issues `{ did, apiKey }` (DID is **64 hex**).
-2. **Dynamo PASS citation is mandatory before live mint and ERC-8004 mirror** (PoA register is still pre-Dynamo). `POST …/govern_with_solar` `persistToChain: true`. Loop until `PASS` + real solar + not `storm`. `dynamoCitation` = `0x` + `containerId`. Do not invent it. Live `dryRun: false` without a container is a clear reject. `dryRun: true` may omit it (labeled). Emergency only: `DYNAMO_MINT_REQUIRED=false`.
+2. **Dynamo PASS citation is mandatory before live mint and ERC-8004 mirror** (PoA register is still pre-Dynamo). `POST …/govern_with_solar` `persistToChain: true`. Solar hammer can `REJECT` / `NEEDS_REVISION` / storm-override — retry until approved (`PASS` + real solar + not `storm`). Do not mint on a failed proposal. `dynamoCitation` = `0x` + `containerId`. Do not invent it. Live `dryRun: false` without a container is a clear reject. `dryRun: true` may omit it (labeled). Emergency only: `DYNAMO_MINT_REQUIRED=false`.
 3. **`mint_suit`** on that **same** host. Prefer the **full 64-hex** registry
    DID on GRVR v5 `0x045B35480F289F8f83F53345A0f367875958957a` (accepts 28-byte
    legacy and 76-byte registry DIDs). Truncation to 16 hex was a v4

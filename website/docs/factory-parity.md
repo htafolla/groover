@@ -46,8 +46,11 @@ without this gate once; do not call C2 done without the live PASS.
    mirror.** PoA `register_plugin` is still pre-Dynamo (4-turn challenge
    only). `POST https://mcp-production-80e2.up.railway.app/govern_with_solar`
    with `proposal` (mint intent + DID + DNA) and `persistToChain: true`.
-   Loop until `recommendation === 'PASS'` **and** real solar activity present
-   **and** activity ≠ `storm`. Citation =
+   This is a **solar hammer**, not a rubber stamp: `REJECT`,
+   `NEEDS_REVISION`, or storm override can fail the proposal. Retry until
+   approved — loop until `recommendation === 'PASS'` **and** real solar
+   activity present
+   **and** activity ≠ `storm`. Do not mint on a failed hammer. Citation =
    `temporalContainer.containerId` as 32-byte hex `0x…` → `dynamoCitation`.
    Optional `fullBox7D` for Level. Do not invent a citation. Live
    `mint_suit` (`dryRun: false`) and `mirrorGrvrMint` reject a missing or

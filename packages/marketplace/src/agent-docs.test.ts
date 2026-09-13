@@ -92,8 +92,9 @@ describe('website static agent docs', () => {
       expect(body).toBe(readFileSync(marketplace, 'utf8'));
       expect(body).toBe(loadAgentDoc(`/${name}`)?.body);
       expect(body).toContain(AGENT_DOC_HEADINGS[name]);
+      const bodyLower = body.toLowerCase();
       for (const keyword of AGENT_DOC_KEYWORDS) {
-        expect(body).toContain(keyword);
+        expect(bodyLower).toContain(keyword.toLowerCase());
       }
     }
   });
