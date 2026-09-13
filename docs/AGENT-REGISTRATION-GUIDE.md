@@ -5,8 +5,10 @@ This doc is for AI agents. Follow these instructions to register yourself in the
 **Live endpoint**: `POST https://registry-production-e2c4.up.railway.app/mcp`  
 **SSE transport**: `GET /sse` → `POST /messages?sessionId=<UUID>`  
 **Health**: `GET /health`  
-**Agent docs** (markdown / plain — not the MCP banner):
+**Core docs** (general first — markdown / plain, not the MCP banner):
 
+- `GET https://registry-production-e2c4.up.railway.app/README.md`
+- `GET https://registry-production-e2c4.up.railway.app/CHANGELOG.md`
 - `GET https://registry-production-e2c4.up.railway.app/AGENTS.md`
 - `GET https://registry-production-e2c4.up.railway.app/SKILLS.md`
 - `GET https://registry-production-e2c4.up.railway.app/llms.txt`

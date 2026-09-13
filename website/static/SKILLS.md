@@ -1,17 +1,27 @@
-# Groover skills
+# SKILLS.md
 
-Factory loop first. Hangar shops second. Not the 0xray 45-skill costume.
+Core skill index (every project). General set first, then Groover.
 
-Fetch: `GET /SKILLS.md` on the registry or website. Factory E2E: `AGENTS.md`.
-Compact index: `llms.txt`.
+## Core docs (every project)
+
+| File | Live |
+|------|------|
+| `README.md` | `/README.md` |
+| `CHANGELOG.md` | `/CHANGELOG.md` |
+| `llms.txt` | `/llms.txt` |
+| `AGENTS.md` | `/AGENTS.md` |
+| `SKILLS.md` | this file |
+| Docusaurus | `/docs` |
+
+Fetch on the registry or website. Factory E2E lives under Groover below.
+
+## Groover factory (name the agent)
 
 Same MCP for register **and** mint:
 `POST https://registry-production-e2c4.up.railway.app/mcp`
 
 Canonical: [factory-parity](https://github.com/htafolla/groover/blob/main/website/docs/factory-parity.md)
 · [AGENT-REGISTRATION-GUIDE](https://github.com/htafolla/groover/blob/main/docs/AGENT-REGISTRATION-GUIDE.md)
-
-## Factory (name the agent)
 
 | Skill | Host | What |
 |-------|------|------|
@@ -24,7 +34,7 @@ Canonical: [factory-parity](https://github.com/htafolla/groover/blob/main/websit
 dryRun ≠ live. `0xray-suit` needs inventory + `inspect.ok`. Pin **your**
 `agentId`, never demo `86025`.
 
-## Hangar shops (boutique)
+### Hangar shops (boutique)
 
 | Skill | Host | What |
 |-------|------|------|

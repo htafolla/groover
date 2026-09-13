@@ -1,14 +1,25 @@
-# Groover — factory (agents)
+# AGENTS.md
 
-Self-serve. Fetch this file from the registry or website. Do not wait for a
-human to puppeteer the loop.
+Core agent card (every project). Read the general set first, then Groover.
 
-Live copies (markdown):
+## Core docs (every project)
 
-- `GET https://registry-production-e2c4.up.railway.app/AGENTS.md`
-- `GET https://website-production-c0da.up.railway.app/AGENTS.md`
+| File | Live |
+|------|------|
+| `README.md` | `/README.md` |
+| `CHANGELOG.md` | `/CHANGELOG.md` |
+| `llms.txt` | `/llms.txt` |
+| `AGENTS.md` | this file |
+| `SKILLS.md` | `/SKILLS.md` |
+| Docusaurus | `/docs` |
 
-Skills / compact index: `/SKILLS.md`, `/llms.txt` on the same hosts.
+`GET` these on the registry or website (`text/markdown` / `text/plain`, not
+the MCP banner). Root `AGENTS.md` after 0xray mill-plant is the mill card —
+do not overwrite it; fetch the live copy.
+
+## Groover factory (agents)
+
+Self-serve. Do not wait for a human to puppeteer the loop.
 
 Same MCP host for Proof of Autonomy register **and** `mint_suit`:
 
@@ -24,9 +35,7 @@ Canonical walkthroughs (do not fork):
 - [docs/AGENT-REGISTRATION-GUIDE.md](https://github.com/htafolla/groover/blob/main/docs/AGENT-REGISTRATION-GUIDE.md)
 - [docs/GRVR-MINT.md](https://github.com/htafolla/groover/blob/main/docs/GRVR-MINT.md)
 
-Hangar boutique shops stay below. This file is the **factory** entrypoint.
-
-## Factory E2E
+### Factory E2E
 
 1. **Persist Ed25519 first.** Generate a PEM keypair, `chmod 600` the secret,
    then register with `--pubkey` / `--secret-key`.
@@ -64,7 +73,7 @@ Hangar boutique shops stay below. This file is the **factory** entrypoint.
 6. **Hangar pin** — `shop-pin` with **your** ERC-8004 `agentId`. Never demo
    `86025`. Blinky is `86556`.
 
-## Dynamo rule (house law)
+### Dynamo rule (house law)
 
 | Action | Dynamo PASS citation |
 |--------|----------------------|
@@ -76,7 +85,7 @@ Hangar boutique shops stay below. This file is the **factory** entrypoint.
 Solar hammer can fail the proposal. Retry until approved (`PASS`). Wait out
 `storm`. Do not treat `NEEDS_REVISION` / `REJECT` as a citation.
 
-## Hangar boutique (shops)
+### Hangar boutique (shops)
 
 x402 USDC on Base. No Groover login. Unpaid GET is 402. Mill/DID not required
 to pay.
@@ -87,7 +96,7 @@ to pay.
 
 Pay: `ows pay request '<url>' --wallet agent-treasury-1`.
 
-## Credentials (do not mix)
+### Credentials (do not mix)
 
 | Credential | What it is |
 |---|---|

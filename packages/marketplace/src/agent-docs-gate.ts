@@ -2,14 +2,16 @@
  * Enforceable agent-docs gate. Missing files or the MCP catch-all banner fail.
  * CI curls a Railway-shaped local registry. Task C2 ship-ready curls live hosts.
  */
-import { AGENT_DOC_FILES, type AgentDocPath } from './agent-docs.js';
+import { AGENT_DOC_FILES, FACTORY_DOC_PATHS, type AgentDocPath } from './agent-docs.js';
 
 export const MCP_REGISTRY_BANNER = 'Groover MCP Registry active';
 
 export const AGENT_DOC_HEADINGS: Record<string, string> = {
-  'AGENTS.md': '# Groover — factory (agents)',
-  'SKILLS.md': '# Groover skills',
-  'llms.txt': '# groover',
+  'README.md': '# Groover',
+  'CHANGELOG.md': '# Changelog',
+  'AGENTS.md': '# AGENTS.md',
+  'SKILLS.md': '# SKILLS.md',
+  'llms.txt': '# llms.txt',
 };
 
 export const AGENT_DOC_KEYWORDS = [
@@ -26,6 +28,10 @@ export const AGENT_DOC_PATHS = Object.keys(AGENT_DOC_FILES) as AgentDocPath[];
 
 export type AgentDocEvaluation = { ok: true } | { ok: false; reason: string };
 
+function isFactoryDocPath(path: string): boolean {
+  return (FACTORY_DOC_PATHS as readonly string[]).includes(path);
+}
+
 export function evaluateAgentDocResponse(input: {
   path: string;
   status: number;
@@ -35,7 +41,7 @@ export function evaluateAgentDocResponse(input: {
   if (input.status !== 200) {
     return { ok: false, reason: `${input.path} HTTP ${input.status} (missing)` };
   }
-  if (input.body.includes(MCP_REGISTRY_BANNER)) {
+  if (input.body.trimStart().startsWith(MCP_REGISTRY_BANNER)) {
     return { ok: false, reason: `${input.path} returned MCP catch-all banner` };
   }
   const lowered = input.body.slice(0, 200).toLowerCase();
@@ -50,6 +56,9 @@ export function evaluateAgentDocResponse(input: {
   const heading = AGENT_DOC_HEADINGS[file];
   if (heading && !input.body.includes(heading)) {
     return { ok: false, reason: `${input.path} missing heading ${heading}` };
+  }
+  if (!isFactoryDocPath(input.path)) {
+    return { ok: true };
   }
   const bodyLower = input.body.toLowerCase();
   for (const keyword of AGENT_DOC_KEYWORDS) {

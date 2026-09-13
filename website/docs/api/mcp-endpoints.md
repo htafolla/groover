@@ -194,20 +194,25 @@ List all integrated MCP servers with their roles and key tools.
 
 ## Agent docs (HTTP GET)
 
-Markdown / plain files. **Not** the MCP catch-all banner. Factory E2E lives
-here. PoA register does not require Dynamo; live mint/mirror do.
+General core set first, then Groover-specific pages. Markdown / plain.
+**Not** the MCP catch-all banner.
 
-| Path | Type |
-|------|------|
-| `/AGENTS.md` | `text/markdown` |
-| `/SKILLS.md` | `text/markdown` |
-| `/llms.txt` | `text/plain` |
+| Path | Type | Role |
+|------|------|------|
+| `/README.md` | `text/markdown` | Core |
+| `/CHANGELOG.md` | `text/markdown` | Core |
+| `/AGENTS.md` | `text/markdown` | Core + factory E2E |
+| `/SKILLS.md` | `text/markdown` | Core + factory + shops |
+| `/llms.txt` | `text/plain` | Core + factory + shops |
 
-Website static serves the same three files at the site root after deploy.
+Docusaurus is `/docs` (this site). Website static serves the same files at
+the site root after deploy.
 
-Task C2 ship-ready: `npx tsx deploy/check-agent-docs.ts` against live
-registry **and** website after deploy. CI curls a local Railway-shaped
-registry; that is not live evidence.
+Task C2 ship-ready (acceptance): live curl **200** for `/AGENTS.md`
+`/SKILLS.md` `/llms.txt` on registry **and** website after deploy
+(`npx tsx deploy/check-agent-docs.ts`). CI curls a local Railway-shaped
+registry; that is not live evidence. README + CHANGELOG must also be 200
+markdown, not the banner.
 
 ## Health Check
 

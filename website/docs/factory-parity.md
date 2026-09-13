@@ -9,10 +9,12 @@ demo `86025`. Do not claim `0xray-suit` works until **live** mint is green.
 
 UI: **[/suit](/suit)** — mill plant → register → mint → pin → shops.
 
-Agent-readable copies (path-as-root static + registry HTTP):
+Core docs first (every project), then Groover-specific. Path-as-root static
++ registry HTTP (`text/markdown` / `text/plain`, not the MCP banner):
 
-- `GET /AGENTS.md` · `GET /SKILLS.md` · `GET /llms.txt` on this website
-- same paths on `https://registry-production-e2c4.up.railway.app` (`text/markdown` / `text/plain`, not the MCP banner)
+- General: `GET /README.md` · `/CHANGELOG.md` · `/AGENTS.md` · `/SKILLS.md` · `/llms.txt`
+- Docusaurus: `/docs` (this site)
+- Groover: this page, [Registration](./registration.md), [SKILL](./skill.md)
 
 **Task C2 (ship-ready):** CI green is not enough. After registry + website
 deploy, live curl evidence is mandatory — same checker, both hosts:

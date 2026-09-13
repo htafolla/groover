@@ -38,7 +38,7 @@ describe('registry agent-doc HTTP routes', () => {
   });
 
   it.each(Object.entries(AGENT_DOC_FILES))(
-    'GET %s returns 200 with factory headings/keywords',
+    'GET %s returns 200 and is not the MCP banner',
     async (route, spec) => {
       const res = await fetch(`${baseUrl}${route}`);
       const text = await res.text();
@@ -51,7 +51,10 @@ describe('registry agent-doc HTTP routes', () => {
           body: text,
         }),
       ).toEqual({ ok: true });
-      expect(text).toContain('shop-pin');
+      if (route === '/AGENTS.md' || route === '/SKILLS.md' || route === '/llms.txt') {
+        expect(text).toContain('shop-pin');
+      }
+      expect(text).toMatch(/Core docs \(every project\)|# Changelog/);
     },
   );
 
@@ -63,7 +66,7 @@ describe('registry agent-doc HTTP routes', () => {
   it('query strings still resolve the markdown file', async () => {
     const res = await fetch(`${baseUrl}/AGENTS.md?src=agent`);
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain('# Groover — factory (agents)');
+    expect(await res.text()).toContain('# AGENTS.md');
   });
 
   it('unknown GET still returns the MCP banner', async () => {
@@ -82,8 +85,9 @@ describe('website static agent docs', () => {
     expect(gitignore).toContain('!website/static/SKILLS.md');
   });
 
-  it('ships matching AGENTS.md, SKILLS.md, llms.txt at static root', () => {
-    for (const name of ['AGENTS.md', 'SKILLS.md', 'llms.txt'] as const) {
+  it('ships matching core docs at static root (general first)', () => {
+    const names = ['README.md', 'CHANGELOG.md', 'AGENTS.md', 'SKILLS.md', 'llms.txt'] as const;
+    for (const name of names) {
       const marketplace = path.join(marketplaceDocs, name);
       const website = path.join(websiteStatic, name);
       expect(existsSync(marketplace)).toBe(true);
@@ -92,10 +96,16 @@ describe('website static agent docs', () => {
       expect(body).toBe(readFileSync(marketplace, 'utf8'));
       expect(body).toBe(loadAgentDoc(`/${name}`)?.body);
       expect(body).toContain(AGENT_DOC_HEADINGS[name]);
-      const bodyLower = body.toLowerCase();
+    }
+    for (const name of ['AGENTS.md', 'SKILLS.md', 'llms.txt'] as const) {
+      const bodyLower = readFileSync(path.join(websiteStatic, name), 'utf8').toLowerCase();
       for (const keyword of AGENT_DOC_KEYWORDS) {
         expect(bodyLower).toContain(keyword.toLowerCase());
       }
     }
+    const rootReadme = readFileSync(path.join(repoRoot, 'README.md'), 'utf8');
+    const rootChangelog = readFileSync(path.join(repoRoot, 'CHANGELOG.md'), 'utf8');
+    expect(rootReadme).toBe(readFileSync(path.join(marketplaceDocs, 'README.md'), 'utf8'));
+    expect(rootChangelog).toBe(readFileSync(path.join(marketplaceDocs, 'CHANGELOG.md'), 'utf8'));
   });
 });

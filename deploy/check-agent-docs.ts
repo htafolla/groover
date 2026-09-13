@@ -53,7 +53,7 @@ async function main(): Promise<void> {
     for (const reason of reasons) {
       writeLine(`FAIL ${reason}`);
     }
-    writeLine('Task C2 not ship-ready: a host is missing /AGENTS.md|/SKILLS.md|/llms.txt or returned the MCP banner.');
+    writeLine('Task C2 not ship-ready: a host is missing a core doc or returned the MCP banner. Acceptance: /AGENTS.md /SKILLS.md /llms.txt must be 200 on website+registry.');
     process.exit(1);
   }
   writeLine('PASS agent-docs HTTP gate (200, factory E2E, not MCP banner)');

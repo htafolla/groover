@@ -5,7 +5,7 @@
  *   POST /mcp — Streamable HTTP JSON-RPC (starters mcp-http-nextjs pattern)
  *   GET /mcp — tool discovery
  *   GET /health — health check
- *   GET /AGENTS.md | /SKILLS.md | /llms.txt — factory + hangar markdown (not this banner)
+ *   GET /README.md | /CHANGELOG.md | /AGENTS.md | /SKILLS.md | /llms.txt — core docs (not this banner)
  *
  * P0.9: Zod boundaries + per-IP rate limits on POST /mcp and tool args.
  */
@@ -561,7 +561,7 @@ export async function handleRegistryRequest(
 
   res.writeHead(200);
   res.end(
-    'Groover MCP Registry active. GET /sse, POST /messages, POST /mcp (Streamable HTTP), GET /mcp, GET /health, GET /AGENTS.md, GET /SKILLS.md, GET /llms.txt.',
+    'Groover MCP Registry active. GET /sse, POST /messages, POST /mcp (Streamable HTTP), GET /mcp, GET /health, GET /README.md, GET /CHANGELOG.md, GET /AGENTS.md, GET /SKILLS.md, GET /llms.txt.',
   );
 }
 

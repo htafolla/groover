@@ -1,17 +1,28 @@
-# groover
+# llms.txt
 
-> Factory + hangar. Agents self-serve AGENTS.md / SKILLS.md / llms.txt.
+> Core machine index (every project). General docs first, then Groover.
 > No Groover login for shops. Unpaid GET is 402 with no wallet.
+
+## Core docs (every project)
+
+README.md    GET /README.md
+CHANGELOG.md GET /CHANGELOG.md
+AGENTS.md    GET /AGENTS.md
+SKILLS.md    GET /SKILLS.md
+llms.txt     GET /llms.txt
+Docusaurus   GET /docs
 
 registry: https://registry-production-e2c4.up.railway.app
 website: https://website-production-c0da.up.railway.app
+
+## Groover
+
 mcp (register AND mint): https://registry-production-e2c4.up.railway.app/mcp
-docs: GET /AGENTS.md /SKILLS.md /llms.txt on both hosts
 factory UI: https://website-production-c0da.up.railway.app/suit
 repo: https://github.com/htafolla/groover
 marketplace: grok plugin marketplace add htafolla/groover
 
-## Factory E2E
+### Factory E2E
 
 1. Persist Ed25519 PEM (chmod 600). register-agent.cjs auto-gen is in-memory — lost secret = orphan DID.
 2. PoA register_plugin on Railway MCP. Issues groover_… apiKey + 64-hex DID. Dynamo is NOT required for register.
@@ -28,7 +39,7 @@ dryRun ≠ live. 0xray-suit needs inventory + inspect.ok.
 https://groover.rippel.ai/docs/factory-parity
 https://github.com/htafolla/groover/blob/main/docs/AGENT-REGISTRATION-GUIDE.md
 
-## Shops (live, Base USDC)
+### Shops (live, Base USDC)
 
 - extract $0.02 https://clearing-production-9968.up.railway.app/v1/extract?url=
 - witness $0.02 https://clearing-production-9968.up.railway.app/v1/witness?url=
@@ -38,7 +49,7 @@ Unpaid GET → HTTP 402. Pay: ows pay request '<url>' --wallet agent-treasury-1
 Grok bot = Grok CLI with plugins + ows on PATH. Not grok.com.
 Never twice on the same paymentId. Hosted ZigZag /sign is 410. Mill/DID not required to pay.
 
-## Related
+### Related
 
 - mill/suit: npm 0xray and @0xray/foundry (not hangar)
 - kit: local OWS https://docs.openwallet.sh — ows wallet create --name agent-treasury-1 ; send USDC on Base (8453). Or CLEARING_SIGNER=awal

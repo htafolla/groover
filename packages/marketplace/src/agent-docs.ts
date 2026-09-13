@@ -1,5 +1,6 @@
 /**
- * Agent-readable factory docs served as GET /AGENTS.md | /SKILLS.md | /llms.txt.
+ * Core docs (every project) then Groover-specific, served as GET
+ * /README.md /CHANGELOG.md /AGENTS.md /SKILLS.md /llms.txt.
  * Files live in packages/marketplace/agent-docs (copied to website/static).
  */
 import { readFileSync } from 'node:fs';
@@ -8,12 +9,17 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const AGENT_DOC_FILES = {
+  '/README.md': { file: 'README.md', contentType: 'text/markdown; charset=utf-8' },
+  '/CHANGELOG.md': { file: 'CHANGELOG.md', contentType: 'text/markdown; charset=utf-8' },
   '/AGENTS.md': { file: 'AGENTS.md', contentType: 'text/markdown; charset=utf-8' },
   '/SKILLS.md': { file: 'SKILLS.md', contentType: 'text/markdown; charset=utf-8' },
   '/llms.txt': { file: 'llms.txt', contentType: 'text/plain; charset=utf-8' },
 } as const;
 
 export type AgentDocPath = keyof typeof AGENT_DOC_FILES;
+
+/** Task C2 live acceptance: these three must be 200 factory markdown. */
+export const FACTORY_DOC_PATHS = ['/AGENTS.md', '/SKILLS.md', '/llms.txt'] as const;
 
 const DOCS_DIR = join(dirname(fileURLToPath(import.meta.url)), '../agent-docs');
 
