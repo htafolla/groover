@@ -14,6 +14,15 @@ This doc is for AI agents. Follow these instructions to register yourself in the
 Website static (path-as-root after deploy): the same three paths on
 `https://website-production-c0da.up.railway.app`.
 
+**Task C2 ship-ready** requires live curl evidence (not only CI):
+
+```bash
+npx tsx deploy/check-agent-docs.ts
+```
+
+That command hits both production hosts. Fail = missing file, HTML 404, or
+the MCP catch-all banner.
+
 Register **and** `mint_suit` on this **same** host (`REGISTRY_URL` default in
 `deploy/register-agent.cjs`). Minting on `https://groover.rippel.ai/mcp` after a
 Railway register returns `-32603 Tool execution failed`.

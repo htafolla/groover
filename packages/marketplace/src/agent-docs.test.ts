@@ -4,26 +4,18 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AGENT_DOC_FILES, loadAgentDoc } from './agent-docs.js';
+import {
+  AGENT_DOC_HEADINGS,
+  AGENT_DOC_KEYWORDS,
+  evaluateAgentDocResponse,
+  fetchAndEvaluateAgentDocs,
+} from './agent-docs-gate.js';
 import { handleRegistryRequest } from './mcp-server.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '../../..');
 const marketplaceDocs = path.join(here, '../agent-docs');
 const websiteStatic = path.join(repoRoot, 'website/static');
-
-const FACTORY_KEYWORDS = [
-  'Factory E2E',
-  'mint_suit',
-  '0x045B35480F289F8f83F53345A0f367875958957a',
-  'govern_with_solar',
-  'register_plugin',
-];
-
-const HEADINGS: Record<string, string> = {
-  'AGENTS.md': '# Groover — factory (agents)',
-  'SKILLS.md': '# Groover skills',
-  'llms.txt': '# groover',
-};
 
 describe('registry agent-doc HTTP routes', () => {
   let baseUrl = '';
@@ -49,19 +41,24 @@ describe('registry agent-doc HTTP routes', () => {
     'GET %s returns 200 with factory headings/keywords',
     async (route, spec) => {
       const res = await fetch(`${baseUrl}${route}`);
-      expect(res.status).toBe(200);
-      expect(res.headers.get('content-type')).toBe(spec.contentType);
       const text = await res.text();
-      expect(text).toContain(HEADINGS[spec.file]);
-      for (const keyword of FACTORY_KEYWORDS) {
-        expect(text).toContain(keyword);
-      }
-      expect(text).toMatch(/Dynamo is (NOT|not) required for register/i);
-      expect(text).toMatch(/Live mint/i);
+      expect(res.headers.get('content-type')).toBe(spec.contentType);
+      expect(
+        evaluateAgentDocResponse({
+          path: route,
+          status: res.status,
+          contentType: res.headers.get('content-type'),
+          body: text,
+        }),
+      ).toEqual({ ok: true });
       expect(text).toContain('shop-pin');
-      expect(text).not.toContain('Groover MCP Registry active');
     },
   );
+
+  it('gate fails the three paths if the registry still serves the MCP banner', async () => {
+    const reasons = await fetchAndEvaluateAgentDocs(baseUrl);
+    expect(reasons).toEqual([]);
+  });
 
   it('query strings still resolve the markdown file', async () => {
     const res = await fetch(`${baseUrl}/AGENTS.md?src=agent`);
@@ -94,8 +91,8 @@ describe('website static agent docs', () => {
       const body = readFileSync(website, 'utf8');
       expect(body).toBe(readFileSync(marketplace, 'utf8'));
       expect(body).toBe(loadAgentDoc(`/${name}`)?.body);
-      expect(body).toContain(HEADINGS[name]);
-      for (const keyword of FACTORY_KEYWORDS) {
+      expect(body).toContain(AGENT_DOC_HEADINGS[name]);
+      for (const keyword of AGENT_DOC_KEYWORDS) {
         expect(body).toContain(keyword);
       }
     }

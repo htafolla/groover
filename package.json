@@ -10,6 +10,8 @@
     "build": "tsc -b",
     "dev": "turbo run dev",
     "test": "vitest run",
+    "check:agent-docs": "tsx deploy/check-agent-docs.ts",
+    "check:agent-docs:ci": "tsx deploy/check-agent-docs.ts --base http://127.0.0.1:3456",
     "triage:stack": "tsx deploy/triage-stack.ts",
     "triage:engage-dry": "tsx deploy/engage-dry-run.ts",
     "triage:engage-loop": "tsx deploy/engage-dry-run.ts --loops 3 --delay-ms 8000",

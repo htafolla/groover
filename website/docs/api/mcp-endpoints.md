@@ -205,6 +205,10 @@ here. PoA register does not require Dynamo; live mint/mirror do.
 
 Website static serves the same three files at the site root after deploy.
 
+Task C2 ship-ready: `npx tsx deploy/check-agent-docs.ts` against live
+registry **and** website after deploy. CI curls a local Railway-shaped
+registry; that is not live evidence.
+
 ## Health Check
 
 ```

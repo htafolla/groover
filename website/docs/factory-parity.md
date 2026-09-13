@@ -14,6 +14,19 @@ Agent-readable copies (path-as-root static + registry HTTP):
 - `GET /AGENTS.md` · `GET /SKILLS.md` · `GET /llms.txt` on this website
 - same paths on `https://registry-production-e2c4.up.railway.app` (`text/markdown` / `text/plain`, not the MCP banner)
 
+**Task C2 (ship-ready):** CI green is not enough. After registry + website
+deploy, live curl evidence is mandatory — same checker, both hosts:
+
+```bash
+npx tsx deploy/check-agent-docs.ts \
+  --base https://registry-production-e2c4.up.railway.app \
+  --base https://website-production-c0da.up.railway.app
+```
+
+(`npx tsx deploy/check-agent-docs.ts` with no args hits those two hosts.)
+Fails on HTTP ≠ 200, HTML 404, or `Groover MCP Registry active`. We released
+without this gate once; do not call C2 done without the live PASS.
+
 **Dynamo:** PoA `register_plugin` does **not** require a PASS citation. Live
 `mint_suit` and ERC-8004 mirror **do**.
 
