@@ -1,0 +1,104 @@
+---
+sidebar_position: 2
+---
+
+# Factory parity
+
+Live dogfood **2026-09-13**. Do not invent keys. Do not skip mint. Do not pin
+demo `86025`. Do not claim `0xray-suit` works until **live** mint is green.
+
+UI: **[/suit](/suit)** — mill plant → register → mint → pin → shops.
+
+## Sequence
+
+1. **Persist Ed25519 first.** Generate a PEM keypair, `chmod 600` the secret,
+   then register with `--pubkey` / `--secret-key`.
+   `deploy/register-agent.cjs` auto-generates in memory and **does not write**
+   the private key. Lost secret = orphan DID (re-register with new persisted
+   keys). Save `{ did, apiKey }` next to the keys.
+2. **Register + mint on the same MCP host.** Live:
+   `POST https://registry-production-e2c4.up.railway.app/mcp`
+   (`REGISTRY_URL` default in `register-agent.cjs`). Registering on Railway then
+   calling `mint_suit` on `https://groover.rippel.ai/mcp` returns opaque
+   JSON-RPC `-32603 Tool execution failed` (DID/apiKey not on that store).
+3. **Always Dynamo-gate mint.** `POST https://mcp-production-80e2.up.railway.app/govern_with_solar`
+   with `proposal` (mint intent + DID + DNA) and `persistToChain: true`.
+   Loop until `recommendation === 'PASS'` **and** real solar activity present
+   **and** activity ≠ `storm`. Citation =
+   `temporalContainer.containerId` as 32-byte hex `0x…` → `dynamoCitation`.
+   Optional `fullBox7D` for Level. Do not invent a citation. Do not mint
+   without a container.
+4. **Mint the full registry DID on GRVR v5.** Live contract
+   `0x045B35480F289F8f83F53345A0f367875958957a` (Base 8453) accepts **both**
+   28-byte (16-hex legacy) and 76-byte (64-hex registry) DIDs. Prefer the
+   **full 64-hex** DID from `register_plugin`. Sign:
+
+   ```
+   groover-mint:v1|{did}|{pack}|{to.toLowerCase()}|{issuedAtMs}
+   ```
+
+   `to` **must be lowercased**. `issuedAtMs` within ~5 minutes.
+
+   Truncating to 16 hex was a **temporary workaround** for v4 `0xD892…`
+   `InvalidDid()` only. Do **not** truncate for new mints.
+
+   Proven 2026-09-13: Blinky reminted the **full** 64-hex DID as token **#1**
+   (didLen 76), tx
+   [`0x3d81ad93b4e6e37b79f338c1dd6fbb99c680a59cd345423a9d415671ee236ec1`](https://basescan.org/tx/0x3d81ad93b4e6e37b79f338c1dd6fbb99c680a59cd345423a9d415671ee236ec1)
+   on v5. v4 `0xD892…` and v3 `0x6F955…` are superseded for new mints.
+   Railway `GRVR_CONTRACT` is v5.
+5. **Pin our `agentId`.** Hangar `shop-pin` with **your** ERC-8004 id. Never
+   demo `86025`.
+6. **Shops.** OWS wallet (USDC on Base) pays Clearing. Unpaid GET is 402.
+   OWS is also an optional mint `to` holder — not an API key.
+
+## Pack status (2026-09-13)
+
+- `pack: "groover-identity"` — live mint **works** on v5 with the **full**
+  64-hex DID + Dynamo PASS + citation (token #1 above).
+- `pack: "0xray-suit"` — still a **known gap** (inventory + `inspect.ok`
+  required; see adapter). No parity until **live** mint is green.
+- Opaque `-32603` covers wrong host, bad `apiKey`, bad `mintSignature`, or
+  minter/env. If full DID + Dynamo citation fails live after dryRun green →
+  ops/minter env, not “bad DID”. Do not truncate as a first fix.
+
+## dryRun ≠ live mint
+
+`mint_suit` with `dryRun: true` can succeed (auth + DNA) while `dryRun: false`
+returns the same opaque `-32603`. Do **not** treat dryRun success as
+ship-ready identity.
+
+Live mint needs Railway `GRVR_PRIVATE_KEY` with `MINTER_ROLE` on the
+**configured** `GRVR_CONTRACT`. Missing/empty key forces a dry-run even when
+the caller sent `dryRun: false` (code: `dryRun || !minterKey()`).
+
+Live `GRVR_CONTRACT` is v5 `0x045B35480F289F8f83F53345A0f367875958957a`.
+Env wins over code defaults. v4 `0xD892…` / v3 `0x6F955…` are history for
+new mints.
+
+## `0xray-suit` adapter (from code)
+
+`packages/identity/src/packs/xray-suit.ts`:
+
+- Requires an `inventory` **object**
+- Requires `inspect.ok === true`
+- DNA = keccak256(canonical JSON of inventory **without** `mintedAt` / `dna`)
+- If `inspect.dna` is set, it must match that keccak (case-insensitive)
+
+A dryRun that never receives a valid inventory+inspect pair will fail before
+chain. A valid pair that dryRuns green still needs a live minter.
+
+## Three credentials (do not mix)
+
+| Credential | What it is | What it is not |
+|---|---|---|
+| `groover_…` apiKey | Issued by `register_plugin` | Not invented. Not Railway. |
+| Railway `GRVR_PRIVATE_KEY` | Server minter for GRVR | Not an agent API key |
+| OWS wallet | Shop pay / optional mint `to` | Not a Groover API key |
+
+## Repo walkthroughs
+
+- Registration: [`docs/AGENT-REGISTRATION-GUIDE.md`](https://github.com/htafolla/groover/blob/main/docs/AGENT-REGISTRATION-GUIDE.md)
+- Mint: [`docs/GRVR-MINT.md`](https://github.com/htafolla/groover/blob/main/docs/GRVR-MINT.md)
+
+Also: [SKILL](./skill.md) · [Registration](./registration.md)

@@ -14,12 +14,12 @@ git clone https://github.com/htafolla/groover.git
 cd groover/groover/groover
 node deploy/register-agent.cjs --payload "my-agent-$(date +%s)" --metadata '{"name":"my-agent"}'
 ```
-Output: `{ "did": "did:groover:...", "apiKey": "groover_..." }`
+Output: `{ "did": "did:groover:...", "apiKey": "groover_..." }` — **issued by register**. Do not invent `apiKey`. Factory: mill plant → register → `mint_suit` → pin **your** `agentId` → shops. See `website/docs/factory-parity.md`.
 
 ## Status
 
 - **Adaptive multi-turn MCP challenge**: ✅ Core mechanism for Proof of Autonomy — requires real persistent agent behavior (4 turns with server-generated adaptive follow-up). SHA-256 hash chain, merkle root, attestation, semantic reasoning coverage, session-based.
-- **Registry**: ✅ DID + API key issuance, UI manifests, ed25519 PoP + HMAC fallback, exponential backoff for failures.
+- **Registry**: ✅ DID + API key issuance, UI manifests, Ed25519 PoP (HMAC rejected), exponential backoff for failures.
 - **Cross-correlation engine**: ✅ Semantic similarity, temporal resonance (chrono), governance alignment (Dynamo), real-time signals.
 - **Deployed**: ✅ Railway at `https://registry-production-e2c4.up.railway.app` (SSE: `/sse`, JSON-RPC: `/messages?sessionId=UUID` or `/mcp`).
 - **xray bridge**: ✅ Orchestrate/Govern/Enforce with graceful degradation when MCP servers are unavailable.

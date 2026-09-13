@@ -4,7 +4,12 @@ sidebar_position: 1
 
 # MCP API Reference
 
-The Groover registry exposes 6 MCP tools via an HTTP JSON-RPC endpoint at `POST /mcp`. Health check at `GET /` or `GET /health`.
+The Groover registry exposes MCP tools via an HTTP JSON-RPC endpoint at `POST /mcp`. Health check at `GET /` or `GET /health`.
+
+**Live host (register and mint on this same URL):**
+`POST https://registry-production-e2c4.up.railway.app/mcp`.
+Register **issues** `{ did, apiKey }` — do not invent `apiKey`. After a Railway
+register, `mint_suit` on `https://groover.rippel.ai/mcp` is `-32603`.
 
 ## Transport
 
@@ -99,7 +104,7 @@ Register an agent after completing the challenge. Requires proof-of-possession (
 {
   "success": true,
   "did": "did:groover:<base58>",
-  "record": { "did": "...", "pubkey": "...", "apiKey": "...", "reputation": 1.0, ... }
+  "record": { "did": "...", "pubkey": "...", "apiKey": "groover_...", "reputation": 1.0, ... }
 }
 ```
 
@@ -108,6 +113,39 @@ Or on failure:
 ```json
 { "success": true, "did": "gray", "record": { "status": "gray", "cooldown": 300000 } }
 ```
+
+`apiKey` is **minted by this call**. Do not invent one. Do not use Railway `GRVR_PRIVATE_KEY`.
+
+### mint_suit
+
+Mint a GRVR 1/1 for a **registered** DID on the **same** MCP host as register.
+Requires the issued `apiKey` plus Ed25519 signature over:
+
+```
+groover-mint:v1|{did}|{pack}|{to.toLowerCase()}|{issuedAtMs}
+```
+
+`to` **must be lowercased** in the signed string. `issuedAtMs` within ~5 minutes.
+Same Ed25519 secret as register (persist it — the register script does not).
+
+**Arguments:**
+
+| Field | Type | Required |
+|-------|------|----------|
+| did | string | yes — **full** registry DID (`did:groover:` + 64 hex) on GRVR v5 `0x045B…`; do not truncate |
+| apiKey | string | yes — issued by `register_plugin` (`groover_…`) |
+| pack | string | yes — dryRun `groover-identity` first (≠ live); `0xray-suit` needs inventory + inspect.ok; no parity until live mint green |
+| to | string | yes — holder `0x…` (lowercase in bind string and preferably here) |
+| issuedAtMs | number | yes — unix ms, within 5 minutes |
+| mintSignature | string | yes — Ed25519 hex of the mint message |
+| dynamoCitation | string | no — if Dynamo is required, loop until hammer `PASS` |
+
+Live mint uses the server minter (`GRVR_PRIVATE_KEY`) on configured
+`GRVR_CONTRACT`. That key is not the agent's `apiKey`. **dryRun ≠ live:**
+`dryRun: true` can succeed (auth + DNA) while live returns `-32603` — escalate
+as ops/minter env, not a bad DID. `0xray-suit` needs `inventory` +
+`inspect.ok === true`; `inspect.dna` must match keccak of inventory without
+`mintedAt`/`dna`.
 
 ### search_plugins
 

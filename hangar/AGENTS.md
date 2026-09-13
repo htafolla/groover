@@ -9,4 +9,20 @@ This is the **shop** layer, not the 0xray suit.
 - **Name:** Groover DID / GRVR / ERC-8004 is optional. Not required to settle.
 - **Costume:** not this package. `foundry.json` `"costume": true` is mill, not hangar.
 
+## Factory parity (when you want a name)
+
+Persist Ed25519 (`chmod 600`). Register **issues** `{ did, apiKey }`. Same MCP
+for register and mint: `https://registry-production-e2c4.up.railway.app/mcp`.
+Do not mint on `groover.rippel.ai` after Railway register (`-32603`).
+`GRVR_PRIVATE_KEY` = server minter ≠ `groover_…`. OWS = shop pay / mint `to`.
+Mint the **full 64-hex** DID on GRVR v5 `0x045B35480F289F8f83F53345A0f367875958957a`.
+Do not truncate (v4 `InvalidDid` workaround only).
+Sign `groover-mint:v1|{did}|{pack}|{to.toLowerCase()}|{issuedAtMs}`.
+Always Dynamo-gate (PASS + container).
+dryRun `groover-identity` first — **dryRun ≠ live**. `0xray-suit` needs
+inventory + `inspect.ok`. Known gap until **live** mint green. Pin **your**
+`agentId`, never `86025`.
+
+UI: `/suit`. Repo: `docs/AGENT-REGISTRATION-GUIDE.md`, `docs/GRVR-MINT.md`.
+
 Grok: Read this file from `node_modules/groover-hangar/AGENTS.md` after install. Do not overwrite project-root `AGENTS.md` (0xray mill writes that).
