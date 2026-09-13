@@ -18,33 +18,38 @@ Builtin:
 | `groover-identity` | keccak256(did) |
 | `0xray-suit` | keccak256(canonical mill inventory without `mintedAt`/`dna`); requires `inspect.ok` |
 
-## Base mainnet (live) — v3 on-chain SVG
+## Base mainnet (live) — v5 on-chain SVG
 
-- `0x6F955cA006E2FE951750cac25372e098D6E89743`
-- chain 8453 · https://basescan.org/address/0x6F955cA006E2FE951750cac25372e098D6E89743
-- deploy: `0x9a5e1eb6bdaa1cd43a0181e27e59c5f0e1a820952508e6f77d1a5a8f1d6d47cf`
+| Collection | Address | Status |
+|---|---|---|
+| **v5 live** | `0x045B35480F289F8f83F53345A0f367875958957a` | New mints. 16-hex legacy + **full 64-hex registry DID**. Do not truncate. |
+| v4 | `0xD892D6836ab138a5aE4365dcb05Adb296607d6f9` | Superseded for new mints. Token 2 stays here. |
+| v3 | `0x6F955cA006E2FE951750cac25372e098D6E89743` | Superseded for new mints. |
+| v2 | `0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3` | Superseded. Tokens 1–2 stay here. |
+| v1 | `0x0abcd80C929Ff2f6c308958B112b7925801750D7` | Superseded. Do not mint there. |
+
+- chain 8453 · https://basescan.org/address/0x045B35480F289F8f83F53345A0f367875958957a
 - MINTER_ROLE: `0x77E7A48609e9c8A77C7639172af9EEA0e5E80DF7` (Railway `GRVR_PRIVATE_KEY`)
 - Admin: `0xd45CcF98D6db5A36E7CdD10ffae0b685BF27CE43`
 - `MAX_LEVEL` = 5 · mint is 8 args (`…, dynamoCitation, level, imageSvg`)
 - ABI: `packages/identity/abi/GrooverIdentityToken.v3.json`
-- v2 `0x7b184bf7B7054A7328a1D7851465c6001Bb2AFb3` superseded (tokens 1–2 stay there). Do not mint there.
-- v1 `0x0abcd80C929Ff2f6c308958B112b7925801750D7` superseded. Do not mint there.
+- Mint must pass the **full** registry DID (`did:groover:` + 64 hex). The 16-hex truncation workaround is obsolete — v5 accepts both shapes.
 
 ## Image
 
-**v3 live** (`0x6F955cA0…`): mint 8th arg `imageSvg`. `tokenURI.image` is on-chain `data:image/svg+xml;base64,...`. `IMAGE_BASE` is `external_url` (same Railway URL — do not change the string).
+**v5 live** (`0x045B3548…`): mint 8th arg `imageSvg`. `tokenURI.image` is on-chain `data:image/svg+xml;base64,...`. `IMAGE_BASE` is `external_url` (same Railway URL — do not change the string).
 
 `https://registry-production-e2c4.up.railway.app/identity/token-image/{tokenId}`
 
-Railway `GRVR_CONTRACT` is this v3 address. `mint_suit` sends compact compositor SVG. v3 `totalSupply` starts at 0 — `/identity/token-image/1` 404s until the first v3 mint. v2 pictures stay on `0x7b184bf7…`.
+Railway `GRVR_CONTRACT` is this v5 address. `mint_suit` sends compact compositor SVG. v5 `totalSupply` starts at 0 — `/identity/token-image/1` 404s until the first v5 mint. v4 token 2 stays on `0xD892D683…`. v2 pictures stay on `0x7b184bf7…`.
 
 `IMAGE_BASE` is frozen. Recipe on-chain: `did`, `pack`, `variant`, `dna`, `dynamoCitation`, `level`, `imageSvg`.
 
-**OpenSea traits (v4+):** Visor, Colorway, Chassis, Mark, Level — the picture. DID, pack, variant, DNA, citation, minted are description metadata, not traits. Live v3 `0x6F955cA0…` still emits recipe traits; do not mint token 2 there. Mint ABI is unchanged.
+**OpenSea traits (v4+):** Visor, Colorway, Chassis, Mark, Level — the picture. DID, pack, variant, DNA, citation, minted are description metadata, not traits. Live v5 `0x045B3548…` is the v4+ picture-trait ABI. Do not mint on superseded v4/v3. Mint ABI is unchanged.
 
 **Level** (OpenSea trait `Level`): 0 Unknown, 1 Dissonant, 2 Unstable, 3 Resonant, 4 Celestial. From Dynamo 7D at mint (`fullBox7D` or explicit `level`). ≥0.95 Celestial, ≥0.78 Resonant, ≥0.50 Unstable, scored else Dissonant. **No Dynamo / no 7D → Unknown** (not Dissonant — that is a scored miss). Variant is still visor (`hash(did,dna)%16`), not Level.
 
-Live v3 is `0x6F955cA0…`. Railway `GRVR_CONTRACT` must be that address (env wins over the code default).
+Live v5 is `0x045B3548…`. Railway `GRVR_CONTRACT` must be that address (env wins over the code default).
 
 Railway `GET /identity/token-image/{tokenId}` reads `getTokenData` and returns deterministic SVG (`composeIdentitySvg`). Unique visor meshes (4 hats) × unique chassis (2 packs) × 4 colorway palettes. Banner follows hat. MILL+INSPECT cores only on `0xray-suit`. Not Imagine. Not 1024 PNG plates. Not `sharp`. Tiny SVG (<12KB), sharp at any scale.
 
@@ -135,10 +140,10 @@ Future (Dynamo-side, not GRVR): pass `isotopeType` into Kuramoto from NOAA or fr
 
 ## Railway env
 
-Code defaults are mainnet v3. Env **wins**:
+Code defaults are mainnet v5. Env **wins**:
 
 ```
-GRVR_CONTRACT=0x6F955cA006E2FE951750cac25372e098D6E89743
+GRVR_CONTRACT=0x045B35480F289F8f83F53345A0f367875958957a
 GRVR_CHAIN_ID=8453
 GRVR_RPC_URL=https://mainnet.base.org
 GRVR_PRIVATE_KEY=

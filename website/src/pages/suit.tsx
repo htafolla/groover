@@ -28,7 +28,7 @@ import styles from './suit.module.css';
 const MCP_URL = 'https://groover.rippel.ai/mcp';
 const IMAGE_BASE =
   'https://registry-production-e2c4.up.railway.app/identity/token-image/';
-const GRVR_V4 = '0xD892D6836ab138a5aE4365dcb05Adb296607d6f9';
+const GRVR_V5 = '0x045B35480F289F8f83F53345A0f367875958957a';
 const PREVIEW_DID = 'did:groover:aaaaaaaaaaaaaaaa';
 const DEFAULT_PACK = '0xray-suit';
 
@@ -698,7 +698,7 @@ ows pay request 'https://clearing-production-9968.up.railway.app/v1/extract?url=
                 </label>
                 <label>
                   DID
-                  <span className={styles.fieldHint}>did:groover: + 16 hex chars.</span>
+                  <span className={styles.fieldHint}>did:groover: + full 64-hex registry DID (legacy 16-hex still accepted).</span>
                   <input
                     value={did}
                     onChange={(e) => setDid(e.target.value)}
@@ -816,7 +816,7 @@ ows pay request 'https://clearing-production-9968.up.railway.app/v1/extract?url=
                     </a>
                   ) : null}
                   <a
-                    href={`https://opensea.io/item/base/${GRVR_V4}/${minted.tokenId}`}
+                    href={`https://opensea.io/item/base/${GRVR_V5}/${minted.tokenId}`}
                     target="_blank"
                     rel="noreferrer"
                   >
