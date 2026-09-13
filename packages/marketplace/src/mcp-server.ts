@@ -5,6 +5,7 @@
  *   POST /mcp — Streamable HTTP JSON-RPC (starters mcp-http-nextjs pattern)
  *   GET /mcp — tool discovery
  *   GET /health — health check
+ *   GET /AGENTS.md | /SKILLS.md | /llms.txt — factory + hangar markdown (not this banner)
  *
  * P0.9: Zod boundaries + per-IP rate limits on POST /mcp and tool args.
  */
@@ -34,6 +35,7 @@ import {
   processStreamableMcpRequest,
   type McpJsonResponse,
 } from './mcp-streamable-http.js';
+import { tryServeAgentDoc } from './agent-docs.js';
 
 // ── In-memory pub/sub for session-based SSE ──
 
@@ -391,10 +393,17 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-const server = http.createServer(async (req, res) => {
+export async function handleRegistryRequest(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+): Promise<void> {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, { ...CORS_HEADERS, 'Access-Control-Max-Age': '86400' });
     res.end();
+    return;
+  }
+
+  if (tryServeAgentDoc(req, res)) {
     return;
   }
 
@@ -552,8 +561,12 @@ const server = http.createServer(async (req, res) => {
 
   res.writeHead(200);
   res.end(
-    'Groover MCP Registry active. GET /sse, POST /messages, POST /mcp (Streamable HTTP), GET /mcp, GET /health.',
+    'Groover MCP Registry active. GET /sse, POST /messages, POST /mcp (Streamable HTTP), GET /mcp, GET /health, GET /AGENTS.md, GET /SKILLS.md, GET /llms.txt.',
   );
+}
+
+const server = http.createServer((req, res) => {
+  void handleRegistryRequest(req, res);
 });
 
 async function runMcpServer() {

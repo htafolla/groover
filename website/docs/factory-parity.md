@@ -9,6 +9,14 @@ demo `86025`. Do not claim `0xray-suit` works until **live** mint is green.
 
 UI: **[/suit](/suit)** — mill plant → register → mint → pin → shops.
 
+Agent-readable copies (path-as-root static + registry HTTP):
+
+- `GET /AGENTS.md` · `GET /SKILLS.md` · `GET /llms.txt` on this website
+- same paths on `https://registry-production-e2c4.up.railway.app` (`text/markdown` / `text/plain`, not the MCP banner)
+
+**Dynamo:** PoA `register_plugin` does **not** require a PASS citation. Live
+`mint_suit` and ERC-8004 mirror **do**.
+
 ## Sequence
 
 1. **Persist Ed25519 first.** Generate a PEM keypair, `chmod 600` the secret,

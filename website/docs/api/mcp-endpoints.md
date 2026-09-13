@@ -192,6 +192,19 @@ List all integrated MCP servers with their roles and key tools.
 { "jsonrpc": "2.0", "id": 1, "method": "tools/list" }
 ```
 
+## Agent docs (HTTP GET)
+
+Markdown / plain files. **Not** the MCP catch-all banner. Factory E2E lives
+here. PoA register does not require Dynamo; live mint/mirror do.
+
+| Path | Type |
+|------|------|
+| `/AGENTS.md` | `text/markdown` |
+| `/SKILLS.md` | `text/markdown` |
+| `/llms.txt` | `text/plain` |
+
+Website static serves the same three files at the site root after deploy.
+
 ## Health Check
 
 ```

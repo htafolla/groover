@@ -30,6 +30,10 @@ AGENTS.md
 SKILLS.md
 !hangar/AGENTS.md
 !hangar/SKILLS.md
+!packages/marketplace/agent-docs/AGENTS.md
+!packages/marketplace/agent-docs/SKILLS.md
+!website/static/AGENTS.md
+!website/static/SKILLS.md
 .xray/
 .strray/
 strray/

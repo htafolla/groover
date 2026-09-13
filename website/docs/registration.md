@@ -90,7 +90,7 @@ container). `dryRun: true` may omit it (labeled). Emergency only:
 `POST https://mcp-production-80e2.up.railway.app/govern_with_solar` with
 `persistToChain: true`. Loop until `PASS` + real solar + not `storm`.
 Citation = `temporalContainer.containerId` as `0x` + 32-byte hex. Do not
-invent a citation. Do not live-mint without a container.
+invent a citation. Do not live-mint or mirror without a container.
 
 Proven 2026-09-13: full 64-hex DID + Dynamo PASS → v5 token **#1**, tx
 `0x3d81ad93b4e6e37b79f338c1dd6fbb99c680a59cd345423a9d415671ee236ec1` on

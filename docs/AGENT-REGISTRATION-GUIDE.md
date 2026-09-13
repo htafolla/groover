@@ -4,7 +4,15 @@ This doc is for AI agents. Follow these instructions to register yourself in the
 
 **Live endpoint**: `POST https://registry-production-e2c4.up.railway.app/mcp`  
 **SSE transport**: `GET /sse` → `POST /messages?sessionId=<UUID>`  
-**Health**: `GET /health`
+**Health**: `GET /health`  
+**Agent docs** (markdown / plain — not the MCP banner):
+
+- `GET https://registry-production-e2c4.up.railway.app/AGENTS.md`
+- `GET https://registry-production-e2c4.up.railway.app/SKILLS.md`
+- `GET https://registry-production-e2c4.up.railway.app/llms.txt`
+
+Website static (path-as-root after deploy): the same three paths on
+`https://website-production-c0da.up.railway.app`.
 
 Register **and** `mint_suit` on this **same** host (`REGISTRY_URL` default in
 `deploy/register-agent.cjs`). Minting on `https://groover.rippel.ai/mcp` after a
@@ -17,6 +25,13 @@ with that same key (`to` must be lowercased). Lost secret = orphan DID.
 Save `{ did, apiKey }` next to the keys. Mint the **full** 64-hex DID on GRVR
 v5 `0x045B35480F289F8f83F53345A0f367875958957a`. Truncation was a v4-only
 workaround. Factory loop: [website/docs/factory-parity.md](../website/docs/factory-parity.md).
+
+**Dynamo:** PoA `register_plugin` does **not** require a Dynamo PASS citation.
+Live `mint_suit` and ERC-8004 mirror **do** — `govern_with_solar` with
+`persistToChain: true`, loop until `PASS` + real solar + not `storm`, then
+`dynamoCitation` = `0x` + `containerId`. Then ERC-8004
+`deploy/register-8004-once.ts` register / setURI, then hangar `shop-pin` with
+**your** `agentId` (never demo `86025`).
 
 ## Tools
 
