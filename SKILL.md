@@ -29,6 +29,7 @@ All calls use JSON-RPC 2.0:
 | `mint_suit` | `did, apiKey, pack, to, issuedAtMs, mintSignature` | GRVR mint / dry-run |
 | `search_plugins` | `query?: string` | `results[]` |
 | `list_mcp_servers` | (none) | `servers[]` |
+| `list_hangars` | `catalogUrl?` | Clearing catalog hangars (DID + pin). Default `https://clearing.rippel.ai/v1/catalog` |
 | `get_plugin_ui_manifest` | `did: string` | `manifest` |
 | `issue_sui_binding` | `did, apiKey, publicKeyHex, signature, issuedAtMs, notAfterMs` | `binding` |
 | `get_sui_binding` | `did: string` | `binding` |

@@ -8,7 +8,7 @@ Not the 0xray 45-skill costume. Four surfaces:
 | `inspect` | same | Mill receipt, plant vs worn, no costume dump |
 | `shop-extract` | this package | $0.02 receipted URL extract |
 | `shop-witness` | this package | $0.02 proof of a GET |
-| `shop-pin` | this package | $0.01 ERC-8004 card hash |
+| `shop-pin` | this package | $0.01 ERC-8004 card hash. Catalog list = Groover DID + this pin. Never demo 86025. Same x402 envelope as Blips (not bare `ows pay request`). |
 
 Plant: `npx groover-hangar` → `.grok/plugins/shop-*`, `.hermes/plugins/shop-*`, `.openclaw/skills/shop-*`, `.opencode/skills/shop-*`.
 
