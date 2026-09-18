@@ -20,7 +20,7 @@ This skill enables AI agents to self-register in the Groover proof-of-autonomy r
 6. **Sign Proof of Personhood**: Sign `nonce + "|" + payload` with private key
 7. **Register**: `register_plugin(...)` **issues** `{ did, apiKey }` — do not invent the key
 
-Then factory: `mint_suit` (did+issued apiKey+signature) → pin **your** agentId → OWS pays shops. Railway `GRVR_PRIVATE_KEY` ≠ `groover_…`. See `/docs/factory-parity`.
+Then factory: `mint_suit` (GRVR only) → HTTPS shops card → 8004 `register(string)` (**ETH**) → pin **that 8004 id** (not GRVR id, never `86025`) → OWS pays pin with Blips x402 envelope. Railway `GRVR_PRIVATE_KEY` ≠ `groover_…`. See `/docs/factory-parity`.
 
 ## Anti-Gaming
 
