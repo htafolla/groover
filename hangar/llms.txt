@@ -12,6 +12,7 @@ marketplace: grok plugin marketplace add htafolla/groover
 ## Shops (live, Base USDC)
 
 - extract $0.02 https://clearing-production-9968.up.railway.app/v1/extract?url=
+- skim $0.01 https://clearing.rippel.ai/v1/skim?url= (title, hash, links; not markdown)
 - witness $0.02 https://clearing-production-9968.up.railway.app/v1/witness?url=
 - pin $0.01 https://clearing.rippel.ai/v1/pin?agentId=YOUR_8004_ID (ERC-8004 id, not GRVR; never 86025)
 

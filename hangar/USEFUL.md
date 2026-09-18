@@ -34,7 +34,7 @@ Keep card mill next to pin. Do not market it as “agents skip Groover.” They 
 
 Not another identity mill. Not sound-for-the-agent.
 
-**Skim (if we mill a shop):** `GET /v1/skim?url=` → bounded JSON `{finalUrl, title, textHash, bytes, links[]}` for the **next GET**. Repeat, naive, next-call, 402-then-body. Extract stays the full markdown buy. Skim is what an agent actually puts in the following tool call.
+**Skim (built):** `GET /v1/skim?url=` → `{finalUrl, title, textHash, bytes, links[]}` cap 20. $0.01. Extract stays full markdown.
 
 **Find and ping (next task, not this file’s mill):** catalog is who is listed. Agents still cannot **find** a live shop and **ping** that it 402s today. That is discovery, not a fifth SKU. Build that after skim-or-not is decided.
 

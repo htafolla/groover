@@ -7,12 +7,13 @@ import {describe, expect, it} from 'vitest';
 
 const hangar = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 const repo = path.resolve(hangar, '..');
-const shops = ['shop-extract', 'shop-witness', 'shop-pin', 'shop-card'] as const;
+const shops = ['shop-extract', 'shop-witness', 'shop-pin', 'shop-card', 'shop-skim'] as const;
 const urls = {
   'shop-extract': 'https://clearing-production-9968.up.railway.app/v1/extract',
   'shop-witness': 'https://clearing-production-9968.up.railway.app/v1/witness',
   'shop-pin': 'https://clearing.rippel.ai/v1/pin',
   'shop-card': 'https://clearing.rippel.ai/v1/card',
+  'shop-skim': 'https://clearing.rippel.ai/v1/skim',
 };
 
 describe('hangar shops', () => {
@@ -23,10 +24,10 @@ describe('hangar shops', () => {
       keywords: string[];
       hangar: { protocol: string; shops: string[] };
     };
-    expect(pkg.version).toBe('0.1.6');
+    expect(pkg.version).toBe('0.1.7');
     expect(pkg.hangar).toEqual({
       protocol: 'clearing-catalog/0',
-      shops: ['extract', 'witness', 'pin', 'card'],
+      shops: ['extract', 'witness', 'pin', 'card', 'skim'],
     });
     for (const name of ['README.md', 'AGENTS.md', 'SKILLS.md', 'llms.txt']) {
       expect(pkg.files).toContain(name);
@@ -50,6 +51,7 @@ describe('hangar shops', () => {
       'shop-card',
       'shop-extract',
       'shop-pin',
+      'shop-skim',
       'shop-witness',
     ]);
     for (const plugin of index.plugins) {
@@ -80,6 +82,10 @@ describe('hangar shops', () => {
         expect(command).toContain('YOUR_8004_ID');
       } else if (name === 'shop-card') {
         expect(skill).toContain('eip3009.from');
+        expect(command).toContain('x402 v1');
+      } else if (name === 'shop-skim') {
+        expect(skill).toContain('links[]');
+        expect(skill).not.toMatch(/\bmarkdown\b.*200/i);
         expect(command).toContain('x402 v1');
       } else {
         expect(skill).toContain('ows pay request');

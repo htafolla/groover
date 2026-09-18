@@ -32,7 +32,7 @@ ows wallet list
 ows fund balance --wallet agent-treasury-1 --chain base
 ```
 
-**Fund it.** The new wallet is empty. Send **USDC on Base** (chain id 8453) from another wallet or an exchange withdrawal. Pick the **Base** network, not Ethereum. Token: native USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`. Shops are $0.02 (extract/witness) or $0.01 (pin). x402 exact / EIP-3009: you sign; you do not need ETH for gas on this path.
+**Fund it.** The new wallet is empty. Send **USDC on Base** (chain id 8453) from another wallet or an exchange withdrawal. Pick the **Base** network, not Ethereum. Token: native USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`. Shops: extract/witness $0.02, skim $0.01, pin $0.01, card $0.05. x402 exact / EIP-3009: you sign; you do not need ETH for gas on this path.
 
 Optional on-ramp in OWS (MoonPay): `ows fund deposit --wallet agent-treasury-1 --chain base`.
 

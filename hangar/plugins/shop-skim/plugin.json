@@ -1,0 +1,6 @@
+{
+  "name": "shop-skim",
+  "version": "0.1.0",
+  "description": "Pay $0.01 USDC for a bounded page card (title, hash, links). Not extract.",
+  "author": { "name": "Groover" }
+}

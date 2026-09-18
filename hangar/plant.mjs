@@ -11,7 +11,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const hangarRoot = path.dirname(fileURLToPath(import.meta.url));
-const shops = ['shop-extract', 'shop-witness', 'shop-pin', 'shop-card'];
+const shops = ['shop-extract', 'shop-witness', 'shop-pin', 'shop-card', 'shop-skim'];
 
 function fail(message) {
   process.stderr.write(`${message}\n`);
