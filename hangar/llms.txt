@@ -19,6 +19,8 @@ Unpaid GET → HTTP 402 (curl -sI first). Clearing 402 extra is {name,version} o
 Bare ows pay request fails against Clearing (missing paymentId/nonce). Working path: EIP-3009 TransferWithAuthorization wrapped as Clearing {paymentId,nonce,accepted,eip3009} → ZigZag settle (docs/KIT-LOOP.md, sign_x402 approved=true). Hosted /sign is 410.
 Grok bot = Grok CLI + local kit vault. Not grok.com. Never twice on the same paymentId. Mill/DID not required to pay.
 
+Useful to agents: USEFUL.md (next-call, naive, repeat, fail closed before money).
+
 ## Related
 
 - mill/suit: npm 0xray and @0xray/foundry (not this package)

@@ -6,6 +6,8 @@ No Groover login. No API key. No hosted wallet. **To pay:** create a local OWS w
 
 **Mill is the suit** (`0xray` / `@0xray/foundry`). **These are the shops.** Not the 45-skill 0xray costume. Not an 8th `xray-*` MCP.
 
+When a shop is **useful to agents** (next-call, naive pay, repeat, fail closed before money, agent is the customer): [USEFUL.md](./USEFUL.md).
+
 Need **Node 20+**. Run from a **project** root (`package.json` required). Never passwd-home `~`.
 
 ```bash
