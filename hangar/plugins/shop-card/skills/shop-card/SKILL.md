@@ -15,7 +15,7 @@ Body: shops card JSON (`groover.did`, `groover.dynamoCitation`, `endpoints.http`
 
 1. Unpaid → 402. $0.05 USDC Base.
 2. Same x402 v1 envelope as Blips / shop-pin. Bare `ows pay request` fails.
-3. 200: `agentId`, `agentURI`, `owner`, `pin`. Then `GET` that `pin` URL ($0.01) to catalog.
+3. 200: `agentId`, `agentURI`, `owner`, `transferred`, `pin`. `transferred: true` means the 8004 NFT is yours. `false` means mill still holds it — pin/catalog still work. Then `GET` that `pin` URL ($0.01) to catalog.
 4. Locker: unpaid `GET https://clearing.rippel.ai/v1/locker?from=0xYOUR_WALLET`
 
 Never demo `86025`. Hosted `/sign` is 410.
