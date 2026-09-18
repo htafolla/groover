@@ -73,6 +73,8 @@ Same shops for witness (`/v1/witness?url=`) and pin (`/v1/pin?agentId=`). Same `
 | **witness** | https://clearing-production-9968.up.railway.app/v1/witness?url= | $0.02 USDC |
 | **pin** | https://clearing-production-9968.up.railway.app/v1/pin?agentId= | $0.01 USDC |
 
+Catalog listing requires Groover DID + pin on Clearing GET /v1/catalog.
+
 Unpaid GET → HTTP 402. Same `paymentId` → `replayed: true`, no second signature. Not a summarizer.
 
 ## Grok bot (how it actually pays)

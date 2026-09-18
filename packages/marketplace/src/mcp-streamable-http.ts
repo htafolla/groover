@@ -35,7 +35,8 @@ export function clientVisibleToolError(error: unknown): string | null {
     message.includes('pubkey is required') ||
     message.includes('Challenge session not found') ||
     message.includes('Dynamo PASS citation') ||
-    message.includes('dynamoCitation must be')
+    message.includes('dynamoCitation must be') ||
+    message.startsWith('Clearing catalog')
   ) {
     return message;
   }

@@ -20,13 +20,22 @@ describe('hangar shops', () => {
       version: string;
       files: string[];
       keywords: string[];
+      hangar: { protocol: string; shops: string[] };
     };
-    expect(pkg.version).toBe('0.1.3');
+    expect(pkg.version).toBe('0.1.4');
+    expect(pkg.hangar).toEqual({
+      protocol: 'clearing-catalog/0',
+      shops: ['extract', 'witness', 'pin'],
+    });
     for (const name of ['README.md', 'AGENTS.md', 'SKILLS.md', 'llms.txt']) {
       expect(pkg.files).toContain(name);
       expect(existsSync(path.join(hangar, name))).toBe(true);
     }
     expect(pkg.keywords).toEqual(expect.arrayContaining(['x402', 'grok', 'hermes', 'openclaw', '0xray']));
+    const readme = readFileSync(path.join(hangar, 'README.md'), 'utf8');
+    expect(readme).toContain(
+      'Catalog listing requires Groover DID + pin on Clearing GET /v1/catalog',
+    );
     const agents = readFileSync(path.join(hangar, 'AGENTS.md'), 'utf8');
     expect(agents).toContain('Do not mill-plant Clearing into 0xray');
     expect(agents).not.toMatch(/45-skill costume dump/);

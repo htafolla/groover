@@ -87,13 +87,15 @@ MCP servers appear in **xray-** (0xRay, primary) and **strray-** (parallel) + co
 - **Sources**: Connected MCP announcement (10), search_tool batches, governed proposals, npx runs, subagent.
 
 
+**Hangar catalog vs MCP servers:** marketplace `list_hangars` lists hangars from Clearing `GET /v1/catalog` (Groover DID + pin). `list_mcp_servers` lists MCP servers for correlation. Not plugins.
+
 **Total Indexed**: 10 servers, 100+ tools. listMcpServers() runtime truth.
 
 ## Railway MCP Registry
 
 **Live URL**: https://registry-production-e2c4.up.railway.app
 **Endpoints (6 tools)**:
-- POST /mcp JSON-RPC: initialize, tools/list, tools/call (register_plugin, get_registration_challenge, submit_challenge_turn, search_plugins, get_plugin_ui_manifest, list_mcp_servers)
+- POST /mcp JSON-RPC: initialize, tools/list, tools/call (register_plugin, get_registration_challenge, submit_challenge_turn, search_plugins, get_plugin_ui_manifest, list_mcp_servers, list_hangars)
 - JSON-RPC 2.0 error codes: -32700 (parse), -32601 (method not found), -32602 (invalid params), -32603 (internal)
 - Error messages sanitized via SAFE_ERROR_TOKENS whitelist
 - SIGTERM/SIGINT graceful shutdown
