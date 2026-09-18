@@ -26,7 +26,7 @@ import {
 import { mintGrvrIdentity, renderIdentityTokenImage } from '../../identity/src/index.js';
 import { listMcpServers } from '../../xray/src/index.js';
 import { getSession, submitTurn, ChallengeTrace } from './challenge.js';
-import { JsonRpcRequestSchema } from './mcp-schemas.js';
+import { DEFAULT_CLEARING_CATALOG_URL, JsonRpcRequestSchema } from './mcp-schemas.js';
 import { generateRequestId } from './mcp-request.js';
 import {
   dispatchMcpMethod,
@@ -122,6 +122,20 @@ export const TOOL_DEFINITIONS = [
     inputSchema: { type: 'object' },
   },
   {
+    name: 'list_hangars',
+    description:
+      'List hangars in the Clearing catalog (Groover DID + pin). Not MCP servers. Not plugins.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        catalogUrl: {
+          type: 'string',
+          description: `Clearing catalog URL. Default ${DEFAULT_CLEARING_CATALOG_URL}`,
+        },
+      },
+    },
+  },
+  {
     name: 'issue_sui_binding',
     description:
       'After Proof of Autonomy, bind this DID to a Sui address. Same Ed25519 key as registration. Signature over groover-sui-bind:v1|{did}|{suiAddress}|{issuedAtMs}|{notAfterMs}. Requires registry apiKey.',
@@ -180,6 +194,66 @@ export const TOOL_DEFINITIONS = [
     },
   },
 ];
+
+export { DEFAULT_CLEARING_CATALOG_URL };
+
+export type ClearingCatalogListing = {
+  protocol: unknown;
+  hangars: unknown[];
+  source: unknown;
+};
+
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function resolveCatalogUrl(catalogUrl: string | undefined): string {
+  const url = catalogUrl ?? DEFAULT_CLEARING_CATALOG_URL;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error('Clearing catalog request failed');
+  }
+  if (parsed.protocol !== 'https:') {
+    throw new Error('Clearing catalog request failed');
+  }
+  return parsed.toString();
+}
+
+export async function listClearingCatalog(
+  catalogUrl?: string,
+): Promise<ClearingCatalogListing> {
+  const url = resolveCatalogUrl(catalogUrl);
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    throw new Error('Clearing catalog request failed');
+  }
+  if (response.status !== 200) {
+    throw new Error('Clearing catalog request failed');
+  }
+  let payload: unknown;
+  try {
+    payload = JSON.parse(await response.text()) as unknown;
+  } catch {
+    throw new Error('Clearing catalog response is not valid JSON');
+  }
+  if (!isJsonRecord(payload) || !Array.isArray(payload.hangars)) {
+    throw new Error('Clearing catalog payload is invalid');
+  }
+  return {
+    protocol: payload.protocol,
+    hangars: payload.hangars,
+    source: payload.source,
+  };
+}
 
 // ── Tool handlers ──
 
@@ -267,6 +341,11 @@ export const TOOL_HANDLERS: Record<string, (args: Record<string, unknown>) => Pr
   list_mcp_servers() {
     const servers = listMcpServers();
     return { success: true, count: servers.length, servers };
+  },
+
+  async list_hangars(args) {
+    const catalogUrl = typeof args.catalogUrl === 'string' ? args.catalogUrl : undefined;
+    return listClearingCatalog(catalogUrl);
   },
 
   issue_sui_binding(args) {
