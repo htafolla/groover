@@ -11,7 +11,7 @@ const shops = ['shop-extract', 'shop-witness', 'shop-pin'] as const;
 const urls = {
   'shop-extract': 'https://clearing-production-9968.up.railway.app/v1/extract',
   'shop-witness': 'https://clearing-production-9968.up.railway.app/v1/witness',
-  'shop-pin': 'https://clearing-production-9968.up.railway.app/v1/pin',
+  'shop-pin': 'https://clearing.rippel.ai/v1/pin',
 };
 
 describe('hangar shops', () => {
@@ -22,7 +22,7 @@ describe('hangar shops', () => {
       keywords: string[];
       hangar: { protocol: string; shops: string[] };
     };
-    expect(pkg.version).toBe('0.1.4');
+    expect(pkg.version).toBe('0.1.5');
     expect(pkg.hangar).toEqual({
       protocol: 'clearing-catalog/0',
       shops: ['extract', 'witness', 'pin'],
@@ -69,9 +69,18 @@ describe('hangar shops', () => {
       expect(skill).toContain('410');
       expect(skill).not.toMatch(/xray-clearing/);
       expect(skill).toContain('Do not mill-plant Clearing into 0xray');
-      expect(skill).toContain('ows pay request');
+      if (name === 'shop-pin') {
+        expect(skill).toContain('YOUR_8004_ID');
+        expect(skill).toContain('Never demo `86025`');
+        expect(skill).not.toMatch(/agentId=86025/);
+        expect(skill).toContain('x402Version');
+        expect(command).toContain('Bare `ows pay request` fails');
+        expect(command).toContain('YOUR_8004_ID');
+      } else {
+        expect(skill).toContain('ows pay request');
+        expect(command).toContain('ows pay request');
+      }
       expect(command).toContain(urls[name]);
-      expect(command).toContain('ows pay request');
       expect(command).toContain('410');
       const staticCommand = readFileSync(
         path.join(repo, 'website/static/hangar', name, 'commands', `${name}.md`),
