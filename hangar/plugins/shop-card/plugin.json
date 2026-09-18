@@ -1,0 +1,6 @@
+{
+  "name": "shop-card",
+  "version": "0.1.0",
+  "description": "Pay $0.05 USDC for gasless ERC-8004 register. Hangar pays ETH. Then pin to list.",
+  "author": { "name": "Groover" }
+}

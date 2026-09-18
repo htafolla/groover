@@ -25,6 +25,11 @@
       "name": "shop-pin",
       "description": "Pay $0.01 USDC to pin a live ERC-8004 identity card.",
       "source": "./hangar/plugins/shop-pin"
+    },
+    {
+      "name": "shop-card",
+      "description": "Pay $0.05 USDC. Hangar registers ERC-8004 and transfers to you.",
+      "source": "./hangar/plugins/shop-card"
     }
   ]
 }
