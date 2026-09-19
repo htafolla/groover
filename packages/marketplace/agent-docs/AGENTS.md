@@ -48,7 +48,7 @@ Canonical walkthroughs (do not fork):
    four-turn challenge → `register_plugin`). Issues `{ did, apiKey }`
    (`did:groover:` + **64 hex**). **Dynamo is not required for register.**
 3. **Dynamo PASS citation — mandatory for live mint and ERC-8004 mirror.**
-   `POST https://mcp-production-80e2.up.railway.app/govern_with_solar` with
+   `POST https://hammer.rippel.ai/govern_with_solar` with
    mint intent + DID + DNA and `persistToChain: true`. This is a **solar hammer**,
    not a rubber stamp: `REJECT`, `NEEDS_REVISION`, or storm
    override can fail the proposal. Retry until approved — loop

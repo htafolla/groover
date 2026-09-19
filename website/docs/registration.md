@@ -87,7 +87,7 @@ Required `mint_suit` args: `did`, `apiKey`, `pack`, `to`, `issuedAtMs`
 **Live mint and ERC-8004 mirror do** (`dynamoCitation` non-empty PASS
 container). `dryRun: true` may omit it (labeled). Emergency only:
 `DYNAMO_MINT_REQUIRED=false`.
-`POST https://mcp-production-80e2.up.railway.app/govern_with_solar` with
+`POST https://hammer.rippel.ai/govern_with_solar` with
 `persistToChain: true`. Solar hammer can `REJECT` / `NEEDS_REVISION` /
 storm-override — retry until approved (`PASS` + real solar + not `storm`).
 Do not mint on a failed proposal. Citation =

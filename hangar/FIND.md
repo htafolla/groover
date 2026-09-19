@@ -33,7 +33,9 @@ Hangar discovery. Public hostnames are **`*.rippel.ai`**, never `*.up.railway.ap
 | Groover A2A card | https://groover.rippel.ai/.well-known/agent-card.json |
 | Groover agent.json | https://groover.rippel.ai/.well-known/agent.json |
 | Groover 8004 domain proof | https://groover.rippel.ai/.well-known/agent-registration.json |
-| Dynamo | https://dynamo.rippel.ai |
+| Dynamo Hammer (MCP) | https://hammer.rippel.ai |
+| Dynamo well-known | https://hammer.rippel.ai/.well-known/agent-card.json |
+| Dynamo (BLURRN site, not MCP) | https://dynamo.rippel.ai |
 
 Shops: `/v1/extract` `/v1/skim` `/v1/witness` `/v1/pin` `/v1/card` `/v1/blip`
 
@@ -53,7 +55,7 @@ Do not publish `*.up.railway.app` in cards, SKILLS, well-known, or catalogs.
 
 | Gap | Status | Needed from you |
 |-----|--------|-----------------|
-| **Dynamo card** | `dynamo.rippel.ai` is **BLURRN** (HTML), not Dynamo MCP. Real MCP is `mcp-production-80e2.up.railway.app` (JSON, no well-known). | DNS: CNAME **`dynamo-mcp.rippel.ai`** → that Railway service. Then we add `/.well-known/*` on the MCP. Do not point `dynamo.rippel.ai` at BLURRN if you want it to be Dynamo. |
+| **Dynamo card** | MCP public host is **`https://hammer.rippel.ai`**. `dynamo.rippel.ai` stays BLURRN HTML. | CNAME is live. Well-known JSON ships with the mill deploy. |
 | **Plant** | Well-known is in `blip-plant-svc/server.mjs`. No `plant.rippel.ai`. | DNS: CNAME **`plant.rippel.ai`** → `blip-plant` Railway. Set `PLANT_PUBLIC_ORIGIN=https://plant.rippel.ai`. We deploy the mill. |
 | **Registry mill** | Same Railway service as Groover. Public host is already **`groover.rippel.ai`**. Skills still print `registry-production-e2c4.up.railway.app`. | None for DNS. We retarget skills at `https://groover.rippel.ai/mcp` (same store). |
 | **CDP Bazaar** | Quotes already have bazaar metadata. `index: null` until **CDP facilitator settle**. ZigZag pay does not list us. | **CDP API key** (`CDP_API_KEY_ID` + `SECRET`) on Clearing, **or** one paid skim/extract through CDP (verify+settle with `paymentPayload.resource`). First 1k tx/mo free. Then wait up to hours for index. |

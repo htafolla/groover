@@ -47,7 +47,7 @@ without this gate once; do not call C2 done without the live PASS.
    JSON-RPC `-32603 Tool execution failed` (DID/apiKey not on that store).
 3. **Dynamo PASS citation is mandatory before live mint and ERC-8004
    mirror.** PoA `register_plugin` is still pre-Dynamo (4-turn challenge
-   only). `POST https://mcp-production-80e2.up.railway.app/govern_with_solar`
+   only). `POST https://hammer.rippel.ai/govern_with_solar`
    with `proposal` (mint intent + DID + DNA) and `persistToChain: true`.
    This is a **solar hammer**, not a rubber stamp: `REJECT`,
    `NEEDS_REVISION`, or storm override can fail the proposal. Retry until
