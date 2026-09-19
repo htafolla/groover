@@ -11,6 +11,7 @@ Not the 0xray 45-skill costume. Four surfaces:
 | `shop-pin` | this package | $0.01 ERC-8004 card hash. Catalog list = Groover DID + this pin. Never demo 86025. Same x402 envelope as Blips (not bare `ows pay request`). |
 | `shop-card` | this package | $0.05 gasless 8004 register. Hangar pays ETH, transfers token to payer. Then pin. |
 | `shop-skim` | this package | $0.01 title, hash, bytes, links[]. Not markdown. Next GET. |
+| `shop-trade` | this package | Base trading plant. Simulate then swap. Quote is not a fill. Not 0xray 4.0.15. |
 
 Plant: `npx groover-hangar` → `.grok/plugins/shop-*`, `.hermes/plugins/shop-*`, `.openclaw/skills/shop-*`, `.opencode/skills/shop-*`.
 

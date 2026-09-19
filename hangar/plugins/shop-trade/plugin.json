@@ -1,0 +1,6 @@
+{
+  "name": "shop-trade",
+  "version": "0.1.0",
+  "description": "Base trading plant. Quote is not a fill. Simulate transfer before swap. OWS send-tx.",
+  "author": { "name": "Groover" }
+}
