@@ -50,9 +50,10 @@ Start list (liquid Base memes): TOSHI, DEGEN, BRETT, HIGHER, AERO — still run 
 
 ## 5% arb / size
 
-- **Arb:** two DexScreener pairs same token, `|priceUsd_a - priceUsd_b| / mid ≤ 0.05`. Buy cheap pool, sell rich pool, size so out > gas×3.
-- **Size cap:** `min($0.10, 5% of this wallet's USDC)`. Not a moonshot.
-- **PnL:** receipt 1 and Δ USDC or ETH > gas (a filled buy of a screened meme counts as a trade; shuffle hangar↔mill does not).
+- **Window:** seconds–blocks (Base ~2s), not minutes. Buy and sell in the **same window**. Inventory overnight is not this mill.
+- **Arb:** two DexScreener pairs same token, `|priceUsd_a - priceUsd_b| / mid ≤ 0.05`. Buy cheap, sell rich **immediately**. If `edge USD < gas×3`, skip — at $0.10, 5% is $0.005 and often loses to gas.
+- **Size cap:** `min($0.10, 5% of this wallet's USDC)`.
+- **PnL:** USDC (or ETH) **after sell** minus start, minus gas. A bag of AERO/TOSHI is not growth.
 
 ## Execute (one fill)
 

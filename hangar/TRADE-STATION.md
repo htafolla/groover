@@ -5,7 +5,7 @@ Intent: fill that adds spendable Base USDC or ETH after gas. Not a survey.
 Plant: shop-trade (foundry-plant/0 mill drawer later `@0xray/trade` — not fastened into 0xray 4.0.15)
 Git: hangar shop-trade
 Repertoire: off unless routing a hangar shop
-Working: dexscreener → honeypot.is → eth_call buy+sell → sign → receipt
+Working: dexscreener → honeypot.is → eth_call buy+sell → fill → **sell in the same window** (sub-minute / next blocks). Hold is not the mill.
 
 Continue this card. Do not cold-start a 50-wallet census.
 
