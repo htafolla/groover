@@ -52,6 +52,8 @@ House 8004 ids: **86556**, **86666**. Registry `eip155:8453:0x8004A169FB4a332513
 
 Do not publish `*.up.railway.app` in cards, SKILLS, well-known, or catalogs.
 
+When an agent signs with us, list them in the **four** hangar directories then CDP Bazaar: [LIST.md](./LIST.md). Proof: `GET /v1/listings?agentId=`.
+
 ## After each ship (listings)
 
 When a mill, shop, or skill lands, do this **in the same cut** — not later:
