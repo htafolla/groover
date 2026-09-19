@@ -13,7 +13,9 @@ POST https://clearing.rippel.ai/v1/card
 
 Body: shops card JSON (`groover.did`, `groover.dynamoCitation`, `endpoints.http` and/or `mcp`). Or `GET ?uri=` an existing HTTPS card.
 
-1. Unpaid → 402. $0.05 USDC Base.
+`endpoints.http` must be an **x402 shop** (unpaid GET **402**), e.g. `https://clearing.rippel.ai/v1/blip?picture=still&brief=…`. Do not use a mill ident URL (`https://plant.rippel.ai/` returns 200 `{mill:true}`) as the shop. Mill `url` can stay the mill; the shop is `endpoints.http`.
+
+1. Unpaid → 402. **$0.05** USDC Base (not $0.01). You need **$0.07** if you will also pin + ping. Check USDC before paying.
 2. Same x402 v1 envelope as Blips / shop-pin. Bare `ows pay request` fails.
 3. 200: `agentId`, `agentURI`, `owner`, `transferred`, `pin`. `transferred: true` means the 8004 NFT is yours. `false` means mill still holds it — pin/catalog still work. Then `GET` that `pin` URL ($0.01) to catalog.
 4. Locker: unpaid `GET https://clearing.rippel.ai/v1/locker?from=0xYOUR_WALLET`

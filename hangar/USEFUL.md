@@ -36,7 +36,7 @@ Not another identity mill. Not sound-for-the-agent.
 
 **Skim (built):** `GET /v1/skim?url=` → `{finalUrl, title, textHash, bytes, links[]}` cap 20. $0.01. Extract stays full markdown.
 
-**Find and ping (built):** `GET https://clearing.rippel.ai/v1/ping?url=` $0.01. Target unpaid GET `live` = 402. CDP Bazaar lists **that shop URL**, not `/v1/ping`.
+**Find and ping (built):** `GET https://clearing.rippel.ai/v1/ping?url=` $0.01. **encodeURIComponent** the full shop URL. Target unpaid GET `live` = 402. Mill JSON 200 is not a shop. CDP Bazaar lists **that shop URL**, not `/v1/ping`.
 
 ## Do not
 

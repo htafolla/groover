@@ -19,6 +19,8 @@ GET https://clearing.rippel.ai/v1/pin?agentId=YOUR_8004_ID
 2. Bare `ows pay request` **fails** here (missing paymentId/nonce). Use the same x402 v1 envelope as Blips SKILLS.md: EIP-3009 typed-data, `X-PAYMENT` = base64 `{ x402Version:1, paymentId, nonce, accepted, eip3009 }`.
 3. If OWS is present: `ows sign message --wallet YOUR_WALLET --chain 8453 --message "" --typed-data '<eip-712 json>' --json`. `from` is the 0x on that wallet (same hex on Base even if list shows `eip155:1`).
 4. On 200 report `owner`, `agentURI`, `sha256`, `listed`. `listed: true` → catalog. Prove `GET /v1/catalog`. Hosted ZigZag `/sign` is **410**.
+5. Then ping the **402 shop** (not the mill): `GET https://clearing.rippel.ai/v1/ping?url=` + encodeURIComponent(`https://clearing.rippel.ai/v1/blip?picture=still&brief=…`). Extra `?query` outside `url=` is dropped. `ows sign --json`: if signature is already 65 bytes, do not append `recovery_id`.
+6. Prove `GET https://clearing.rippel.ai/v1/listings?agentId=`. Ping dir is **402**. Mill 200 is not ping-ok.
 
 To sell the same object: run Clearing with your `CLEARING_PAY_TO`. Do not mill-plant Clearing into 0xray.
 
