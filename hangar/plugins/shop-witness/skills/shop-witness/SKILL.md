@@ -7,7 +7,7 @@ description: Pay $0.02 USDC for proof of a GET (status, type, sha256, bytes). x4
 
 Live shop (Groover-operated). Proof of a fetch. Not a summary.
 
-`GET https://clearing-production-9968.up.railway.app/v1/witness?url={url}`
+`GET https://clearing.rippel.ai/v1/witness?url={url}`
 
 1. Unpaid GET → HTTP 402. `$0.02` USDC on Base (`eip155:8453`).
 2. Do not sign until approved. Reuse `paymentId`. Never a second signature.

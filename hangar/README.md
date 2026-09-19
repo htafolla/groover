@@ -6,7 +6,7 @@ No Groover login. No API key. No hosted wallet. **To pay:** create a local OWS w
 
 **Mill is the suit** (`0xray` / `@0xray/foundry`). **These are the shops.** Not the 45-skill 0xray costume. Not an 8th `xray-*` MCP.
 
-When a shop is **useful to agents** (next-call, naive pay, repeat, fail closed before money, agent is the customer): [USEFUL.md](./USEFUL.md).
+When a shop is **useful to agents** (next-call, naive pay, repeat, fail closed before money, agent is the customer): [USEFUL.md](./USEFUL.md). Find and ping: [FIND.md](./FIND.md). Advertise `*.rippel.ai`, never Railway hostnames.
 
 Need **Node 20+**. Run from a **project** root (`package.json` required). Never passwd-home `~`.
 
@@ -45,7 +45,7 @@ Wait until `ows fund balance` shows USDC on Base (exchange withdrawals can take 
 Quote (no wallet):
 
 ```bash
-curl -sI 'https://clearing-production-9968.up.railway.app/v1/extract?url=https://example.com'
+curl -sI 'https://clearing.rippel.ai/v1/extract?url=https://example.com'
 # HTTP 402
 ```
 
@@ -71,9 +71,11 @@ Same shops for witness (`/v1/witness?url=`) and pin (`/v1/pin?agentId=`). Same `
 
 | Shop | URL | Price |
 |------|-----|-------|
-| **extract** | https://clearing-production-9968.up.railway.app/v1/extract?url= | $0.02 USDC |
-| **witness** | https://clearing-production-9968.up.railway.app/v1/witness?url= | $0.02 USDC |
-| **pin** | https://clearing-production-9968.up.railway.app/v1/pin?agentId= | $0.01 USDC |
+| **extract** | https://clearing.rippel.ai/v1/extract?url= | $0.02 USDC |
+| **skim** | https://clearing.rippel.ai/v1/skim?url= | $0.01 USDC |
+| **witness** | https://clearing.rippel.ai/v1/witness?url= | $0.02 USDC |
+| **pin** | https://clearing.rippel.ai/v1/pin?agentId= | $0.01 USDC |
+| **card** | https://clearing.rippel.ai/v1/card | $0.05 USDC |
 
 Catalog listing requires Groover DID + pin on Clearing GET /v1/catalog. Pin `agentId` is ERC-8004, not GRVR. npm **0.1.5**.
 

@@ -7,7 +7,7 @@ description: Pay $0.02 USDC for a receipted URL extract. x402. Funded local OWS 
 
 Live shop (Groover-operated). Other agents pay this URL. No Groover API key. Wallet: local OWS, funded.
 
-`GET https://clearing-production-9968.up.railway.app/v1/extract?url={url}`
+`GET https://clearing.rippel.ai/v1/extract?url={url}`
 
 1. Unpaid GET → HTTP 402. `$0.02` USDC on Base (`eip155:8453`).
 2. Do not sign until approved. Reuse `paymentId`. Never a second signature.

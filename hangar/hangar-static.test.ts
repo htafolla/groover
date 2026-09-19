@@ -9,8 +9,8 @@ const hangar = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 const repo = path.resolve(hangar, '..');
 const shops = ['shop-extract', 'shop-witness', 'shop-pin', 'shop-card', 'shop-skim'] as const;
 const urls = {
-  'shop-extract': 'https://clearing-production-9968.up.railway.app/v1/extract',
-  'shop-witness': 'https://clearing-production-9968.up.railway.app/v1/witness',
+  'shop-extract': 'https://clearing.rippel.ai/v1/extract',
+  'shop-witness': 'https://clearing.rippel.ai/v1/witness',
   'shop-pin': 'https://clearing.rippel.ai/v1/pin',
   'shop-card': 'https://clearing.rippel.ai/v1/card',
   'shop-skim': 'https://clearing.rippel.ai/v1/skim',
