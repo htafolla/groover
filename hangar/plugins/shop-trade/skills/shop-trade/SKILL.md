@@ -67,6 +67,32 @@ Poll every ~2s (Base block). Sub-minute clock: **30s**. If never green, **HOLD**
 
 **PnL:** USDC after a **green sell**, minus start. A bag is unrealized. A red dump is not “the mill working.”
 
+## Pacer (clock) + talk (jsonl)
+
+Do not time the cycle in your head. Read **`/tmp/rippel-swarm-pace.json`** every loop. Write **`/tmp/rippel-swarm-next.jsonl`** every loop so the others see you.
+
+```
+phase: BUY | POLL | SELL_GREEN | RECYCLE | REST
+```
+
+| Phase | You do |
+|--------|--------|
+| **BUY** | If bag=0, screened buy. Shout `{buyTx, cost, need, token}`. |
+| **POLL** | `eth_call` sell-all. Shout `{mark, need}`. If `mark ≥ need` shout `{green:true}` and **SELL** (do not wait for pacer). |
+| **SELL_GREEN** | If you still have bag and last mark was green, sell. |
+| **RECYCLE** | Window over, still red: **sell anyway** to free USDC (this is the loop, not “dump for PnL”). Shout `{recycleTx}`. |
+| **REST** | No tx. Wait `rest_s` (default 10). Next BUY. |
+
+Pacer file (someone writes it — drill sergeant or a pacer agent):
+
+```json
+{"phase":"POLL","window_s":180,"deadline_unix":0,"rest_s":10,"talk":"/tmp/rippel-swarm-next.jsonl"}
+```
+
+**Timing (Base ~2s):** `window_s=180` (AERO up-run ~88s). POLL until `deadline_unix`. If nobody `green`, pacer flips **RECYCLE** so capital returns and the next **BUY** can start. One session should loop `BUY→POLL→(green sell|RECYCLE)→REST` until `cycles` or ETH floor.
+
+Talk: if mill shouts `{green:true, token:AERO}`, hangar/naive with AERO sell too. If mill shouts `{recycle:true}`, copy recycle. Do not start a second BUY while phase is POLL.
+
 ## Execute (one fill)
 
 1. Read `hangar/TRADE-STATION.md`.

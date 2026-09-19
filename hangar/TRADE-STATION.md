@@ -5,7 +5,7 @@ Intent: fill that adds spendable Base USDC or ETH after gas. Not a survey.
 Plant: shop-trade (foundry-plant/0 mill drawer later `@0xray/trade` — not fastened into 0xray 4.0.15)
 Git: hangar shop-trade
 Repertoire: off unless routing a hangar shop
-Working: screen → buy → poll mark ≥ cost+gas → sell (next increase). Red dump is not the mill. Arb is a separate no-hold rail.
+Working: pacer file `/tmp/rippel-swarm-pace.json` + jsonl talk. BUY → POLL (mark≥need sell) → else RECYCLE at deadline → REST → BUY.
 
 Continue this card. Do not cold-start a 50-wallet census.
 
@@ -22,7 +22,9 @@ Continue this card. Do not cold-start a 50-wallet census.
 | honeypot.is | `https://api.honeypot.is/v2/IsHoneypot?address=&chainID=8453` |
 | GoPlus | `https://api.gopluslabs.io/api/v1/token_security/8453?contract_addresses=` |
 | Size | min($0.10, 5% wallet USDC) |
-| Next increase | `eth_call sell ≥ buy_USDC + buy_gas + sell_gas` else HOLD (30s poll) |
+| Next increase | `eth_call sell ≥ buy_USDC + buy_gas + sell_gas` → SELL_GREEN |
+| Pacer | `/tmp/rippel-swarm-pace.json` `BUY\|POLL\|SELL_GREEN\|RECYCLE\|REST` window_s=180 |
+| Talk | jsonl shout mark/need/green/recycle so others copy |
 | Arb | two pools, spread ≤5%, edge > gas×3, both legs same block — else skip |
 
 ## Fail-closed
