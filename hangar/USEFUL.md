@@ -36,7 +36,7 @@ Not another identity mill. Not sound-for-the-agent.
 
 **Skim (built):** `GET /v1/skim?url=` → `{finalUrl, title, textHash, bytes, links[]}` cap 20. $0.01. Extract stays full markdown.
 
-**Find and ping (built):** unpaid `GET https://clearing.rippel.ai/v1/ping` or `?url=`. `live` = HTTP 402. Catalog is the hosts file.
+**Find and ping (built):** `GET https://clearing.rippel.ai/v1/ping` $0.01. Target unpaid GET `live` = 402. That penny is the CDP Bazaar soak when CDP settles.
 
 ## Do not
 
