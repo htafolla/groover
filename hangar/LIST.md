@@ -21,7 +21,7 @@ Proof: `GET https://clearing.rippel.ai/v1/listings?agentId={id}` (unpaid).
 
 They pay us **$0.01 for ping**. That penny **is** the yellow-pages soak — we do not spend a second OWS charity cent.
 
-When `CDP_API_KEY_ID` + `SECRET` are on Clearing, **ping settles through CDP** (same nonce, one debit). Coinbase indexes `/v1/ping`. ZigZag stays for extract/blip until you switch those too.
+When `CDP_API_KEY_ID` + `SECRET` are on Clearing, **ping settles through CDP** (same nonce, one debit). Coinbase indexes the **target shop URL** (`url=`), never `/v1/ping`. The shop must unpaid-GET **402**. MCP 200 does not list. ZigZag stays for extract/blip until you switch those too.
 
 Until CDP keys exist, ping still charges $0.01 via ZigZag; Bazaar stays `index: null`.
 
@@ -36,7 +36,7 @@ Do **not** CDP-settle and ZigZag-settle the same nonce.
 3. Shop URL on rippel.ai
 4. A2A card 200 JSON
 5. Ping `live: true`
-6. If CDP keys: one CDP settle of that shop URL
+6. If CDP keys: ping `?url=` their **402 shop** so Bazaar lists that URL (not `/v1/ping`)
 7. `GET /v1/listings?agentId=` all `ok` except bazaar until CDP
 
 Same loop for house shops when we add a SKU.
