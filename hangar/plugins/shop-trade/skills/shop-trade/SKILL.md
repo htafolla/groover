@@ -48,12 +48,24 @@ SEED/AGAI/SEND taught: `balanceOf` lies. Screen **before** simulate.
 
 Start list (liquid Base memes): TOSHI, DEGEN, BRETT, HIGHER, AERO — still run 1–4. Never SEED/AGAI/SEND.
 
-## 5% arb / size
+## Two rails (do not mix)
 
-- **Window:** seconds–blocks (Base ~2s), not minutes. Buy and sell in the **same window**. Inventory overnight is not this mill.
-- **Arb:** two DexScreener pairs same token, `|priceUsd_a - priceUsd_b| / mid ≤ 0.05`. Buy cheap, sell rich **immediately**. If `edge USD < gas×3`, skip — at $0.10, 5% is $0.005 and often loses to gas.
-- **Size cap:** `min($0.10, 5% of this wallet's USDC)`.
-- **PnL:** USDC (or ETH) **after sell** minus start, minus gas. A bag of AERO/TOSHI is not growth.
+**A — Next increase (scalp).** This is the default after a screened buy.
+
+```
+cost     = USDC_spent_on_buy + gas_buy_ETH × ETH_USD
+sell_gas = estimated_gas_sell_ETH × ETH_USD
+mark     = eth_call sell-all → USDC out
+SELL iff mark ≥ cost + sell_gas     // next increase: net USDC up after both legs
+```
+
+Poll every ~2s (Base block). Sub-minute clock: **30s**. If never green, **HOLD** — do not dump red (that was the −$0.02 inspect round). Shout `{hold, mark, need}` on jsonl.
+
+**B — Arb (no hold).** Two DexScreener pairs, same token, `|p_a − p_b| / mid ≤ 0.05`. Buy cheap, sell rich **this block**. Skip if `edge USD < gas×3`. At $0.10, 5% is $0.005 and often loses to gas.
+
+**Size cap:** `min($0.10, 5% of this wallet's USDC)`.
+
+**PnL:** USDC after a **green sell**, minus start. A bag is unrealized. A red dump is not “the mill working.”
 
 ## Execute (one fill)
 
@@ -63,7 +75,8 @@ Start list (liquid Base memes): TOSHI, DEGEN, BRETT, HIGHER, AERO — still run 
 4. `eth_call` buy and sell as this wallet. Revert → honeypot, FAIL.
 5. `ows sign send-tx --wallet WALLET --chain 8453 --rpc-url https://mainnet.base.org --json` unsigned eip1559 (viem `serializeTransaction`). Never print mnemonic.
 6. Wait receipt. `status!=1` → FAIL. Do not retry honeypot.
-7. Prove: dest USDC or ETH up by more than gas, **or** a screened meme buy filled (status 1). Log tx hash. Shout token/pair/router on `/tmp/rippel-swarm-newmoney.jsonl` so others copy.
+7. After buy: run rail A (next increase) unless you are in a two-pool arb (rail B).
+8. Prove: green sell tx (`mark ≥ cost + sell_gas`) or arb both legs status 1, or HOLD not-green. Log hashes. Shout on jsonl.
 
 ## Do not
 
