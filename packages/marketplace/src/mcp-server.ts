@@ -6,6 +6,7 @@
  *   GET /mcp — tool discovery
  *   GET /health — health check
  *   GET /README.md | /CHANGELOG.md | /package.json | /AGENTS.md | /SKILLS.md | /llms.txt — core docs (not this banner)
+ *   GET /.well-known/agent-card.json | /.well-known/x402 | /.well-known/agent.json | /.well-known/agent-registration.json — JSON discovery (not this banner)
  *
  * P0.9: Zod boundaries + per-IP rate limits on POST /mcp and tool args.
  */
@@ -36,6 +37,7 @@ import {
   type McpJsonResponse,
 } from './mcp-streamable-http.js';
 import { tryServeAgentDoc } from './agent-docs.js';
+import { tryServeWellKnown } from './well-known.js';
 
 // ── In-memory pub/sub for session-based SSE ──
 
@@ -486,6 +488,10 @@ export async function handleRegistryRequest(
     return;
   }
 
+  if (tryServeWellKnown(req, res)) {
+    return;
+  }
+
   if (req.method === 'GET' && req.url === '/sse') {
     const sessionId = crypto.randomUUID();
     const channel = `session:${sessionId}`;
@@ -640,7 +646,7 @@ export async function handleRegistryRequest(
 
   res.writeHead(200);
   res.end(
-    'Groover MCP Registry active. GET /sse, POST /messages, POST /mcp (Streamable HTTP), GET /mcp, GET /health, GET /README.md, GET /CHANGELOG.md, GET /package.json, GET /AGENTS.md, GET /SKILLS.md, GET /llms.txt.',
+    'Groover MCP Registry active. GET /sse, POST /messages, POST /mcp (Streamable HTTP), GET /mcp, GET /health, GET /README.md, GET /CHANGELOG.md, GET /package.json, GET /AGENTS.md, GET /SKILLS.md, GET /llms.txt, GET /.well-known/agent-card.json, GET /.well-known/x402, GET /.well-known/agent.json, GET /.well-known/agent-registration.json.',
   );
 }
 
