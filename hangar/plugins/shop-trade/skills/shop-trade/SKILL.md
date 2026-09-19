@@ -114,7 +114,7 @@ Talk: if mill shouts `{green:true, token:AERO}`, hangar/naive with AERO sell too
 
 ```
 WALLET=<ows-name> SIDE=buy|sell MARKET=AERO|TOSHI [USDC=<atomic>] \
-  node hangar/plugins/shop-trade/scripts/base-fill.mjs
+  node hangar/plugins/shop-trade/base-fill.mjs
 ```
 
 It `eth_call`s then `ows sign send-tx`. Exit 2 = honeypot/revert, no broadcast.
@@ -124,7 +124,7 @@ It `eth_call`s then `ows sign send-tx`. Exit 2 = honeypot/revert, no broadcast.
 
 ## Do not
 
-Census 50 OWS wallets. Merkl essays. Shuffle our hangar/mill/naive/treasury1. Pay clearing.rippel.ai and call it PnL. Trust `balanceOf` alone. **Do not author a new swap script** — the mill is `scripts/base-fill.mjs`.
+Census 50 OWS wallets. Merkl essays. Shuffle our hangar/mill/naive/treasury1. Pay clearing.rippel.ai and call it PnL. Trust `balanceOf` alone. **Do not author a new swap script** — the mill is `hangar/plugins/shop-trade/base-fill.mjs`.
 
 ## Prove
 

@@ -23,7 +23,7 @@ Continue this card. Do not cold-start a 50-wallet census.
 | GoPlus | `https://api.gopluslabs.io/api/v1/token_security/8453?contract_addresses=` |
 | Size | min($0.10, 5% wallet USDC) |
 | Next increase | `eth_call sell ≥ buy_USDC + buy_gas + sell_gas` → SELL_GREEN |
-| Fill | `scripts/base-fill.mjs` only — no `/tmp/swap-*.mjs` |
+| Fill | `hangar/plugins/shop-trade/base-fill.mjs` only — no `/tmp/swap-*.mjs` |
 | Pacer | `/tmp/rippel-swarm-pace.json` + DexScreener `txns.m5` **gate** (not the clock) |
 | Talk | jsonl shout mark/need/green/recycle so others copy |
 | Arb | two pools, spread ≤5%, edge > gas×3, both legs same block — else skip |
