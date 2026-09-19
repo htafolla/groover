@@ -59,7 +59,7 @@ mark     = eth_call sell-all → USDC out
 SELL iff mark ≥ cost + sell_gas     // next increase: net USDC up after both legs
 ```
 
-Poll every ~2s (Base block). Sub-minute clock: **30s**. If never green, **HOLD** — do not dump red (that was the −$0.02 inspect round). Shout `{hold, mark, need}` on jsonl.
+Poll every ~2s. If `mark ≥ need` → sell. If pacer is **RECYCLE** → sell to free USDC (loop). If pacer still **POLL** and not green → wait. Do not freelance a dump.
 
 **B — Arb (no hold).** Two DexScreener pairs, same token, `|p_a − p_b| / mid ≤ 0.05`. Buy cheap, sell rich **this block**. Skip if `edge USD < gas×3`. At $0.10, 5% is $0.005 and often loses to gas.
 
@@ -91,6 +91,17 @@ Pacer file (someone writes it — drill sergeant or a pacer agent):
 
 **Timing (Base ~2s):** `window_s=180` (AERO up-run ~88s). POLL until `deadline_unix`. If nobody `green`, pacer flips **RECYCLE** so capital returns and the next **BUY** can start. One session should loop `BUY→POLL→(green sell|RECYCLE)→REST` until `cycles` or ETH floor.
 
+**Tape (DexScreener buy/sell volume) — gate, not the clock.** Clock stays `window_s`. Pacer **also** reads `txns.m5` / `txns.h1` on the pair:
+
+| Tape | Pacer |
+|------|--------|
+| m5 `buys=0` and `sells>0` | do **not** flip to **BUY** (no bid this minute) |
+| m5 `buys > sells` during POLL | may **extend** deadline once (+60s) — tape lifting |
+| m5 both 0 | illiquid; skip BUY, do not extend |
+| deadline hit, still red | **RECYCLE** even if tape is mixed — capital loop |
+
+Volume does not replace `mark ≥ need`. A green shout still sells immediately.
+
 Talk: if mill shouts `{green:true, token:AERO}`, hangar/naive with AERO sell too. If mill shouts `{recycle:true}`, copy recycle. Do not start a second BUY while phase is POLL.
 
 ## Execute (one fill)
@@ -99,14 +110,21 @@ Talk: if mill shouts `{green:true, token:AERO}`, hangar/naive with AERO sell too
 2. DexScreener + honeypot.is + GoPlus. Fail-closed.
 3. Reserves + `getAmountOut`. If out ≤ gas×3 → FAIL (no tx).
 4. `eth_call` buy and sell as this wallet. Revert → honeypot, FAIL.
-5. `ows sign send-tx --wallet WALLET --chain 8453 --rpc-url https://mainnet.base.org --json` unsigned eip1559 (viem `serializeTransaction`). Never print mnemonic.
+5. **Do not write `/tmp/swap-*.mjs`.** Run the suit fill only (cwd with `viem`, e.g. clearing):
+
+```
+WALLET=<ows-name> SIDE=buy|sell MARKET=AERO|TOSHI [USDC=<atomic>] \
+  node hangar/plugins/shop-trade/scripts/base-fill.mjs
+```
+
+It `eth_call`s then `ows sign send-tx`. Exit 2 = honeypot/revert, no broadcast.
 6. Wait receipt. `status!=1` → FAIL. Do not retry honeypot.
 7. After buy: run rail A (next increase) unless you are in a two-pool arb (rail B).
 8. Prove: green sell tx (`mark ≥ cost + sell_gas`) or arb both legs status 1, or HOLD not-green. Log hashes. Shout on jsonl.
 
 ## Do not
 
-Census 50 OWS wallets. Merkl essays. Shuffle our hangar/mill/naive/treasury1. Pay clearing.rippel.ai and call it PnL. Trust `balanceOf` alone.
+Census 50 OWS wallets. Merkl essays. Shuffle our hangar/mill/naive/treasury1. Pay clearing.rippel.ai and call it PnL. Trust `balanceOf` alone. **Do not author a new swap script** — the mill is `scripts/base-fill.mjs`.
 
 ## Prove
 
