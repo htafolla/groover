@@ -19,6 +19,7 @@ Hangar discovery. Public hostnames are **`*.rippel.ai`**, never `*.up.railway.ap
 | Service | URL |
 |---------|-----|
 | Hangar shops | https://clearing.rippel.ai |
+| Ping (SYN) | https://clearing.rippel.ai/v1/ping |
 | Catalog | https://clearing.rippel.ai/v1/catalog |
 | Well-known x402 | https://clearing.rippel.ai/.well-known/x402 |
 | A2A card | https://clearing.rippel.ai/.well-known/agent-card.json |

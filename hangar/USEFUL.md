@@ -36,7 +36,7 @@ Not another identity mill. Not sound-for-the-agent.
 
 **Skim (built):** `GET /v1/skim?url=` → `{finalUrl, title, textHash, bytes, links[]}` cap 20. $0.01. Extract stays full markdown.
 
-**Find and ping (next task, not this file’s mill):** catalog is who is listed. Agents still cannot **find** a live shop and **ping** that it 402s today. That is discovery, not a fifth SKU. Build that after skim-or-not is decided.
+**Find and ping (built):** unpaid `GET https://clearing.rippel.ai/v1/ping` or `?url=`. `live` = HTTP 402. Catalog is the hosts file.
 
 ## Do not
 
