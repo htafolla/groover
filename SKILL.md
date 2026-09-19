@@ -5,13 +5,12 @@ This skill provides AI agents with the complete protocol to self-register in the
 ## Endpoint
 
 ```
-POST https://registry-production-e2c4.up.railway.app/mcp
+POST https://groover.rippel.ai/mcp
 Content-Type: application/json
 ```
 
-Register **and** `mint_suit` on this **same** host. Default `REGISTRY_URL` in
-`deploy/register-agent.cjs`. After Railway register, `https://groover.rippel.ai/mcp`
-mint is `-32603` (DID/apiKey not on that store).
+Register **and** `mint_suit` on this **same** host. Public name is `groover.rippel.ai`
+(same Railway service as the old `registry-production-*.up.railway.app` URL). Do not advertise Railway hostnames.
 
 All calls use JSON-RPC 2.0:
 
@@ -70,9 +69,9 @@ Sign `nonce + "|" + payload` with your private key.
 ## Factory sequence (hard rules)
 
 1. Persist Ed25519 PEM (`chmod 600`). Save `{ did, apiKey }` beside it. Lost secret = orphan DID.
-2. Register + mint on **same** Railway MCP: `https://registry-production-e2c4.up.railway.app/mcp`. Not `groover.rippel.ai` after Railway register.
+2. Register + mint on **same** MCP: `https://groover.rippel.ai/mcp`.
 3. Register **issues** `groover_…`. Railway `GRVR_PRIVATE_KEY` = server minter ≠ apiKey. OWS = shop pay / optional mint `to`.
-4. Dynamo PASS citation is **mandatory before live mint and ERC-8004 mirror** (PoA register is still pre-Dynamo). `POST https://mcp-production-80e2.up.railway.app/govern_with_solar` JSON `persistToChain: true`. Connected Dynamo MCP tools may omit that field — use HTTP. Solar hammer can `REJECT` / `NEEDS_REVISION` / storm-override — retry until approved (`PASS` + real solar + not `storm`). Do not mint on a failed proposal. `dynamoCitation` = `0x` + `containerId`. Do not invent. Live `dryRun: false` without a container is a clear reject. `dryRun: true` may omit it (labeled). Emergency only: `DYNAMO_MINT_REQUIRED=false`.
+4. Dynamo PASS citation is **mandatory before live mint and ERC-8004 mirror** (PoA register is still pre-Dynamo). `POST https://mcp-production-80e2.up.railway.app/govern_with_solar` JSON `persistToChain: true` (needs `dynamo-mcp.rippel.ai` CNAME — until then this Railway URL is the mill). Connected Dynamo MCP tools may omit that field — use HTTP. Solar hammer can `REJECT` / `NEEDS_REVISION` / storm-override — retry until approved (`PASS` + real solar + not `storm`). Do not mint on a failed proposal. `dynamoCitation` = `0x` + `containerId`. Do not invent. Live `dryRun: false` without a container is a clear reject. `dryRun: true` may omit it (labeled). Emergency only: `DYNAMO_MINT_REQUIRED=false`.
 5. Mint the **full 64-hex** registry DID on GRVR v5 `0x045B35480F289F8f83F53345A0f367875958957a` (28-byte legacy + 76-byte registry). Do not truncate — that was a v4 `0xD892…` `InvalidDid` workaround only.
 6. Sign `groover-mint:v1|{did}|{pack}|{to.toLowerCase()}|{issuedAtMs}`. Proven 2026-09-13: full DID → v5 token #1 (`0x3d81ad93…`). dryRun ≠ live. `0xray-suit` needs inventory + `inspect.ok`.
 7. `mint_suit` = GRVR only. Pin `agentId` = **ERC-8004** `0x8004A169…` token, not the GRVR id. Host an HTTPS shops card (DID + `dynamoCitation` + live shop URL). Identity-only → pin settles, `listed: false`. `register(string)` on 8004 needs **Base ETH**. Pin shop is gasless USDC. Never demo `86025`.
@@ -91,5 +90,5 @@ Same Ed25519 key. Sign `groover-sui-bind:v1|{did}|{suiAddress}|{issuedAtMs}|{not
 
 ## Verification
 
-`GET https://registry-production-e2c4.up.railway.app/health` — health check
-`GET https://registry-production-e2c4.up.railway.app/sse` — SSE transport
+`GET https://groover.rippel.ai/health` — health check
+`GET https://groover.rippel.ai/sse` — SSE transport

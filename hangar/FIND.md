@@ -48,3 +48,15 @@ House 8004 ids: **86556**, **86666**. Registry `eip155:8453:0x8004A169FB4a332513
 5. CDP Bazaar — 402 quotes already carry bazaar extension; index needs a settle through CDP (not ZigZag). Until then, well-known + OpenAPI + 402 ping are the public SYN. Groover JSON well-known is live; Groover is still not in CDP Bazaar / Virtuals.
 
 Do not publish `*.up.railway.app` in cards, SKILLS, well-known, or catalogs.
+
+## Gaps — what is needed (you vs mill)
+
+| Gap | Status | Needed from you |
+|-----|--------|-----------------|
+| **Dynamo card** | `dynamo.rippel.ai` is **BLURRN** (HTML), not Dynamo MCP. Real MCP is `mcp-production-80e2.up.railway.app` (JSON, no well-known). | DNS: CNAME **`dynamo-mcp.rippel.ai`** → that Railway service. Then we add `/.well-known/*` on the MCP. Do not point `dynamo.rippel.ai` at BLURRN if you want it to be Dynamo. |
+| **Plant** | Well-known is in `blip-plant-svc/server.mjs`. No `plant.rippel.ai`. | DNS: CNAME **`plant.rippel.ai`** → `blip-plant` Railway. Set `PLANT_PUBLIC_ORIGIN=https://plant.rippel.ai`. We deploy the mill. |
+| **Registry mill** | Same Railway service as Groover. Public host is already **`groover.rippel.ai`**. Skills still print `registry-production-e2c4.up.railway.app`. | None for DNS. We retarget skills at `https://groover.rippel.ai/mcp` (same store). |
+| **CDP Bazaar** | Quotes already have bazaar metadata. `index: null` until **CDP facilitator settle**. ZigZag pay does not list us. | **CDP API key** (`CDP_API_KEY_ID` + `SECRET`) on Clearing, **or** one paid skim/extract through CDP (verify+settle with `paymentPayload.resource`). First 1k tx/mo free. Then wait up to hours for index. |
+| **Virtuals ACP** | Different handshake (ACP **jobs**, not 402). Register at [app.virtuals.io/acp/join](https://app.virtuals.io/acp/join). | **Your wallet in the browser**: Join ACP → Register Provider/Hybrid → offering that wraps Clearing shops. Optional. Not required for x402 find/ping. |
+| **0xray 7 MCPs** | `npx 0xray mcp …` — local suit, not a hangar. | Nothing. Do not catalog as shops. Optional: A2A card on the docs host `https://0xrayai.github.io/xray/` pointing at llms.txt. |
+| **ZigZag** | Facilitator, not a shop. No `zigzag.rippel.ai`. | Optional DNS CNAME if you want a public facilitator URL. Not a catalog hangar. |
