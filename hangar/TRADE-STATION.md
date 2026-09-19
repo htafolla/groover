@@ -24,7 +24,7 @@ Continue this card. Do not cold-start a 50-wallet census.
 | Size | min($0.10, 5% wallet USDC) |
 | Next increase | `eth_call sell ≥ buy_USDC + buy_gas + sell_gas` → SELL_GREEN |
 | Fill | `hangar/plugins/shop-trade/base-fill.mjs` only — no `/tmp/swap-*.mjs` |
-| Pacer | `/tmp/rippel-swarm-pace.json` + DexScreener `txns.m5` **gate** (not the clock) |
+| Pacer | `hangar/plugins/shop-trade/pace.mjs` only — writes `/tmp/rippel-swarm-pace.json`. BUY if m5.buys or vol.m5 or h1.buys. |
 | Talk | jsonl shout mark/need/green/recycle so others copy |
 | Arb | two pools, spread ≤5%, edge > gas×3, both legs same block — else skip |
 

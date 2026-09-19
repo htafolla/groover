@@ -83,7 +83,15 @@ phase: BUY | POLL | SELL_GREEN | RECYCLE | REST
 | **RECYCLE** | Window over, still red: **sell anyway** to free USDC (this is the loop, not “dump for PnL”). Shout `{recycleTx}`. |
 | **REST** | No tx. Wait `rest_s` (default 10). Next BUY. |
 
-Pacer file (someone writes it — drill sergeant or a pacer agent):
+Pacer is **`hangar/plugins/shop-trade/pace.mjs` only**. Do not write `/tmp/pacer-*.mjs`.
+
+```
+node hangar/plugins/shop-trade/pace.mjs
+```
+
+4 × 180s. BUY if DexScreener `m5.buys>0` OR `volume.m5>0` OR `h1.buys>0`. Else REST **this window only**, then the next 180s. Tape is a gate, not a 12-min nap.
+
+Pacer writes `/tmp/rippel-swarm-pace.json`. Traders only **read** it.
 
 ```json
 {"phase":"POLL","window_s":180,"deadline_unix":0,"rest_s":10,"talk":"/tmp/rippel-swarm-next.jsonl"}
