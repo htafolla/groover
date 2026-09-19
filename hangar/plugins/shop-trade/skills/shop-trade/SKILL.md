@@ -117,7 +117,7 @@ WALLET=<ows-name> SIDE=buy|sell MARKET=AERO|TOSHI [USDC=<atomic>] \
   node hangar/plugins/shop-trade/base-fill.mjs
 ```
 
-It `eth_call`s then `ows sign send-tx`. Exit 2 = honeypot/revert, no broadcast.
+It `eth_call`s then `ows sign send-tx`. Exit 2 = honeypot/revert, no broadcast. **AERO is one Aerodrome router tx** (`0xcF77…`). Never `transfer` token to the pair then `pair.swap` in a second tx — naive/hangar donated the bag that way.
 6. Wait receipt. `status!=1` → FAIL. Do not retry honeypot.
 7. After buy: run rail A (next increase) unless you are in a two-pool arb (rail B).
 8. Prove: green sell tx (`mark ≥ cost + sell_gas`) or arb both legs status 1, or HOLD not-green. Log hashes. Shout on jsonl.
