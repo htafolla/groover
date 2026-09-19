@@ -51,6 +51,21 @@ House 8004 ids: **86556**, **86666**. Registry `eip155:8453:0x8004A169FB4a332513
 
 Do not publish `*.up.railway.app` in cards, SKILLS, well-known, or catalogs.
 
+## After each ship (listings)
+
+When a mill, shop, or skill lands, do this **in the same cut** — not later:
+
+1. **Deploy** the host that serves it (`railway up` or GitHub auto-deploy).
+2. **npm** if a package version moved (`groover-hangar`, `@0xray/blip`, `@0xray/foundry`). OTP is the mill.
+3. **Ping** unpaid:
+   - `GET https://<host>/.well-known/agent-card.json` → JSON 200, no `railway.app`
+   - shops: `GET` → **402**
+   - `GET https://clearing.rippel.ai/v1/catalog`
+4. **Catalog** — if a new hangar shop, pin + DID so it appears.
+5. **Bazaar** — only after a CDP settle (needs CDP keys). Until then, well-known + OpenAPI is the public SYN.
+
+Internal Railway URLs may exist. **Listings never use them.**
+
 ## Gaps — what is needed (you vs mill)
 
 | Gap | Status | Needed from you |
