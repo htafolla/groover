@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Plant the three 402 shops into Grok / Hermes / OpenClaw / OpenCode.
+ * Plant the hangar 402 shops into Grok / Hermes / OpenClaw / OpenCode.
  * Run from a project root: npx groover-hangar
  * Never writes passwd-home ~/.grok/plugins.
  * Does not mill-plant Clearing into 0xray.
@@ -78,5 +78,7 @@ if (isInstallPrefix(root) && !process.argv.includes('--force')) {
 }
 
 for (const name of shops) plantShop(root, name);
-process.stdout.write('planted shop-extract, shop-witness, shop-pin (Grok, Hermes, OpenClaw, OpenCode)\n');
+process.stdout.write(
+  `planted ${shops.length} shops: ${shops.join(', ')} (Grok, Hermes, OpenClaw, OpenCode)\n`,
+);
 process.stdout.write('Grok: grok plugin marketplace add htafolla/groover && grok plugin install shop-extract --trust\n');
