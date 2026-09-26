@@ -19,7 +19,7 @@ own copy and set your own payTo. The buyer side (the `npx groover-hangar` plugin
 | Suit + hangar npm packages | nobody | free | step 1 |
 | OWS wallet | nobody | free | step 2 |
 | Railway hosting | you | Usage-based. Live [Railway pricing](https://docs.railway.com/pricing.md) on 2026-09-26: subscription plus resources (Free $0 with $1 of resources, Hobby $5/mo, Pro $20/mo; RAM $10/GB/mo, CPU $20/vCPU/mo, egress $0.05/GB, volume $0.15/GB/mo). No single hangar total in groover or clearing. | step 3 |
-| Settling each sale on Base | the private ZigZag settle service | Base ETH gas to broadcast `transferWithAuthorization`. Not a USD quote. Clearing only POSTs the signed authorization and reads back `txHash` (`ZigzagFacilitator` in clearing `mcp/src/facilitator.ts`, main `2ee49299`). Your Railway process does not send the transaction, and the buyer does not spend ETH. | step 3 |
+| Settling each sale on Base | your Coinbase CDP account | Clearing POSTs the signed authorization to Coinbase and reads back a transaction hash (`CdpFacilitator` in clearing `mcp/src/facilitator.ts`). It does not broadcast the Base transaction. **Untested live** — no real CDP sale has landed. The buyer does not spend ETH. | step 3 |
 | One test purchase from your own shop | you (you pay yourself) | **$0.02 USDC** for extract (default price) | step 5 |
 | On-chain agent ID, do-it-yourself `register(string)` | you | **Base ETH gas**. `register(string)` measured **134,840 gas** on 2026-09-10 ([GRVR-ERC8004-INTEROP-SPEC.md](../docs/GRVR-ERC8004-INTEROP-SPEC.md) §2.3). Not a USD quote. `TODO(verify): exact ows sign send-tx arguments are not in groover or clearing` | step 6, pick one |
 | On-chain agent ID via the hosted card service (it pays the gas) | you | **$0.05 USDC** | step 6, pick one |
@@ -88,60 +88,41 @@ railway login
 railway init
 ```
 
-Set the variables. Replace the placeholders with your own values:
+Sellers settle with Coinbase CDP and their own keys. The variable list and the hosted boot check live in
+Clearing's [Selling without zigzag (CDP facilitator)](https://github.com/htafolla/clearing/blob/main/README.md#selling-without-zigzag-cdp-facilitator)
+(main `70e018c`). You need all of these:
+
+- `CLEARING_FACILITATOR=cdp`
+- `CDP_API_KEY_ID` and `CDP_API_KEY_SECRET` — your own CDP secret API key (id plus secret)
+- `CLEARING_PAY_TO` — your Base address. USDC from sales lands here.
+- A public `https` custom domain. `bazaarResourceUrl` returns no catalog URL unless the shop URL is `https` and the host does not contain `railway.app` ([`mcp/src/facilitator.ts` L110–L116](https://github.com/htafolla/clearing/blob/main/mcp/src/facilitator.ts#L110-L116) on clearing main `70e018c`). The same function also returns no catalog URL for a path of `/v1/ping` ([L115–L116](https://github.com/htafolla/clearing/blob/main/mcp/src/facilitator.ts#L115-L116)).
+
+No real CDP sale has landed yet. End-to-end CDP selling is **untested live**. A process that boots is not proof that a paid call settles.
 
 ```bash
+railway variable set CLEARING_FACILITATOR=cdp
+railway variable set CDP_API_KEY_ID=YOUR_CDP_KEY_ID
+railway variable set CDP_API_KEY_SECRET=YOUR_CDP_SECRET
 railway variable set CLEARING_PAY_TO=0xYOUR_BASE_ADDRESS
-railway variable set CLEARING_SIGNER=zigzag
-railway variable set CLEARING_FACILITATOR=zigzag
-railway variable set CLEARING_ZIGZAG_URL=YOUR_SETTLE_SERVICE_URL
-railway variable set CLEARING_RAIL_TOKEN=YOUR_RAIL_TOKEN
 railway variable set CLEARING_PUBLIC_URL=https://YOUR_DOMAIN
 railway variable set CLEARING_EXTRACT_BASE_URL=https://YOUR_DOMAIN
 railway variable set CLEARING_DATA_DIR=/data
 ```
 
-What each one does (from `mcp/src/config.ts`, `production-rail.ts`, `facilitator.ts`, `.env.example`):
-
-| Variable | Meaning |
-|----------|---------|
-| `CLEARING_PAY_TO` | **Your** Base address. Every 402 quote tells buyers to pay this address. Required. |
-| `CLEARING_SIGNER` | Must be `zigzag` on Railway. Otherwise the server refuses to start. |
-| `CLEARING_RAIL_TOKEN` | Must be set on Railway (or `ZIGZAG_RAIL_TOKEN`). Sent as a Bearer token to the settle service. |
-| `CLEARING_FACILITATOR` | Who settles paid calls. It defaults to `zigzag` when the signer is `zigzag`. |
-| `CLEARING_ZIGZAG_URL` | Base URL of the settle service. Clearing POSTs to `<url>/settle`. Or set `CLEARING_ZIGZAG_SETTLE_URL` directly. |
-| `CLEARING_PUBLIC_URL` / `CLEARING_EXTRACT_BASE_URL` | Your public origin, used in quotes and self-checks. |
-| `CLEARING_DATA_DIR` | Where receipts and listings are stored. The default `~/.clearing` is wiped on redeploy, so mount a volume at `/data`. |
-| `CLEARING_EXTRACT_PRICE_USD` | Extract price. Default `0.02` (`0.05` with `js=1` via `CLEARING_EXTRACT_PRICE_JS_USD`). |
-
-Settling a sale currently needs **private ZigZag**. `ZigzagFacilitator` POSTs the buyer's signed EIP-3009 to
-`CLEARING_ZIGZAG_URL` + `/settle` (or `CLEARING_ZIGZAG_SETTLE_URL`) with `Authorization: Bearer` set to
-`CLEARING_RAIL_TOKEN` (`mcp/src/facilitator.ts`). [htafolla/zigzag](https://github.com/htafolla/zigzag) is
-private. This repo does not publish a settle URL or a way to mint a rail token
-([FIND.md](./FIND.md): no `zigzag.rippel.ai`). [KIT-LOOP.md](../docs/KIT-LOOP.md) says hosted ZigZag
-`POST /settle` still broadcasts a client-signed authorization, and that `POST /sign` is 410. It does not give
-the URL. Until you have that private service, you can deploy the server and you cannot collect a real payment.
-
-`CdpFacilitator` in the same file can POST to `https://api.cdp.coinbase.com/platform/v2/x402/settle` when
-`CLEARING_FACILITATOR=cdp` and both `CDP_API_KEY_ID` and `CDP_API_KEY_SECRET` are set. That is **not** a
-working seller path on Railway today. `mcp/src/production-rail.ts` refuses to start unless
-`CLEARING_SIGNER=zigzag` and `CLEARING_RAIL_TOKEN` are set (`RAILWAY_ENVIRONMENT` or `NODE_ENV=production`).
-A CDP facilitator path that would let a seller settle without private ZigZag is in progress in
-[htafolla/clearing](https://github.com/htafolla/clearing) (separate PR). Do not deploy assuming CDP collects
-the payment.
+`CLEARING_PUBLIC_URL` and `CLEARING_EXTRACT_BASE_URL` are your public origin, used in quotes and self-checks.
+`CLEARING_DATA_DIR` is where receipts and listings are stored. The default `~/.clearing` is wiped on redeploy, so mount a volume at `/data`.
+`CLEARING_EXTRACT_PRICE_USD` is the extract price (default `0.02`; `0.05` with `js=1` via `CLEARING_EXTRACT_PRICE_JS_USD`).
 
 Don't copy `kit.env` into your deployment. It contains the house payTo (`0xc9cD…462D`), so your sales would go
 to someone else.
 
-Add a volume, deploy, and get a domain:
+Add a volume, deploy, and attach the custom domain:
 
 ```bash
 railway volume add          # mount it at /data
 railway up
 railway domain              # or: railway domain shop.example.com
 ```
-
-Use a custom domain for anything you advertise. Clearing's Bazaar code drops `*.railway.app` hostnames.
 
 ## 4. Keep or add a shop route
 
@@ -179,11 +160,10 @@ before `handleExtract`. Run `npm test` and redeploy with `railway up`.
 
 ```bash
 curl -s https://YOUR_DOMAIN/health
-# {"status":"healthy","server":"clearing","version":"0.1.0","tools":6,"signer":"zigzag"}
+# {"status":"healthy","server":"clearing","version":"0.1.0","tools":6}
 ```
 
-The house server `https://clearing.rippel.ai/health` returned that body on 2026-09-26. `tools` is
-`TOOL_DEFINITIONS.length` in `mcp/src/mcp-http.ts` (status, discover, extract, fetch_paid, receipts, blip).
+Expect `status` `healthy`. `tools` is `TOOL_DEFINITIONS.length` in `mcp/src/mcp-http.ts` (status, discover, extract, fetch_paid, receipts, blip). The house server `https://clearing.rippel.ai/health` returned `signer` `zigzag` on 2026-09-26. That field is the house config. A CDP seller deploy does not set it.
 
 **Unpaid call returns 402 (free):**
 
