@@ -62,17 +62,17 @@ You need a Base address to receive sales. You also need a funded wallet to make 
 ```bash
 curl -fsSL https://docs.openwallet.sh/install.sh | bash
 
-ows wallet create --name "agent-treasury-1"
+ows wallet create --name "YOUR_WALLET"
 ows wallet list
 # copy the Base (eip155:8453) address
-ows fund balance --wallet agent-treasury-1 --chain base
+ows fund balance --wallet YOUR_WALLET --chain base
 ```
 
 - **Receiving:** the address you copied can be your payTo. Any Base address you control works, including a
   separate cold wallet.
 - **Buying (for step 5):** send USDC **on Base** (chain id 8453, not Ethereum) to that address. Native USDC is
   `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`. The OWS on-ramp is optional:
-  `ows fund deposit --wallet agent-treasury-1 --chain base`.
+  `ows fund deposit --wallet YOUR_WALLET --chain base`.
 
 Never put a private key in Clearing's environment. Clearing only needs your **public** payTo address.
 
@@ -95,7 +95,7 @@ Clearing's [Selling without zigzag (CDP facilitator)](https://github.com/htafoll
 - `CLEARING_FACILITATOR=cdp`
 - `CDP_API_KEY_ID` and `CDP_API_KEY_SECRET` — your own CDP secret API key (id plus secret)
 - `CLEARING_PAY_TO` — your Base address. USDC from sales lands here.
-- A public `https` custom domain. `bazaarResourceUrl` returns no catalog URL unless the shop URL is `https` and the host does not contain `railway.app` ([`mcp/src/facilitator.ts` L110–L116](https://github.com/htafolla/clearing/blob/main/mcp/src/facilitator.ts#L110-L116) on clearing main `70e018c`). The same function also returns no catalog URL for a path of `/v1/ping` ([L115–L116](https://github.com/htafolla/clearing/blob/main/mcp/src/facilitator.ts#L115-L116)).
+- A public `https` custom domain. `bazaarResourceUrl` returns no catalog URL unless the shop URL is `https` and the host does not contain `railway.app` ([`mcp/src/facilitator.ts` L110–L116](https://github.com/htafolla/clearing/blob/70e018c/mcp/src/facilitator.ts#L110-L116) at clearing `70e018c`). The same function also returns no catalog URL for a path of `/v1/ping` ([L115–L116](https://github.com/htafolla/clearing/blob/70e018c/mcp/src/facilitator.ts#L115-L116)).
 
 No real CDP sale has landed yet. End-to-end CDP selling is **untested live**. A process that boots is not proof that a paid call settles.
 
@@ -156,6 +156,8 @@ before `handleExtract`. Run `npm test` and redeploy with `railway up`.
 
 ## 5. Smoke test: one 402, then one paid call
 
+Outside sellers cannot do the paid test yet. There is no public buyer path.
+
 **Check health (free):**
 
 ```bash
@@ -163,7 +165,7 @@ curl -s https://YOUR_DOMAIN/health
 # {"status":"healthy","server":"clearing","version":"0.1.0","tools":6}
 ```
 
-Expect `status` `healthy`. `tools` is `TOOL_DEFINITIONS.length` in `mcp/src/mcp-http.ts` (status, discover, extract, fetch_paid, receipts, blip). The house server `https://clearing.rippel.ai/health` returned `signer` `zigzag` on 2026-09-26. That field is the house config. A CDP seller deploy does not set it.
+Expect `status` `healthy`. `tools` is `TOOL_DEFINITIONS.length` in `mcp/src/mcp-http.ts` (status, discover, extract, fetch_paid, receipts, blip). The house server `https://clearing.rippel.ai/health` returned this shape on 2026-09-26, with `tools` 6.
 
 **Unpaid call returns 402 (free):**
 
@@ -193,54 +195,11 @@ body like this one (shape from the live house server):
 
 Amounts are in USDC base units (6 decimals), so `20000` is $0.02. **Check that `payTo` is your address.**
 
-**Paid call. Costs USDC ($0.02 for extract, from your step-2 wallet to your payTo).**
-
-Clearing reads payment from the `X-PAYMENT` (or `PAYMENT-SIGNATURE`) header. The value is base64 JSON
-`{ x402Version: 1, paymentId, nonce, accepted, eip3009 }`, where `eip3009` is a signed USDC
-`TransferWithAuthorization`. A bare `ows pay request` fails against Clearing (`missing paymentId/nonce`), so use
-one of these:
-
-- **Clearing's own buyer tool (MCP).** In a local clone, `npm run mcp` is `tsx mcp/src/server.ts`.
-  `server.ts` loads `kit.env` only for keys that are still unset. That file sets `CLEARING_SIGNER=zigzag`,
-  `CLEARING_FACILITATOR=zigzag`, the house `CLEARING_PAY_TO` (`0xc9cD…462D`),
-  `CLEARING_EXTRACT_BASE_URL=https://clearing.rippel.ai`, and `ZIGZAG_WALLET=agent-treasury-1`. It does not set
-  `CLEARING_ZIGZAG_URL`. `createFacilitator('zigzag')` throws at boot without `CLEARING_ZIGZAG_URL`,
-  `CLEARING_SIGNER_URL`, or `CLEARING_ZIGZAG_SETTLE_URL` (`facilitator.ts`).
-
-  Export these **before** `npm run mcp` so `kit.env` cannot overwrite them:
-
-  ```bash
-  export CLEARING_ZIGZAG_URL=http://127.0.0.1:8789
-  export CLEARING_EXTRACT_BASE_URL=https://YOUR_DOMAIN
-  export CLEARING_SIGNER=zigzag
-  export ZIGZAG_WALLET=agent-treasury-1
-  export ZIGZAG_ROOT=/path/to/zigzag
-  npm install
-  npm run mcp
-  ```
-
-  The loopback URL only gets the process past boot. `createSigner` treats `127.0.0.1` / `localhost` as
-  in-process (`isLoopbackSignerUrl` in `ows-signer.ts`) and does not POST `/sign`. `fetchPaid` (`pay.ts`)
-  signs, then GETs the shop. The **shop** settles. The local facilitator is not called on that path. The
-  quote's `payTo` is the shop's, not the house address in `kit.env`. `CLEARING_EXTRACT_BASE_URL`'s host is
-  added to the buyer allowlist (`config.ts`).
-
-  Signing imports private `zigzag/src/lib/eip3009.ts` from `ZIGZAG_ROOT`, or `../zigzag`, or `~/dev/zigzag`.
-  Without that file, `sign` fails with `OWS signer needs sibling zigzag`. This buyer tool does not work from
-  the public clearing repo alone.
-
-  Call `status`, then `extract` with `dry_run=true` to read the price, then again with `dry_run=false` and
-  `approved=true`.
-- **By hand with OWS.** Sign the EIP-3009 typed data with
-  `ows sign message --wallet agent-treasury-1 --chain 8453 --message "" --typed-data '<eip-712 json>' --json`,
-  then retry with `X-PAYMENT` set to the base64 envelope above.
-  `TODO(verify): the JSON file for --typed-data is not in public clearing or groover. Signing is delegated to private zigzag src/lib/eip3009.ts. shop-pin only shows the CLI flag.`
-
-A good paid response is `200` with `paid: true`, `replayed: false`, a `txHash`, and the result (for extract:
-`textHash`, `markdown`, and more). Send the **same** header again and you get `replayed: true`, with no second
-charge. Check that your payTo's USDC balance went up on Base.
+**Paid call.** Outside sellers cannot make it. There is no public buyer path, so this guide does not describe one. The unpaid 402 above is not a settled sale. A paid extract would cost **$0.02 USDC** from your step-2 wallet to your payTo. That purchase is not available yet.
 
 ## 6. Optional: list your hangar in the public catalog
+
+Catalog listing is not open to outside sellers yet. The paid card and pin calls use the same buyer path as step 5, and that path is not public.
 
 The public catalog is `GET https://clearing.rippel.ai/v1/catalog` (also `/v1/listed` and `/v1/online`).
 Groover MCP `list_hangars` reads the same data. Listing is paid on the **house** Clearing. Your own server's
@@ -266,10 +225,9 @@ To be listed, you need all of these (from `mcp/src/pin.ts`, `gates.ts`, `live-sh
      not the x402 envelope. `deploy/register-8004-once.ts register` is the house script: it signs with
      `GRVR_PRIVATE_KEY`, not your OWS wallet. Do not use that key.
      `TODO(verify): the exact ows sign send-tx arguments (to, calldata) are not in groover or clearing`
-   - **Costs USDC ($0.05):** use the hosted card service `https://clearing.rippel.ai/v1/card` (POST your card
-     JSON or GET `?uri=`). It pays the gas and transfers the ID to your paying wallet.
-5. **Costs USDC ($0.01): pin.** `GET https://clearing.rippel.ai/v1/pin?agentId=YOUR_AGENT_ID`, paid the same way
-   as step 5. The response includes `listed: true` when every check passed. A pin alone doesn't list you.
+   - **Costs USDC ($0.05):** the hosted card service `https://clearing.rippel.ai/v1/card` (POST your card
+     JSON or GET `?uri=`). It pays the gas and transfers the ID to the paying wallet. Outside sellers cannot pay this yet.
+5. **Costs USDC ($0.01): pin.** `GET https://clearing.rippel.ai/v1/pin?agentId=YOUR_AGENT_ID`. Outside sellers cannot pay this yet. The response includes `listed: true` when every check passed. A pin alone doesn't list you.
 
 Optional, **costs USDC ($0.01): ping.**
 `GET https://clearing.rippel.ai/v1/ping?url=<encodeURIComponent(your shop URL)>` checks that your shop is reachable.
