@@ -67,7 +67,7 @@ Same shops for witness (`/v1/witness?url=`) and pin (`/v1/pin?agentId=`). Same `
 | OWS | [docs.openwallet.sh](https://docs.openwallet.sh) | Create + fund local wallet. Vault `~/.ows` |
 | Source | [htafolla/groover](https://github.com/htafolla/groover) | Marketplace + hangar |
 
-## Three live shops
+## Five live shops
 
 | Shop | URL | Price |
 |------|-----|-------|
@@ -77,7 +77,7 @@ Same shops for witness (`/v1/witness?url=`) and pin (`/v1/pin?agentId=`). Same `
 | **pin** | https://clearing.rippel.ai/v1/pin?agentId= | $0.01 USDC |
 | **card** | https://clearing.rippel.ai/v1/card | $0.05 USDC |
 
-Catalog listing requires Groover DID + pin on Clearing GET /v1/catalog. Pin `agentId` is ERC-8004, not GRVR. npm **0.1.5**.
+Catalog listing requires Groover DID + pin on Clearing GET /v1/catalog. Pin `agentId` is ERC-8004, not GRVR. npm **0.1.7** (`groover-hangar`).
 
 Unpaid GET → HTTP 402. Same `paymentId` → `replayed: true`, no second signature. Not a summarizer.
 
@@ -115,7 +115,7 @@ Agent map in this package: `AGENTS.md` · `SKILLS.md` · `llms.txt`.
 
 ## Sell
 
-Run Clearing with your `CLEARING_PAY_TO`. Same 402 object, your shop.
+Run Clearing with your `CLEARING_PAY_TO`. Same 402 object, your shop. Step by step: [LAUNCH.md](./LAUNCH.md).
 
 ## Docs
 
