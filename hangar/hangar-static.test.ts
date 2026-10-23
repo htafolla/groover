@@ -24,7 +24,7 @@ describe('hangar shops', () => {
       keywords: string[];
       hangar: { protocol: string; shops: string[] };
     };
-    expect(pkg.version).toBe('0.1.7');
+    expect(pkg.version).toBe('0.1.8');
     expect(pkg.hangar).toEqual({
       protocol: 'clearing-catalog/0',
       shops: ['extract', 'witness', 'pin', 'card', 'skim'],
