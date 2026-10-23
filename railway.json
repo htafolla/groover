@@ -1,7 +1,7 @@
 {
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "echo skip-tsc"
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
   },
   "deploy": {
     "startCommand": "npx tsx packages/marketplace/src/mcp-server.ts",
