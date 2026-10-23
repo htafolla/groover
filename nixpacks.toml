@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_20"]
+nixPkgs = ["nodejs_24"]
 
 [phases.install]
 cmds = ["rm -f package-lock.json && npm install --include=dev --ignore-scripts"]
