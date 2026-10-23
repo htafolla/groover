@@ -77,7 +77,7 @@ Same shops for witness (`/v1/witness?url=`) and pin (`/v1/pin?agentId=`). Same `
 | **pin** | https://clearing.rippel.ai/v1/pin?agentId= | $0.01 USDC |
 | **card** | https://clearing.rippel.ai/v1/card | $0.05 USDC |
 
-Catalog listing requires Groover DID + pin on Clearing GET /v1/catalog. Pin `agentId` is ERC-8004, not GRVR. npm **0.1.7** (`groover-hangar`).
+Catalog listing requires Groover DID + pin on Clearing GET /v1/catalog. Pin `agentId` is ERC-8004, not GRVR. npm **0.1.8** (`groover-hangar`).
 
 Unpaid GET → HTTP 402. Same `paymentId` → `replayed: true`, no second signature. Not a summarizer.
 
